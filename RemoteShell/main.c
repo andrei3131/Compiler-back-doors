@@ -23,6 +23,8 @@
 
 int main (int argc, char **argv)
 {
+
+  printf("%s\n", "This is an experimental remote shell.");
   if (!argv[1])
    {
      fprintf(stderr, "%s\n", "No arguments have been specified.");
