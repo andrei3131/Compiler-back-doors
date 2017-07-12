@@ -13,14 +13,12 @@ RUN yum -y install tar
 
  RUN yum -y update \
   && buildDeps='wget subversion unzip bison flex libc6 libc6-dev libmpc-dev g++ gcc-multilib g++-multilib' \
+  && CURRENT_GCC=gcc-r198413 \
   && yum -y install -y $buildDeps \
 
-  && wget https://github.com/gcc-mirror/gcc/archive/gcc-4_9_0-release.tar.gz \
-  && mv gcc-4_9_0-release.tar.gz gcc.tar.gz \
-  && tar -xzvf gcc.tar.gz \
-  && mv gcc-gcc-4_9_0-release gcc \
+  && svn checkout -r 198413 svn://gcc.gnu.org/svn/gcc/trunk $CURRENT_GCC \
 
-  && cd gcc \
+  && cd $CURRENT_GCC \
 
   && wget ftp://gcc.gnu.org/pub/gcc/infrastructure/gmp-4.3.2.tar.bz2 \
   && tar -xjvf gmp-4.3.2.tar.bz2 \
