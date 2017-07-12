@@ -7,8 +7,8 @@
 #include "client.h"
 #include "server.h"
 
-//#define SECURE
-#define INVISIBLE
+#define SECURE
+//#define INVISIBLE
 
 
 // sudo tcpdump -nnXSs 0 -i lo icmp
