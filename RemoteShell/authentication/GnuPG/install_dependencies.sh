@@ -62,4 +62,10 @@ make
 make install
 cd ..
 
+touch /etc/ld.so.conf.d/gpg2.conf
+echo "usr/local/lib" >  /etc/ld.so.conf.d/gpg2.conf
+ldconfig -v
 
+apt-get install pinentry-curses
+echo "pinentry-program usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf
+gpg-connect-agent reloadagent /bye
