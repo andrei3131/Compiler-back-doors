@@ -53,3 +53,13 @@ make
 make install
 cd ..
 
+wget https://www.gnupg.org/ftp/gcrypt/pinentry/pinentry-1.0.0.tar.bz2
+tar -xjv pinentry-1.0.0.tar.bz2
+cd pinentry-1.0.0
+apt-get install qt5-default
+./configure
+make 
+make install
+cd ..
+
+
