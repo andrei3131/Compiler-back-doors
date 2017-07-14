@@ -58,7 +58,7 @@ tar -xjv pinentry-1.0.0.tar.bz2
 cd pinentry-1.0.0
 apt-get install qt5-default
 ./configure
-make 
+make
 make install
 cd ..
 
@@ -69,3 +69,38 @@ ldconfig -v
 apt-get install pinentry-curses
 echo "pinentry-program usr/bin/pinentry-curses" > ~/.gnupg/gpg-agent.conf
 gpg-connect-agent reloadagent /bye
+
+apt-get install rng-tools
+#Run this command to generate entropy: sudo rngd -r /dev/urandom
+
+#Indicate that you trust a key:
+#alice% gpg --edit-key blake
+
+#pub  1024D/8B927C8A  created: 1999-07-02 expires: never      trust: q/f
+#sub  1024g/C19EA233  created: 1999-07-02 expires: never
+#(1)  Blake (Executioner) <blake@cyb.org>
+
+#Command> trust
+#pub  1024D/8B927C8A  created: 1999-07-02 expires: never      trust: q/f
+#sub  1024g/C19EA233  created: 1999-07-02 expires: never
+#(1)  Blake (Executioner) <blake@cyb.org>
+
+#Please decide how far you trust this user to correctly
+#verify other users' keys (by looking at passports,
+#checking fingerprints from different sources...)?
+
+# 1 = Don't know
+# 2 = I do NOT trust
+# 3 = I trust marginally
+# 4 = I trust fully
+# s = please show me more information
+# m = back to the main menu
+
+#Your decision? 3
+
+#pub  1024D/8B927C8A  created: 1999-07-02 expires: never      trust: m/f
+#sub  1024g/C19EA233  created: 1999-07-02 expires: never
+#(1)  Blake (Executioner) <blake@cyb.org>
+#
+#Command> quit
+#[...]
