@@ -4,7 +4,7 @@ for common gpg2 commands:
 -------------------------------------------------------------------------------------------------------------------------
 |     Directory              |               Command                                                                    |
 -------------------------------------------------------------------------------------------------------------------------   
-|  	                        |                                                                                          |
+|  	                         |                                                                                          |
 | FullGenKeyCov              |  gpg2 --full-gen-key (Creates a key pair. I assume only RSA is used.)                    |
 | ListPublicKeysCov          |  gpg2 --list-keys                                                                        | 
 | ListPrivateKeysCov         |  gpg2 --list-secret-keys                                                                 | 
