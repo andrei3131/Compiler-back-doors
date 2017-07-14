@@ -1,0 +1,421 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - sm/fingerprint.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">sm</a> - fingerprint.c<span style="font-size: 80%;"> (source / <a href="fingerprint.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">30</td>
+            <td class="headerCovTableEntry">151</td>
+            <td class="headerCovTableEntryLo">19.9 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 12:47:41</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">2</td>
+            <td class="headerCovTableEntry">8</td>
+            <td class="headerCovTableEntryLo">25.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* fingerprint.c - Get the fingerprint</a>
+<span class="lineNum">       2 </span>            :  *      Copyright (C) 2001 Free Software Foundation, Inc.
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       7 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">       8 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">       9 </span>            :  * (at your option) any later version.
+<span class="lineNum">      10 </span>            :  *
+<span class="lineNum">      11 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      12 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      13 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      14 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      15 </span>            :  *
+<span class="lineNum">      16 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      17 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      18 </span>            :  */
+<span class="lineNum">      19 </span>            : 
+<span class="lineNum">      20 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      21 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      22 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      23 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      24 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      25 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      26 </span>            : #include &lt;time.h&gt;
+<span class="lineNum">      27 </span>            : #include &lt;assert.h&gt;
+<span class="lineNum">      28 </span>            : 
+<span class="lineNum">      29 </span>            : 
+<span class="lineNum">      30 </span>            : #include &quot;gpgsm.h&quot;
+<span class="lineNum">      31 </span>            : #include &lt;gcrypt.h&gt;
+<span class="lineNum">      32 </span>            : #include &lt;ksba.h&gt;
+<span class="lineNum">      33 </span>            : 
+<span class="lineNum">      34 </span>            : #include &quot;../common/host2net.h&quot;
+<span class="lineNum">      35 </span>            : 
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span>            : /* Return the fingerprint of the certificate (we can't put this into
+<span class="lineNum">      38 </span>            :    libksba because we need libgcrypt support).  The caller must
+<span class="lineNum">      39 </span>            :    provide an array of sufficient length or NULL so that the function
+<span class="lineNum">      40 </span>            :    allocates the array.  If r_len is not NULL, the length of the
+<span class="lineNum">      41 </span>            :    digest is returned; well, this can also be done by using
+<span class="lineNum">      42 </span>            :    gcry_md_get_algo_dlen().  If algo is 0, a SHA-1 will be used.
+<span class="lineNum">      43 </span>            : 
+<span class="lineNum">      44 </span>            :    If there is a problem , the function does never return NULL but a
+<span class="lineNum">      45 </span>            :    digest of all 0xff.
+<a name="46"><span class="lineNum">      46 </span>            :  */</a>
+<span class="lineNum">      47 </span>            : unsigned char *
+<span class="lineNum">      48 </span><span class="lineCov">          9 : gpgsm_get_fingerprint (ksba_cert_t cert, int algo,</span>
+<span class="lineNum">      49 </span>            :                        unsigned char *array, int *r_len)
+<span class="lineNum">      50 </span>            : {
+<span class="lineNum">      51 </span>            :   gcry_md_hd_t md;
+<span class="lineNum">      52 </span>            :   int rc, len;
+<span class="lineNum">      53 </span>            : 
+<span class="lineNum">      54 </span><span class="lineCov">          9 :   if (!algo)</span>
+<span class="lineNum">      55 </span><span class="lineCov">          3 :     algo = GCRY_MD_SHA1;</span>
+<span class="lineNum">      56 </span>            : 
+<span class="lineNum">      57 </span><span class="lineCov">          9 :   len = gcry_md_get_algo_dlen (algo);</span>
+<span class="lineNum">      58 </span><span class="lineCov">          9 :   assert (len);</span>
+<span class="lineNum">      59 </span><span class="lineCov">          9 :   if (!array)</span>
+<span class="lineNum">      60 </span><span class="lineNoCov">          0 :     array = xmalloc (len);</span>
+<span class="lineNum">      61 </span>            : 
+<span class="lineNum">      62 </span><span class="lineCov">          9 :   if (r_len)</span>
+<span class="lineNum">      63 </span><span class="lineNoCov">          0 :     *r_len = len;</span>
+<span class="lineNum">      64 </span>            : 
+<span class="lineNum">      65 </span>            :   /* Fist check whether we have cached the fingerprint.  */
+<span class="lineNum">      66 </span><span class="lineCov">          9 :   if (algo == GCRY_MD_SHA1)</span>
+<span class="lineNum">      67 </span>            :     {
+<span class="lineNum">      68 </span>            :       size_t buflen;
+<span class="lineNum">      69 </span>            : 
+<span class="lineNum">      70 </span><span class="lineCov">          9 :       assert (len &gt;= 20);</span>
+<span class="lineNum">      71 </span><span class="lineCov">          9 :       if (!ksba_cert_get_user_data (cert, &quot;sha1-fingerprint&quot;,</span>
+<span class="lineNum">      72 </span>            :                                     array, len, &amp;buflen)
+<span class="lineNum">      73 </span><span class="lineCov">          6 :           &amp;&amp; buflen == 20)</span>
+<span class="lineNum">      74 </span><span class="lineCov">          6 :         return array;</span>
+<span class="lineNum">      75 </span>            :     }
+<span class="lineNum">      76 </span>            : 
+<span class="lineNum">      77 </span>            :   /* No, need to compute it.  */
+<span class="lineNum">      78 </span><span class="lineCov">          3 :   rc = gcry_md_open (&amp;md, algo, 0);</span>
+<span class="lineNum">      79 </span><span class="lineCov">          3 :   if (rc)</span>
+<span class="lineNum">      80 </span>            :     {
+<span class="lineNum">      81 </span><span class="lineNoCov">          0 :       log_error (&quot;md_open failed: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">      82 </span><span class="lineNoCov">          0 :       memset (array, 0xff, len); /* better return an invalid fpr than NULL */</span>
+<span class="lineNum">      83 </span><span class="lineNoCov">          0 :       return array;</span>
+<span class="lineNum">      84 </span>            :     }
+<span class="lineNum">      85 </span>            : 
+<span class="lineNum">      86 </span><span class="lineCov">          3 :   rc = ksba_cert_hash (cert, 0, HASH_FNC, md);</span>
+<span class="lineNum">      87 </span><span class="lineCov">          3 :   if (rc)</span>
+<span class="lineNum">      88 </span>            :     {
+<span class="lineNum">      89 </span><span class="lineNoCov">          0 :       log_error (&quot;ksba_cert_hash failed: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">      90 </span><span class="lineNoCov">          0 :       gcry_md_close (md);</span>
+<span class="lineNum">      91 </span><span class="lineNoCov">          0 :       memset (array, 0xff, len); /* better return an invalid fpr than NULL */</span>
+<span class="lineNum">      92 </span><span class="lineNoCov">          0 :       return array;</span>
+<span class="lineNum">      93 </span>            :     }
+<span class="lineNum">      94 </span><span class="lineCov">          3 :   gcry_md_final (md);</span>
+<span class="lineNum">      95 </span><span class="lineCov">          3 :   memcpy (array, gcry_md_read(md, algo), len );</span>
+<span class="lineNum">      96 </span><span class="lineCov">          3 :   gcry_md_close (md);</span>
+<span class="lineNum">      97 </span>            : 
+<span class="lineNum">      98 </span>            :   /* Cache an SHA-1 fingerprint.  */
+<span class="lineNum">      99 </span><span class="lineCov">          3 :   if ( algo == GCRY_MD_SHA1 )</span>
+<span class="lineNum">     100 </span><span class="lineCov">          3 :     ksba_cert_set_user_data (cert, &quot;sha1-fingerprint&quot;, array, 20);</span>
+<span class="lineNum">     101 </span>            : 
+<span class="lineNum">     102 </span><span class="lineCov">          3 :   return array;</span>
+<span class="lineNum">     103 </span>            : }
+<span class="lineNum">     104 </span>            : 
+<span class="lineNum">     105 </span>            : 
+<a name="106"><span class="lineNum">     106 </span>            : /* Return an allocated buffer with the formatted fingerprint */</a>
+<span class="lineNum">     107 </span>            : char *
+<span class="lineNum">     108 </span><span class="lineNoCov">          0 : gpgsm_get_fingerprint_string (ksba_cert_t cert, int algo)</span>
+<span class="lineNum">     109 </span>            : {
+<span class="lineNum">     110 </span>            :   unsigned char digest[MAX_DIGEST_LEN];
+<span class="lineNum">     111 </span>            :   char *buf;
+<span class="lineNum">     112 </span>            :   int len;
+<span class="lineNum">     113 </span>            : 
+<span class="lineNum">     114 </span><span class="lineNoCov">          0 :   if (!algo)</span>
+<span class="lineNum">     115 </span><span class="lineNoCov">          0 :     algo = GCRY_MD_SHA1;</span>
+<span class="lineNum">     116 </span>            : 
+<span class="lineNum">     117 </span><span class="lineNoCov">          0 :   len = gcry_md_get_algo_dlen (algo);</span>
+<span class="lineNum">     118 </span><span class="lineNoCov">          0 :   assert (len &lt;= MAX_DIGEST_LEN );</span>
+<span class="lineNum">     119 </span><span class="lineNoCov">          0 :   gpgsm_get_fingerprint (cert, algo, digest, NULL);</span>
+<span class="lineNum">     120 </span><span class="lineNoCov">          0 :   buf = xmalloc (len*3+1);</span>
+<span class="lineNum">     121 </span><span class="lineNoCov">          0 :   bin2hexcolon (digest, len, buf);</span>
+<span class="lineNum">     122 </span><span class="lineNoCov">          0 :   return buf;</span>
+<span class="lineNum">     123 </span>            : }
+<span class="lineNum">     124 </span>            : 
+<span class="lineNum">     125 </span>            : /* Return an allocated buffer with the formatted fingerprint as one
+<a name="126"><span class="lineNum">     126 </span>            :    large hexnumber */</a>
+<span class="lineNum">     127 </span>            : char *
+<span class="lineNum">     128 </span><span class="lineCov">          3 : gpgsm_get_fingerprint_hexstring (ksba_cert_t cert, int algo)</span>
+<span class="lineNum">     129 </span>            : {
+<span class="lineNum">     130 </span>            :   unsigned char digest[MAX_DIGEST_LEN];
+<span class="lineNum">     131 </span>            :   char *buf;
+<span class="lineNum">     132 </span>            :   int len;
+<span class="lineNum">     133 </span>            : 
+<span class="lineNum">     134 </span><span class="lineCov">          3 :   if (!algo)</span>
+<span class="lineNum">     135 </span><span class="lineNoCov">          0 :     algo = GCRY_MD_SHA1;</span>
+<span class="lineNum">     136 </span>            : 
+<span class="lineNum">     137 </span><span class="lineCov">          3 :   len = gcry_md_get_algo_dlen (algo);</span>
+<span class="lineNum">     138 </span><span class="lineCov">          3 :   assert (len &lt;= MAX_DIGEST_LEN );</span>
+<span class="lineNum">     139 </span><span class="lineCov">          3 :   gpgsm_get_fingerprint (cert, algo, digest, NULL);</span>
+<span class="lineNum">     140 </span><span class="lineCov">          3 :   buf = xmalloc (len*2+1);</span>
+<span class="lineNum">     141 </span><span class="lineCov">          3 :   bin2hex (digest, len, buf);</span>
+<span class="lineNum">     142 </span><span class="lineCov">          3 :   return buf;</span>
+<span class="lineNum">     143 </span>            : }
+<span class="lineNum">     144 </span>            : 
+<span class="lineNum">     145 </span>            : /* Return a certificate ID.  These are the last 4 bytes of the SHA-1
+<span class="lineNum">     146 </span>            :    fingerprint.  If R_HIGH is not NULL the next 4 bytes are stored
+<a name="147"><span class="lineNum">     147 </span>            :    there. */</a>
+<span class="lineNum">     148 </span>            : unsigned long
+<span class="lineNum">     149 </span><span class="lineNoCov">          0 : gpgsm_get_short_fingerprint (ksba_cert_t cert, unsigned long *r_high)</span>
+<span class="lineNum">     150 </span>            : {
+<span class="lineNum">     151 </span>            :   unsigned char digest[20];
+<span class="lineNum">     152 </span>            : 
+<span class="lineNum">     153 </span><span class="lineNoCov">          0 :   gpgsm_get_fingerprint (cert, GCRY_MD_SHA1, digest, NULL);</span>
+<span class="lineNum">     154 </span><span class="lineNoCov">          0 :   if (r_high)</span>
+<span class="lineNum">     155 </span><span class="lineNoCov">          0 :     *r_high = buf32_to_ulong (digest+12);</span>
+<span class="lineNum">     156 </span><span class="lineNoCov">          0 :   return buf32_to_ulong (digest + 16);</span>
+<span class="lineNum">     157 </span>            : }
+<span class="lineNum">     158 </span>            : 
+<span class="lineNum">     159 </span>            : 
+<span class="lineNum">     160 </span>            : /* Return the so called KEYGRIP which is the SHA-1 hash of the public
+<span class="lineNum">     161 </span>            :    key parameters expressed as an canoncial encoded S-Exp.  ARRAY must
+<span class="lineNum">     162 </span>            :    be 20 bytes long.  Returns ARRAY or a newly allocated buffer if ARRAY was
+<a name="163"><span class="lineNum">     163 </span>            :    given as NULL.  May return NULL on error.  */</a>
+<span class="lineNum">     164 </span>            : unsigned char *
+<span class="lineNum">     165 </span><span class="lineNoCov">          0 : gpgsm_get_keygrip (ksba_cert_t cert, unsigned char *array)</span>
+<span class="lineNum">     166 </span>            : {
+<span class="lineNum">     167 </span>            :   gcry_sexp_t s_pkey;
+<span class="lineNum">     168 </span>            :   int rc;
+<span class="lineNum">     169 </span>            :   ksba_sexp_t p;
+<span class="lineNum">     170 </span>            :   size_t n;
+<span class="lineNum">     171 </span>            : 
+<span class="lineNum">     172 </span><span class="lineNoCov">          0 :   p = ksba_cert_get_public_key (cert);</span>
+<span class="lineNum">     173 </span><span class="lineNoCov">          0 :   if (!p)</span>
+<span class="lineNum">     174 </span><span class="lineNoCov">          0 :     return NULL; /* oops */</span>
+<span class="lineNum">     175 </span>            : 
+<span class="lineNum">     176 </span><span class="lineNoCov">          0 :   if (DBG_X509)</span>
+<span class="lineNum">     177 </span><span class="lineNoCov">          0 :     log_debug (&quot;get_keygrip for public key\n&quot;);</span>
+<span class="lineNum">     178 </span><span class="lineNoCov">          0 :   n = gcry_sexp_canon_len (p, 0, NULL, NULL);</span>
+<span class="lineNum">     179 </span><span class="lineNoCov">          0 :   if (!n)</span>
+<span class="lineNum">     180 </span>            :     {
+<span class="lineNum">     181 </span><span class="lineNoCov">          0 :       log_error (&quot;libksba did not return a proper S-Exp\n&quot;);</span>
+<span class="lineNum">     182 </span><span class="lineNoCov">          0 :       return NULL;</span>
+<span class="lineNum">     183 </span>            :     }
+<span class="lineNum">     184 </span><span class="lineNoCov">          0 :   rc = gcry_sexp_sscan ( &amp;s_pkey, NULL, (char*)p, n);</span>
+<span class="lineNum">     185 </span><span class="lineNoCov">          0 :   xfree (p);</span>
+<span class="lineNum">     186 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     187 </span>            :     {
+<span class="lineNum">     188 </span><span class="lineNoCov">          0 :       log_error (&quot;gcry_sexp_scan failed: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">     189 </span><span class="lineNoCov">          0 :       return NULL;</span>
+<span class="lineNum">     190 </span>            :     }
+<span class="lineNum">     191 </span><span class="lineNoCov">          0 :   array = gcry_pk_get_keygrip (s_pkey, array);</span>
+<span class="lineNum">     192 </span><span class="lineNoCov">          0 :   gcry_sexp_release (s_pkey);</span>
+<span class="lineNum">     193 </span><span class="lineNoCov">          0 :   if (!array)</span>
+<span class="lineNum">     194 </span>            :     {
+<span class="lineNum">     195 </span><span class="lineNoCov">          0 :       log_error (&quot;can't calculate keygrip\n&quot;);</span>
+<span class="lineNum">     196 </span><span class="lineNoCov">          0 :       return NULL;</span>
+<span class="lineNum">     197 </span>            :     }
+<span class="lineNum">     198 </span><span class="lineNoCov">          0 :   if (DBG_X509)</span>
+<span class="lineNum">     199 </span><span class="lineNoCov">          0 :     log_printhex (&quot;keygrip=&quot;, array, 20);</span>
+<span class="lineNum">     200 </span>            : 
+<span class="lineNum">     201 </span><span class="lineNoCov">          0 :   return array;</span>
+<span class="lineNum">     202 </span>            : }
+<span class="lineNum">     203 </span>            : 
+<span class="lineNum">     204 </span>            : /* Return an allocated buffer with the keygrip of CERT encoded as a
+<a name="205"><span class="lineNum">     205 </span>            :    hexstring.  NULL is returned in case of error.  */</a>
+<span class="lineNum">     206 </span>            : char *
+<span class="lineNum">     207 </span><span class="lineNoCov">          0 : gpgsm_get_keygrip_hexstring (ksba_cert_t cert)</span>
+<span class="lineNum">     208 </span>            : {
+<span class="lineNum">     209 </span>            :   unsigned char grip[20];
+<span class="lineNum">     210 </span>            :   char *buf;
+<span class="lineNum">     211 </span>            : 
+<span class="lineNum">     212 </span><span class="lineNoCov">          0 :   if (!gpgsm_get_keygrip (cert, grip))</span>
+<span class="lineNum">     213 </span><span class="lineNoCov">          0 :     return NULL;</span>
+<span class="lineNum">     214 </span><span class="lineNoCov">          0 :   buf = xtrymalloc (20*2+1);</span>
+<span class="lineNum">     215 </span><span class="lineNoCov">          0 :   if (buf)</span>
+<span class="lineNum">     216 </span><span class="lineNoCov">          0 :     bin2hex (grip, 20, buf);</span>
+<span class="lineNum">     217 </span><span class="lineNoCov">          0 :   return buf;</span>
+<span class="lineNum">     218 </span>            : }
+<span class="lineNum">     219 </span>            : 
+<span class="lineNum">     220 </span>            : 
+<span class="lineNum">     221 </span>            : /* Return the PK algorithm used by CERT as well as the length in bits
+<a name="222"><span class="lineNum">     222 </span>            :    of the public key at NBITS. */</a>
+<span class="lineNum">     223 </span>            : int
+<span class="lineNum">     224 </span><span class="lineNoCov">          0 : gpgsm_get_key_algo_info (ksba_cert_t cert, unsigned int *nbits)</span>
+<span class="lineNum">     225 </span>            : {
+<span class="lineNum">     226 </span>            :   gcry_sexp_t s_pkey;
+<span class="lineNum">     227 </span>            :   int rc;
+<span class="lineNum">     228 </span>            :   ksba_sexp_t p;
+<span class="lineNum">     229 </span>            :   size_t n;
+<span class="lineNum">     230 </span>            :   gcry_sexp_t l1, l2;
+<span class="lineNum">     231 </span>            :   const char *name;
+<span class="lineNum">     232 </span>            :   char namebuf[128];
+<span class="lineNum">     233 </span>            : 
+<span class="lineNum">     234 </span><span class="lineNoCov">          0 :   if (nbits)</span>
+<span class="lineNum">     235 </span><span class="lineNoCov">          0 :     *nbits = 0;</span>
+<span class="lineNum">     236 </span>            : 
+<span class="lineNum">     237 </span><span class="lineNoCov">          0 :   p = ksba_cert_get_public_key (cert);</span>
+<span class="lineNum">     238 </span><span class="lineNoCov">          0 :   if (!p)</span>
+<span class="lineNum">     239 </span><span class="lineNoCov">          0 :     return 0;</span>
+<span class="lineNum">     240 </span><span class="lineNoCov">          0 :   n = gcry_sexp_canon_len (p, 0, NULL, NULL);</span>
+<span class="lineNum">     241 </span><span class="lineNoCov">          0 :   if (!n)</span>
+<span class="lineNum">     242 </span>            :     {
+<span class="lineNum">     243 </span><span class="lineNoCov">          0 :       xfree (p);</span>
+<span class="lineNum">     244 </span><span class="lineNoCov">          0 :       return 0;</span>
+<span class="lineNum">     245 </span>            :     }
+<span class="lineNum">     246 </span><span class="lineNoCov">          0 :   rc = gcry_sexp_sscan (&amp;s_pkey, NULL, (char *)p, n);</span>
+<span class="lineNum">     247 </span><span class="lineNoCov">          0 :   xfree (p);</span>
+<span class="lineNum">     248 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     249 </span><span class="lineNoCov">          0 :     return 0;</span>
+<span class="lineNum">     250 </span>            : 
+<span class="lineNum">     251 </span><span class="lineNoCov">          0 :   if (nbits)</span>
+<span class="lineNum">     252 </span><span class="lineNoCov">          0 :     *nbits = gcry_pk_get_nbits (s_pkey);</span>
+<span class="lineNum">     253 </span>            : 
+<span class="lineNum">     254 </span>            :   /* Breaking the algorithm out of the S-exp is a bit of a challenge ... */
+<span class="lineNum">     255 </span><span class="lineNoCov">          0 :   l1 = gcry_sexp_find_token (s_pkey, &quot;public-key&quot;, 0);</span>
+<span class="lineNum">     256 </span><span class="lineNoCov">          0 :   if (!l1)</span>
+<span class="lineNum">     257 </span>            :     {
+<span class="lineNum">     258 </span><span class="lineNoCov">          0 :       gcry_sexp_release (s_pkey);</span>
+<span class="lineNum">     259 </span><span class="lineNoCov">          0 :       return 0;</span>
+<span class="lineNum">     260 </span>            :     }
+<span class="lineNum">     261 </span><span class="lineNoCov">          0 :   l2 = gcry_sexp_cadr (l1);</span>
+<span class="lineNum">     262 </span><span class="lineNoCov">          0 :   gcry_sexp_release (l1);</span>
+<span class="lineNum">     263 </span><span class="lineNoCov">          0 :   l1 = l2;</span>
+<span class="lineNum">     264 </span><span class="lineNoCov">          0 :   name = gcry_sexp_nth_data (l1, 0, &amp;n);</span>
+<span class="lineNum">     265 </span><span class="lineNoCov">          0 :   if (name)</span>
+<span class="lineNum">     266 </span>            :     {
+<span class="lineNum">     267 </span><span class="lineNoCov">          0 :       if (n &gt; sizeof namebuf -1)</span>
+<span class="lineNum">     268 </span><span class="lineNoCov">          0 :         n = sizeof namebuf -1;</span>
+<span class="lineNum">     269 </span><span class="lineNoCov">          0 :       memcpy (namebuf, name, n);</span>
+<span class="lineNum">     270 </span><span class="lineNoCov">          0 :       namebuf[n] = 0;</span>
+<span class="lineNum">     271 </span>            :     }
+<span class="lineNum">     272 </span>            :   else
+<span class="lineNum">     273 </span><span class="lineNoCov">          0 :     *namebuf = 0;</span>
+<span class="lineNum">     274 </span><span class="lineNoCov">          0 :   gcry_sexp_release (l1);</span>
+<span class="lineNum">     275 </span><span class="lineNoCov">          0 :   gcry_sexp_release (s_pkey);</span>
+<span class="lineNum">     276 </span><span class="lineNoCov">          0 :   return gcry_pk_map_name (namebuf);</span>
+<span class="lineNum">     277 </span>            : }
+<span class="lineNum">     278 </span>            : 
+<span class="lineNum">     279 </span>            : 
+<span class="lineNum">     280 </span>            : 
+<span class="lineNum">     281 </span>            : 
+<span class="lineNum">     282 </span>            : /* For certain purposes we need a certificate id which has an upper
+<span class="lineNum">     283 </span>            :    limit of the size.  We use the hash of the issuer name and the
+<span class="lineNum">     284 </span>            :    serial number for this.  In most cases the serial number is not
+<span class="lineNum">     285 </span>            :    that large and the resulting string can be passed on an assuan
+<span class="lineNum">     286 </span>            :    command line.  Everything is hexencoded with the serialnumber
+<span class="lineNum">     287 </span>            :    delimited from the hash by a dot.
+<span class="lineNum">     288 </span>            : 
+<span class="lineNum">     289 </span>            :    The caller must free the string.
+<a name="290"><span class="lineNum">     290 </span>            : */</a>
+<span class="lineNum">     291 </span>            : char *
+<span class="lineNum">     292 </span><span class="lineNoCov">          0 : gpgsm_get_certid (ksba_cert_t cert)</span>
+<span class="lineNum">     293 </span>            : {
+<span class="lineNum">     294 </span>            :   ksba_sexp_t serial;
+<span class="lineNum">     295 </span>            :   char *p;
+<span class="lineNum">     296 </span>            :   char *endp;
+<span class="lineNum">     297 </span>            :   unsigned char hash[20];
+<span class="lineNum">     298 </span>            :   unsigned long n;
+<span class="lineNum">     299 </span>            :   char *certid;
+<span class="lineNum">     300 </span>            :   int i;
+<span class="lineNum">     301 </span>            : 
+<span class="lineNum">     302 </span><span class="lineNoCov">          0 :   p = ksba_cert_get_issuer (cert, 0);</span>
+<span class="lineNum">     303 </span><span class="lineNoCov">          0 :   if (!p)</span>
+<span class="lineNum">     304 </span><span class="lineNoCov">          0 :     return NULL; /* Ooops: No issuer */</span>
+<span class="lineNum">     305 </span><span class="lineNoCov">          0 :   gcry_md_hash_buffer (GCRY_MD_SHA1, hash, p, strlen (p));</span>
+<span class="lineNum">     306 </span><span class="lineNoCov">          0 :   xfree (p);</span>
+<span class="lineNum">     307 </span>            : 
+<span class="lineNum">     308 </span><span class="lineNoCov">          0 :   serial = ksba_cert_get_serial (cert);</span>
+<span class="lineNum">     309 </span><span class="lineNoCov">          0 :   if (!serial)</span>
+<span class="lineNum">     310 </span><span class="lineNoCov">          0 :     return NULL; /* oops: no serial number */</span>
+<span class="lineNum">     311 </span><span class="lineNoCov">          0 :   p = (char *)serial;</span>
+<span class="lineNum">     312 </span><span class="lineNoCov">          0 :   if (*p != '(')</span>
+<span class="lineNum">     313 </span>            :     {
+<span class="lineNum">     314 </span><span class="lineNoCov">          0 :       log_error (&quot;Ooops: invalid serial number\n&quot;);</span>
+<span class="lineNum">     315 </span><span class="lineNoCov">          0 :       xfree (serial);</span>
+<span class="lineNum">     316 </span><span class="lineNoCov">          0 :       return NULL;</span>
+<span class="lineNum">     317 </span>            :     }
+<span class="lineNum">     318 </span><span class="lineNoCov">          0 :   p++;</span>
+<span class="lineNum">     319 </span><span class="lineNoCov">          0 :   n = strtoul (p, &amp;endp, 10);</span>
+<span class="lineNum">     320 </span><span class="lineNoCov">          0 :   p = endp;</span>
+<span class="lineNum">     321 </span><span class="lineNoCov">          0 :   if (*p != ':')</span>
+<span class="lineNum">     322 </span>            :     {
+<span class="lineNum">     323 </span><span class="lineNoCov">          0 :       log_error (&quot;Ooops: invalid serial number (no colon)\n&quot;);</span>
+<span class="lineNum">     324 </span><span class="lineNoCov">          0 :       xfree (serial);</span>
+<span class="lineNum">     325 </span><span class="lineNoCov">          0 :       return NULL;</span>
+<span class="lineNum">     326 </span>            :     }
+<span class="lineNum">     327 </span><span class="lineNoCov">          0 :   p++;</span>
+<span class="lineNum">     328 </span>            : 
+<span class="lineNum">     329 </span><span class="lineNoCov">          0 :   certid = xtrymalloc ( 40 + 1 + n*2 + 1);</span>
+<span class="lineNum">     330 </span><span class="lineNoCov">          0 :   if (!certid)</span>
+<span class="lineNum">     331 </span>            :     {
+<span class="lineNum">     332 </span><span class="lineNoCov">          0 :       xfree (serial);</span>
+<span class="lineNum">     333 </span><span class="lineNoCov">          0 :       return NULL; /* out of core */</span>
+<span class="lineNum">     334 </span>            :     }
+<span class="lineNum">     335 </span>            : 
+<span class="lineNum">     336 </span><span class="lineNoCov">          0 :   for (i=0, endp = certid; i &lt; 20; i++, endp += 2 )</span>
+<span class="lineNum">     337 </span><span class="lineNoCov">          0 :     sprintf (endp, &quot;%02X&quot;, hash[i]);</span>
+<span class="lineNum">     338 </span><span class="lineNoCov">          0 :   *endp++ = '.';</span>
+<span class="lineNum">     339 </span><span class="lineNoCov">          0 :   for (i=0; i &lt; n; i++, endp += 2)</span>
+<span class="lineNum">     340 </span><span class="lineNoCov">          0 :     sprintf (endp, &quot;%02X&quot;, ((unsigned char*)p)[i]);</span>
+<span class="lineNum">     341 </span><span class="lineNoCov">          0 :   *endp = 0;</span>
+<span class="lineNum">     342 </span>            : 
+<span class="lineNum">     343 </span><span class="lineNoCov">          0 :   xfree (serial);</span>
+<span class="lineNum">     344 </span><span class="lineNoCov">          0 :   return certid;</span>
+<span class="lineNum">     345 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

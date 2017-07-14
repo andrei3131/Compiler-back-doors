@@ -1,0 +1,213 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - common/server-help.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">common</a> - server-help.c<span style="font-size: 80%;"> (source / <a href="server-help.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">45</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 15:09:19</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* server-help.h - Helper functions for writing Assuan servers.</a>
+<span class="lineNum">       2 </span>            :  *      Copyright (C) 2003, 2009, 2010 g10 Code GmbH
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * This file is free software; you can redistribute it and/or modify
+<span class="lineNum">       7 </span>            :  * it under the terms of either
+<span class="lineNum">       8 </span>            :  *
+<span class="lineNum">       9 </span>            :  *   - the GNU Lesser General Public License as published by the Free
+<span class="lineNum">      10 </span>            :  *     Software Foundation; either version 3 of the License, or (at
+<span class="lineNum">      11 </span>            :  *     your option) any later version.
+<span class="lineNum">      12 </span>            :  *
+<span class="lineNum">      13 </span>            :  * or
+<span class="lineNum">      14 </span>            :  *
+<span class="lineNum">      15 </span>            :  *   - the GNU General Public License as published by the Free
+<span class="lineNum">      16 </span>            :  *     Software Foundation; either version 2 of the License, or (at
+<span class="lineNum">      17 </span>            :  *     your option) any later version.
+<span class="lineNum">      18 </span>            :  *
+<span class="lineNum">      19 </span>            :  * or both in parallel, as here.
+<span class="lineNum">      20 </span>            :  *
+<span class="lineNum">      21 </span>            :  * This file is distributed in the hope that it will be useful,
+<span class="lineNum">      22 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      23 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      24 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      25 </span>            :  *
+<span class="lineNum">      26 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      27 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      28 </span>            :  */
+<span class="lineNum">      29 </span>            : 
+<span class="lineNum">      30 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      31 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      32 </span>            : 
+<span class="lineNum">      33 </span>            : #include &quot;server-help.h&quot;
+<span class="lineNum">      34 </span>            : #include &quot;util.h&quot;
+<span class="lineNum">      35 </span>            : 
+<span class="lineNum">      36 </span>            : /* Skip over options in LINE.
+<span class="lineNum">      37 </span>            : 
+<span class="lineNum">      38 </span>            :    Blanks after the options are also removed.  Options are indicated
+<span class="lineNum">      39 </span>            :    by two leading dashes followed by a string consisting of non-space
+<span class="lineNum">      40 </span>            :    characters.  The special option &quot;--&quot; indicates an explicit end of
+<span class="lineNum">      41 </span>            :    options; all what follows will not be considered an option.  The
+<a name="42"><span class="lineNum">      42 </span>            :    first no-option string also indicates the end of option parsing. */</a>
+<span class="lineNum">      43 </span>            : char *
+<span class="lineNum">      44 </span><span class="lineNoCov">          0 : skip_options (const char *line)</span>
+<span class="lineNum">      45 </span>            : {
+<span class="lineNum">      46 </span><span class="lineNoCov">          0 :   while (spacep (line))</span>
+<span class="lineNum">      47 </span><span class="lineNoCov">          0 :     line++;</span>
+<span class="lineNum">      48 </span><span class="lineNoCov">          0 :   while (*line == '-' &amp;&amp; line[1] == '-')</span>
+<span class="lineNum">      49 </span>            :     {
+<span class="lineNum">      50 </span><span class="lineNoCov">          0 :       while (*line &amp;&amp; !spacep (line))</span>
+<span class="lineNum">      51 </span><span class="lineNoCov">          0 :         line++;</span>
+<span class="lineNum">      52 </span><span class="lineNoCov">          0 :       while (spacep (line))</span>
+<span class="lineNum">      53 </span><span class="lineNoCov">          0 :         line++;</span>
+<span class="lineNum">      54 </span>            :     }
+<span class="lineNum">      55 </span><span class="lineNoCov">          0 :   return (char*) line;</span>
+<span class="lineNum">      56 </span>            : }
+<span class="lineNum">      57 </span>            : 
+<span class="lineNum">      58 </span>            : 
+<a name="59"><span class="lineNum">      59 </span>            : /* Check whether the option NAME appears in LINE.  */</a>
+<span class="lineNum">      60 </span>            : int
+<span class="lineNum">      61 </span><span class="lineNoCov">          0 : has_option (const char *line, const char *name)</span>
+<span class="lineNum">      62 </span>            : {
+<span class="lineNum">      63 </span>            :   const char *s;
+<span class="lineNum">      64 </span><span class="lineNoCov">          0 :   int n = strlen (name);</span>
+<span class="lineNum">      65 </span>            : 
+<span class="lineNum">      66 </span><span class="lineNoCov">          0 :   s = strstr (line, name);</span>
+<span class="lineNum">      67 </span><span class="lineNoCov">          0 :   if (s &amp;&amp; s &gt;= skip_options (line))</span>
+<span class="lineNum">      68 </span><span class="lineNoCov">          0 :     return 0;</span>
+<span class="lineNum">      69 </span><span class="lineNoCov">          0 :   return (s &amp;&amp; (s == line || spacep (s-1)) &amp;&amp; (!s[n] || spacep (s+n)));</span>
+<span class="lineNum">      70 </span>            : }
+<span class="lineNum">      71 </span>            : 
+<span class="lineNum">      72 </span>            : 
+<span class="lineNum">      73 </span>            : /* Same as has_option but only considers options at the begin of the
+<span class="lineNum">      74 </span>            :    line.  This is useful for commands which allow arbitrary strings on
+<a name="75"><span class="lineNum">      75 </span>            :    the line.  */</a>
+<span class="lineNum">      76 </span>            : int
+<span class="lineNum">      77 </span><span class="lineNoCov">          0 : has_leading_option (const char *line, const char *name)</span>
+<span class="lineNum">      78 </span>            : {
+<span class="lineNum">      79 </span>            :   const char *s;
+<span class="lineNum">      80 </span>            :   int n;
+<span class="lineNum">      81 </span>            : 
+<span class="lineNum">      82 </span><span class="lineNoCov">          0 :   if (name[0] != '-' || name[1] != '-' || !name[2] || spacep (name+2))</span>
+<span class="lineNum">      83 </span><span class="lineNoCov">          0 :     return 0;</span>
+<span class="lineNum">      84 </span><span class="lineNoCov">          0 :   n = strlen (name);</span>
+<span class="lineNum">      85 </span><span class="lineNoCov">          0 :   while ( *line == '-' &amp;&amp; line[1] == '-' )</span>
+<span class="lineNum">      86 </span>            :     {
+<span class="lineNum">      87 </span><span class="lineNoCov">          0 :       s = line;</span>
+<span class="lineNum">      88 </span><span class="lineNoCov">          0 :       while (*line &amp;&amp; !spacep (line))</span>
+<span class="lineNum">      89 </span><span class="lineNoCov">          0 :         line++;</span>
+<span class="lineNum">      90 </span><span class="lineNoCov">          0 :       if (n == (line - s) &amp;&amp; !strncmp (s, name, n))</span>
+<span class="lineNum">      91 </span><span class="lineNoCov">          0 :         return 1;</span>
+<span class="lineNum">      92 </span><span class="lineNoCov">          0 :       while (spacep (line))</span>
+<span class="lineNum">      93 </span><span class="lineNoCov">          0 :         line++;</span>
+<span class="lineNum">      94 </span>            :     }
+<span class="lineNum">      95 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">      96 </span>            : }
+<span class="lineNum">      97 </span>            : 
+<span class="lineNum">      98 </span>            : 
+<span class="lineNum">      99 </span>            : /* Same as has_option but does only test for the name of the option
+<span class="lineNum">     100 </span>            :    and ignores an argument, i.e. with NAME being &quot;--hash&quot; it would
+<span class="lineNum">     101 </span>            :    return a pointer for &quot;--hash&quot; as well as for &quot;--hash=foo&quot;.  If
+<span class="lineNum">     102 </span>            :    there is no such option NULL is returned.  The pointer returned
+<span class="lineNum">     103 </span>            :    points right behind the option name, this may be an equal sign, Nul
+<a name="104"><span class="lineNum">     104 </span>            :    or a space.  */</a>
+<span class="lineNum">     105 </span>            : const char *
+<span class="lineNum">     106 </span><span class="lineNoCov">          0 : has_option_name (const char *line, const char *name)</span>
+<span class="lineNum">     107 </span>            : {
+<span class="lineNum">     108 </span>            :   const char *s;
+<span class="lineNum">     109 </span><span class="lineNoCov">          0 :   int n = strlen (name);</span>
+<span class="lineNum">     110 </span>            : 
+<span class="lineNum">     111 </span><span class="lineNoCov">          0 :   s = strstr (line, name);</span>
+<span class="lineNum">     112 </span><span class="lineNoCov">          0 :   return (s &amp;&amp; (s == line || spacep (s-1))</span>
+<span class="lineNum">     113 </span><span class="lineNoCov">          0 :           &amp;&amp; (!s[n] || spacep (s+n) || s[n] == '=')) ? (s+n) : NULL;</span>
+<span class="lineNum">     114 </span>            : }
+<span class="lineNum">     115 </span>            : 
+<span class="lineNum">     116 </span>            : 
+<span class="lineNum">     117 </span>            : /* Return a pointer to the argument of the option with NAME.  If such
+<a name="118"><span class="lineNum">     118 </span>            :    an option is not given, NULL is returned. */</a>
+<span class="lineNum">     119 </span>            : char *
+<span class="lineNum">     120 </span><span class="lineNoCov">          0 : option_value (const char *line, const char *name)</span>
+<span class="lineNum">     121 </span>            : {
+<span class="lineNum">     122 </span>            :   char *s;
+<span class="lineNum">     123 </span><span class="lineNoCov">          0 :   int n = strlen (name);</span>
+<span class="lineNum">     124 </span>            : 
+<span class="lineNum">     125 </span><span class="lineNoCov">          0 :   s = strstr (line, name);</span>
+<span class="lineNum">     126 </span><span class="lineNoCov">          0 :   if (s &amp;&amp; s &gt;= skip_options (line))</span>
+<span class="lineNum">     127 </span><span class="lineNoCov">          0 :     return NULL;</span>
+<span class="lineNum">     128 </span><span class="lineNoCov">          0 :   if (s &amp;&amp; (s == line || spacep (s-1))</span>
+<span class="lineNum">     129 </span><span class="lineNoCov">          0 :       &amp;&amp; s[n] &amp;&amp; (spacep (s+n) || s[n] == '='))</span>
+<span class="lineNum">     130 </span>            :     {
+<span class="lineNum">     131 </span><span class="lineNoCov">          0 :       s += n + 1;</span>
+<span class="lineNum">     132 </span><span class="lineNoCov">          0 :       s += strspn (s, &quot; &quot;);</span>
+<span class="lineNum">     133 </span><span class="lineNoCov">          0 :       if (*s &amp;&amp; !spacep(s))</span>
+<span class="lineNum">     134 </span><span class="lineNoCov">          0 :         return s;</span>
+<span class="lineNum">     135 </span>            :     }
+<span class="lineNum">     136 </span><span class="lineNoCov">          0 :   return NULL;</span>
+<span class="lineNum">     137 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

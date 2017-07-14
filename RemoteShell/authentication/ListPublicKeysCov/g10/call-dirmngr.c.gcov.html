@@ -1,0 +1,1448 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - g10/call-dirmngr.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">g10</a> - call-dirmngr.c<span style="font-size: 80%;"> (source / <a href="call-dirmngr.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">3</td>
+            <td class="headerCovTableEntry">567</td>
+            <td class="headerCovTableEntryLo">0.5 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 14:05:58</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">21</td>
+            <td class="headerCovTableEntryLo">4.8 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* call-dirmngr.c - GPG operations to the Dirmngr.</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 2011 Free Software Foundation, Inc.
+<span class="lineNum">       3 </span>            :  * Copyright (C) 2015  g10 Code GmbH
+<span class="lineNum">       4 </span>            :  *
+<span class="lineNum">       5 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       6 </span>            :  *
+<span class="lineNum">       7 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       8 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">       9 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">      10 </span>            :  * (at your option) any later version.
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      13 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      14 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      15 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      16 </span>            :  *
+<span class="lineNum">      17 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      18 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      19 </span>            :  */
+<span class="lineNum">      20 </span>            : 
+<span class="lineNum">      21 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      22 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      23 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      24 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      25 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      26 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      27 </span>            : #include &lt;time.h&gt;
+<span class="lineNum">      28 </span>            : #ifdef HAVE_LOCALE_H
+<span class="lineNum">      29 </span>            : # include &lt;locale.h&gt;
+<span class="lineNum">      30 </span>            : #endif
+<span class="lineNum">      31 </span>            : 
+<span class="lineNum">      32 </span>            : #include &quot;gpg.h&quot;
+<span class="lineNum">      33 </span>            : #include &lt;assuan.h&gt;
+<span class="lineNum">      34 </span>            : #include &quot;../common/util.h&quot;
+<span class="lineNum">      35 </span>            : #include &quot;../common/membuf.h&quot;
+<span class="lineNum">      36 </span>            : #include &quot;options.h&quot;
+<span class="lineNum">      37 </span>            : #include &quot;../common/i18n.h&quot;
+<span class="lineNum">      38 </span>            : #include &quot;../common/asshelp.h&quot;
+<span class="lineNum">      39 </span>            : #include &quot;../common/keyserver.h&quot;
+<span class="lineNum">      40 </span>            : #include &quot;../common/status.h&quot;
+<span class="lineNum">      41 </span>            : #include &quot;call-dirmngr.h&quot;
+<span class="lineNum">      42 </span>            : 
+<span class="lineNum">      43 </span>            : 
+<span class="lineNum">      44 </span>            : /* Parameter structure used to gather status info.  */
+<span class="lineNum">      45 </span>            : struct ks_status_parm_s
+<span class="lineNum">      46 </span>            : {
+<span class="lineNum">      47 </span>            :   const char *keyword; /* Look for this keyword or NULL for &quot;SOURCE&quot;. */
+<span class="lineNum">      48 </span>            :   char *source;
+<span class="lineNum">      49 </span>            : };
+<span class="lineNum">      50 </span>            : 
+<span class="lineNum">      51 </span>            : 
+<span class="lineNum">      52 </span>            : /* Parameter structure used with the KS_SEARCH command.  */
+<span class="lineNum">      53 </span>            : struct ks_search_parm_s
+<span class="lineNum">      54 </span>            : {
+<span class="lineNum">      55 </span>            :   gpg_error_t lasterr;  /* Last error code.  */
+<span class="lineNum">      56 </span>            :   membuf_t saveddata;   /* Buffer to build complete lines.  */
+<span class="lineNum">      57 </span>            :   char *helpbuf;        /* NULL or malloced buffer.  */
+<span class="lineNum">      58 </span>            :   size_t helpbufsize;   /* Allocated size of HELPBUF.  */
+<span class="lineNum">      59 </span>            :   gpg_error_t (*data_cb)(void*, int, char*);  /* Callback.  */
+<span class="lineNum">      60 </span>            :   void *data_cb_value;  /* First argument for DATA_CB.  */
+<span class="lineNum">      61 </span>            :   struct ks_status_parm_s *stparm; /* Link to the status parameter.  */
+<span class="lineNum">      62 </span>            : };
+<span class="lineNum">      63 </span>            : 
+<span class="lineNum">      64 </span>            : 
+<span class="lineNum">      65 </span>            : /* Parameter structure used with the KS_GET command.  */
+<span class="lineNum">      66 </span>            : struct ks_get_parm_s
+<span class="lineNum">      67 </span>            : {
+<span class="lineNum">      68 </span>            :   estream_t memfp;
+<span class="lineNum">      69 </span>            : };
+<span class="lineNum">      70 </span>            : 
+<span class="lineNum">      71 </span>            : 
+<span class="lineNum">      72 </span>            : /* Parameter structure used with the KS_PUT command.  */
+<span class="lineNum">      73 </span>            : struct ks_put_parm_s
+<span class="lineNum">      74 </span>            : {
+<span class="lineNum">      75 </span>            :   assuan_context_t ctx;
+<span class="lineNum">      76 </span>            :   kbnode_t keyblock;  /* The optional keyblock.  */
+<span class="lineNum">      77 </span>            :   const void *data;   /* The key in OpenPGP binary format.  */
+<span class="lineNum">      78 </span>            :   size_t datalen;     /* The length of DATA.  */
+<span class="lineNum">      79 </span>            : };
+<span class="lineNum">      80 </span>            : 
+<span class="lineNum">      81 </span>            : 
+<span class="lineNum">      82 </span>            : /* Parameter structure used with the DNS_CERT command.  */
+<span class="lineNum">      83 </span>            : struct dns_cert_parm_s
+<span class="lineNum">      84 </span>            : {
+<span class="lineNum">      85 </span>            :   estream_t memfp;
+<span class="lineNum">      86 </span>            :   unsigned char *fpr;
+<span class="lineNum">      87 </span>            :   size_t fprlen;
+<span class="lineNum">      88 </span>            :   char *url;
+<span class="lineNum">      89 </span>            : };
+<span class="lineNum">      90 </span>            : 
+<span class="lineNum">      91 </span>            : 
+<span class="lineNum">      92 </span>            : /* Data used to associate an session with dirmngr contexts.  We can't
+<span class="lineNum">      93 </span>            :    use a simple one to one mapping because we sometimes need two
+<span class="lineNum">      94 </span>            :    connections to the dirmngr; for example while doing a listing and
+<span class="lineNum">      95 </span>            :    being in a data callback we may want to retrieve a key.  The local
+<span class="lineNum">      96 </span>            :    dirmngr data takes care of this.  At the end of the session the
+<span class="lineNum">      97 </span>            :    function dirmngr_deinit_session_data is called by gpg.c to cleanup
+<span class="lineNum">      98 </span>            :    these resources.  Note that gpg.h defines a typedef dirmngr_local_t
+<span class="lineNum">      99 </span>            :    for this structure. */
+<span class="lineNum">     100 </span>            : struct dirmngr_local_s
+<span class="lineNum">     101 </span>            : {
+<span class="lineNum">     102 </span>            :   /* Link to other contexts which are used simultaneously.  */
+<span class="lineNum">     103 </span>            :   struct dirmngr_local_s *next;
+<span class="lineNum">     104 </span>            : 
+<span class="lineNum">     105 </span>            :   /* The active Assuan context. */
+<span class="lineNum">     106 </span>            :   assuan_context_t ctx;
+<span class="lineNum">     107 </span>            : 
+<span class="lineNum">     108 </span>            :   /* Flag set when the keyserver names have been send.  */
+<span class="lineNum">     109 </span>            :   int set_keyservers_done;
+<span class="lineNum">     110 </span>            : 
+<span class="lineNum">     111 </span>            :   /* Flag set to true while an operation is running on CTX.  */
+<span class="lineNum">     112 </span>            :   int is_active;
+<span class="lineNum">     113 </span>            : };
+<span class="lineNum">     114 </span>            : 
+<span class="lineNum">     115 </span>            : 
+<span class="lineNum">     116 </span>            : 
+<a name="117"><span class="lineNum">     117 </span>            : /* Deinitialize all session data of dirmngr pertaining to CTRL.  */</a>
+<span class="lineNum">     118 </span>            : void
+<span class="lineNum">     119 </span><span class="lineCov">          1 : gpg_dirmngr_deinit_session_data (ctrl_t ctrl)</span>
+<span class="lineNum">     120 </span>            : {
+<span class="lineNum">     121 </span>            :   dirmngr_local_t dml;
+<span class="lineNum">     122 </span>            : 
+<span class="lineNum">     123 </span><span class="lineCov">          2 :   while ((dml = ctrl-&gt;dirmngr_local))</span>
+<span class="lineNum">     124 </span>            :     {
+<span class="lineNum">     125 </span><span class="lineNoCov">          0 :       ctrl-&gt;dirmngr_local = dml-&gt;next;</span>
+<span class="lineNum">     126 </span><span class="lineNoCov">          0 :       if (dml-&gt;is_active)</span>
+<span class="lineNum">     127 </span><span class="lineNoCov">          0 :         log_error (&quot;oops: trying to cleanup an active dirmngr context\n&quot;);</span>
+<span class="lineNum">     128 </span>            :       else
+<span class="lineNum">     129 </span><span class="lineNoCov">          0 :         assuan_release (dml-&gt;ctx);</span>
+<span class="lineNum">     130 </span><span class="lineNoCov">          0 :       xfree (dml);</span>
+<span class="lineNum">     131 </span>            :     }
+<span class="lineNum">     132 </span><span class="lineCov">          1 : }</span>
+<span class="lineNum">     133 </span>            : 
+<span class="lineNum">     134 </span>            : 
+<span class="lineNum">     135 </span>            : /* Print a warning if the server's version number is less than our
+<a name="136"><span class="lineNum">     136 </span>            :    version number.  Returns an error code on a connection problem.  */</a>
+<span class="lineNum">     137 </span>            : static gpg_error_t
+<span class="lineNum">     138 </span><span class="lineNoCov">          0 : warn_version_mismatch (assuan_context_t ctx, const char *servername)</span>
+<span class="lineNum">     139 </span>            : {
+<span class="lineNum">     140 </span>            :   gpg_error_t err;
+<span class="lineNum">     141 </span>            :   char *serverversion;
+<span class="lineNum">     142 </span><span class="lineNoCov">          0 :   const char *myversion = strusage (13);</span>
+<span class="lineNum">     143 </span>            : 
+<span class="lineNum">     144 </span><span class="lineNoCov">          0 :   err = get_assuan_server_version (ctx, 0, &amp;serverversion);</span>
+<span class="lineNum">     145 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     146 </span><span class="lineNoCov">          0 :     log_error (_(&quot;error getting version from '%s': %s\n&quot;),</span>
+<span class="lineNum">     147 </span>            :                servername, gpg_strerror (err));
+<span class="lineNum">     148 </span><span class="lineNoCov">          0 :   else if (compare_version_strings (serverversion, myversion) &lt; 0)</span>
+<span class="lineNum">     149 </span>            :     {
+<span class="lineNum">     150 </span>            :       char *warn;
+<span class="lineNum">     151 </span>            : 
+<span class="lineNum">     152 </span><span class="lineNoCov">          0 :       warn = xtryasprintf (_(&quot;server '%s' is older than us (%s &lt; %s)&quot;),</span>
+<span class="lineNum">     153 </span>            :                            servername, serverversion, myversion);
+<span class="lineNum">     154 </span><span class="lineNoCov">          0 :       if (!warn)</span>
+<span class="lineNum">     155 </span><span class="lineNoCov">          0 :         err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     156 </span>            :       else
+<span class="lineNum">     157 </span>            :         {
+<span class="lineNum">     158 </span><span class="lineNoCov">          0 :           log_info (_(&quot;WARNING: %s\n&quot;), warn);</span>
+<span class="lineNum">     159 </span><span class="lineNoCov">          0 :           write_status_strings (STATUS_WARNING, &quot;server_version_mismatch 0&quot;,</span>
+<span class="lineNum">     160 </span>            :                                 &quot; &quot;, warn, NULL);
+<span class="lineNum">     161 </span><span class="lineNoCov">          0 :           xfree (warn);</span>
+<span class="lineNum">     162 </span>            :         }
+<span class="lineNum">     163 </span>            :     }
+<span class="lineNum">     164 </span><span class="lineNoCov">          0 :   xfree (serverversion);</span>
+<span class="lineNum">     165 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     166 </span>            : }
+<span class="lineNum">     167 </span>            : 
+<span class="lineNum">     168 </span>            : 
+<span class="lineNum">     169 </span>            : /* Try to connect to the Dirmngr via a socket or spawn it if possible.
+<a name="170"><span class="lineNum">     170 </span>            :    Handle the server's initial greeting and set global options.  */</a>
+<span class="lineNum">     171 </span>            : static gpg_error_t
+<span class="lineNum">     172 </span><span class="lineNoCov">          0 : create_context (ctrl_t ctrl, assuan_context_t *r_ctx)</span>
+<span class="lineNum">     173 </span>            : {
+<span class="lineNum">     174 </span>            :   gpg_error_t err;
+<span class="lineNum">     175 </span>            :   assuan_context_t ctx;
+<span class="lineNum">     176 </span>            : 
+<span class="lineNum">     177 </span><span class="lineNoCov">          0 :   *r_ctx = NULL;</span>
+<span class="lineNum">     178 </span><span class="lineNoCov">          0 :   err = start_new_dirmngr (&amp;ctx,</span>
+<span class="lineNum">     179 </span>            :                            GPG_ERR_SOURCE_DEFAULT,
+<span class="lineNum">     180 </span>            :                            opt.dirmngr_program,
+<span class="lineNum">     181 </span><span class="lineNoCov">          0 :                            opt.autostart, opt.verbose, DBG_IPC,</span>
+<span class="lineNum">     182 </span>            :                            NULL /*gpg_status2*/, ctrl);
+<span class="lineNum">     183 </span><span class="lineNoCov">          0 :   if (!opt.autostart &amp;&amp; gpg_err_code (err) == GPG_ERR_NO_DIRMNGR)</span>
+<span class="lineNum">     184 </span><span class="lineNoCov">          0 :     {</span>
+<span class="lineNum">     185 </span>            :       static int shown;
+<span class="lineNum">     186 </span>            : 
+<span class="lineNum">     187 </span><span class="lineNoCov">          0 :       if (!shown)</span>
+<span class="lineNum">     188 </span>            :         {
+<span class="lineNum">     189 </span><span class="lineNoCov">          0 :           shown = 1;</span>
+<span class="lineNum">     190 </span><span class="lineNoCov">          0 :           log_info (_(&quot;no dirmngr running in this session\n&quot;));</span>
+<span class="lineNum">     191 </span>            :         }
+<span class="lineNum">     192 </span>            :     }
+<span class="lineNum">     193 </span><span class="lineNoCov">          0 :   else if (!err &amp;&amp; !(err = warn_version_mismatch (ctx, DIRMNGR_NAME)))</span>
+<span class="lineNum">     194 </span>            :     {
+<span class="lineNum">     195 </span>            :       char *line;
+<span class="lineNum">     196 </span>            : 
+<span class="lineNum">     197 </span>            :       /* Tell the dirmngr that we want to collect audit event. */
+<span class="lineNum">     198 </span>            :       /* err = assuan_transact (agent_ctx, &quot;OPTION audit-events=1&quot;, */
+<span class="lineNum">     199 </span>            :       /*                        NULL, NULL, NULL, NULL, NULL, NULL); */
+<span class="lineNum">     200 </span><span class="lineNoCov">          0 :       if (opt.keyserver_options.http_proxy)</span>
+<span class="lineNum">     201 </span>            :         {
+<span class="lineNum">     202 </span><span class="lineNoCov">          0 :           line = xtryasprintf (&quot;OPTION http-proxy=%s&quot;,</span>
+<span class="lineNum">     203 </span>            :                                opt.keyserver_options.http_proxy);
+<span class="lineNum">     204 </span><span class="lineNoCov">          0 :           if (!line)</span>
+<span class="lineNum">     205 </span><span class="lineNoCov">          0 :             err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     206 </span>            :           else
+<span class="lineNum">     207 </span>            :             {
+<span class="lineNum">     208 </span><span class="lineNoCov">          0 :               err = assuan_transact (ctx, line, NULL, NULL, NULL,</span>
+<span class="lineNum">     209 </span>            :                                      NULL, NULL, NULL);
+<span class="lineNum">     210 </span><span class="lineNoCov">          0 :               xfree (line);</span>
+<span class="lineNum">     211 </span>            :             }
+<span class="lineNum">     212 </span>            :         }
+<span class="lineNum">     213 </span>            : 
+<span class="lineNum">     214 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     215 </span>            :         ;
+<span class="lineNum">     216 </span><span class="lineNoCov">          0 :       else if ((opt.keyserver_options.options &amp; KEYSERVER_HONOR_KEYSERVER_URL))</span>
+<span class="lineNum">     217 </span>            :         {
+<span class="lineNum">     218 </span>            :           /* Tell the dirmngr that this possibly privacy invading
+<span class="lineNum">     219 </span>            :              option is in use.  If Dirmngr is running in Tor mode, it
+<span class="lineNum">     220 </span>            :              will return an error.  */
+<span class="lineNum">     221 </span><span class="lineNoCov">          0 :           err = assuan_transact (ctx, &quot;OPTION honor-keyserver-url-used&quot;,</span>
+<span class="lineNum">     222 </span>            :                                  NULL, NULL, NULL, NULL, NULL, NULL);
+<span class="lineNum">     223 </span><span class="lineNoCov">          0 :           if (gpg_err_code (err) == GPG_ERR_FORBIDDEN)</span>
+<span class="lineNum">     224 </span><span class="lineNoCov">          0 :             log_error (_(&quot;keyserver option \&quot;honor-keyserver-url\&quot;&quot;</span>
+<span class="lineNum">     225 </span>            :                          &quot; may not be used in Tor mode\n&quot;));
+<span class="lineNum">     226 </span><span class="lineNoCov">          0 :           else if (gpg_err_code (err) == GPG_ERR_UNKNOWN_OPTION)</span>
+<span class="lineNum">     227 </span><span class="lineNoCov">          0 :             err = 0; /* Old dirmngr versions do not support this option.  */</span>
+<span class="lineNum">     228 </span>            :         }
+<span class="lineNum">     229 </span>            :     }
+<span class="lineNum">     230 </span>            : 
+<span class="lineNum">     231 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     232 </span><span class="lineNoCov">          0 :     assuan_release (ctx);</span>
+<span class="lineNum">     233 </span>            :   else
+<span class="lineNum">     234 </span>            :     {
+<span class="lineNum">     235 </span>            :       /* audit_log_ok (ctrl-&gt;audit, AUDIT_DIRMNGR_READY, err); */
+<span class="lineNum">     236 </span><span class="lineNoCov">          0 :       *r_ctx = ctx;</span>
+<span class="lineNum">     237 </span>            :     }
+<span class="lineNum">     238 </span>            : 
+<span class="lineNum">     239 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     240 </span>            : }
+<span class="lineNum">     241 </span>            : 
+<span class="lineNum">     242 </span>            : 
+<span class="lineNum">     243 </span>            : /* Get a context for accessing dirmngr.  If no context is available a
+<span class="lineNum">     244 </span>            :    new one is created and - if required - dirmngr started.  On success
+<span class="lineNum">     245 </span>            :    an assuan context is stored at R_CTX.  This context may only be
+<span class="lineNum">     246 </span>            :    released by means of close_context.  Note that NULL is stored at
+<a name="247"><span class="lineNum">     247 </span>            :    R_CTX on error.  */</a>
+<span class="lineNum">     248 </span>            : static gpg_error_t
+<span class="lineNum">     249 </span><span class="lineNoCov">          0 : open_context (ctrl_t ctrl, assuan_context_t *r_ctx)</span>
+<span class="lineNum">     250 </span>            : {
+<span class="lineNum">     251 </span>            :   gpg_error_t err;
+<span class="lineNum">     252 </span>            :   dirmngr_local_t dml;
+<span class="lineNum">     253 </span>            : 
+<span class="lineNum">     254 </span><span class="lineNoCov">          0 :   *r_ctx = NULL;</span>
+<span class="lineNum">     255 </span>            :   for (;;)
+<span class="lineNum">     256 </span>            :     {
+<span class="lineNum">     257 </span><span class="lineNoCov">          0 :       for (dml = ctrl-&gt;dirmngr_local; dml &amp;&amp; dml-&gt;is_active; dml = dml-&gt;next)</span>
+<span class="lineNum">     258 </span>            :         ;
+<span class="lineNum">     259 </span><span class="lineNoCov">          0 :       if (dml)</span>
+<span class="lineNum">     260 </span>            :         {
+<span class="lineNum">     261 </span>            :           /* Found an inactive local session - return that.  */
+<span class="lineNum">     262 </span><span class="lineNoCov">          0 :           log_assert (!dml-&gt;is_active);</span>
+<span class="lineNum">     263 </span>            : 
+<span class="lineNum">     264 </span>            :           /* But first do the per session init if not yet done.  */
+<span class="lineNum">     265 </span><span class="lineNoCov">          0 :           if (!dml-&gt;set_keyservers_done)</span>
+<span class="lineNum">     266 </span>            :             {
+<span class="lineNum">     267 </span>            :               keyserver_spec_t ksi;
+<span class="lineNum">     268 </span>            : 
+<span class="lineNum">     269 </span>            :               /* Set all configured keyservers.  We clear existing
+<span class="lineNum">     270 </span>            :                  keyservers so that any keyserver configured in GPG
+<span class="lineNum">     271 </span>            :                  overrides keyservers possibly still configured in Dirmngr
+<span class="lineNum">     272 </span>            :                  for the session (Note that the keyserver list of a
+<span class="lineNum">     273 </span>            :                  session in Dirmngr survives a RESET. */
+<span class="lineNum">     274 </span><span class="lineNoCov">          0 :               for (ksi = opt.keyserver; ksi; ksi = ksi-&gt;next)</span>
+<span class="lineNum">     275 </span>            :                 {
+<span class="lineNum">     276 </span>            :                   char *line;
+<span class="lineNum">     277 </span>            : 
+<span class="lineNum">     278 </span><span class="lineNoCov">          0 :                   line = xtryasprintf</span>
+<span class="lineNum">     279 </span>            :                     (&quot;KEYSERVER%s %s&quot;,
+<span class="lineNum">     280 </span><span class="lineNoCov">          0 :                      ksi == opt.keyserver? &quot; --clear&quot;:&quot;&quot;, ksi-&gt;uri);</span>
+<span class="lineNum">     281 </span><span class="lineNoCov">          0 :                   if (!line)</span>
+<span class="lineNum">     282 </span><span class="lineNoCov">          0 :                     err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     283 </span>            :                   else
+<span class="lineNum">     284 </span>            :                     {
+<span class="lineNum">     285 </span><span class="lineNoCov">          0 :                       err = assuan_transact (dml-&gt;ctx, line, NULL, NULL, NULL,</span>
+<span class="lineNum">     286 </span>            :                                              NULL, NULL, NULL);
+<span class="lineNum">     287 </span><span class="lineNoCov">          0 :                       xfree (line);</span>
+<span class="lineNum">     288 </span>            :                     }
+<span class="lineNum">     289 </span>            : 
+<span class="lineNum">     290 </span><span class="lineNoCov">          0 :                   if (err)</span>
+<span class="lineNum">     291 </span><span class="lineNoCov">          0 :                     return err;</span>
+<span class="lineNum">     292 </span>            :                 }
+<span class="lineNum">     293 </span>            : 
+<span class="lineNum">     294 </span><span class="lineNoCov">          0 :               dml-&gt;set_keyservers_done = 1;</span>
+<span class="lineNum">     295 </span>            :             }
+<span class="lineNum">     296 </span>            : 
+<span class="lineNum">     297 </span><span class="lineNoCov">          0 :           dml-&gt;is_active = 1;</span>
+<span class="lineNum">     298 </span>            : 
+<span class="lineNum">     299 </span><span class="lineNoCov">          0 :           *r_ctx = dml-&gt;ctx;</span>
+<span class="lineNum">     300 </span><span class="lineNoCov">          0 :           return 0;</span>
+<span class="lineNum">     301 </span>            :         }
+<span class="lineNum">     302 </span>            : 
+<span class="lineNum">     303 </span><span class="lineNoCov">          0 :       dml = xtrycalloc (1, sizeof *dml);</span>
+<span class="lineNum">     304 </span><span class="lineNoCov">          0 :       if (!dml)</span>
+<span class="lineNum">     305 </span><span class="lineNoCov">          0 :         return gpg_error_from_syserror ();</span>
+<span class="lineNum">     306 </span><span class="lineNoCov">          0 :       err = create_context (ctrl, &amp;dml-&gt;ctx);</span>
+<span class="lineNum">     307 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     308 </span>            :         {
+<span class="lineNum">     309 </span><span class="lineNoCov">          0 :           xfree (dml);</span>
+<span class="lineNum">     310 </span><span class="lineNoCov">          0 :           return err;</span>
+<span class="lineNum">     311 </span>            :         }
+<span class="lineNum">     312 </span>            : 
+<span class="lineNum">     313 </span>            :       /* To be on the nPth thread safe site we need to add it to a
+<span class="lineNum">     314 </span>            :          list; this is far easier than to have a lock for this
+<span class="lineNum">     315 </span>            :          function.  It should not happen anyway but the code is free
+<span class="lineNum">     316 </span>            :          because we need it for the is_active check above.  */
+<span class="lineNum">     317 </span><span class="lineNoCov">          0 :       dml-&gt;next = ctrl-&gt;dirmngr_local;</span>
+<span class="lineNum">     318 </span><span class="lineNoCov">          0 :       ctrl-&gt;dirmngr_local = dml;</span>
+<span class="lineNum">     319 </span><span class="lineNoCov">          0 :     }</span>
+<span class="lineNum">     320 </span>            : }
+<span class="lineNum">     321 </span>            : 
+<span class="lineNum">     322 </span>            : 
+<span class="lineNum">     323 </span>            : /* Close the assuan context CTX or return it to a pool of unused
+<a name="324"><span class="lineNum">     324 </span>            :    contexts.  If CTX is NULL, the function does nothing.  */</a>
+<span class="lineNum">     325 </span>            : static void
+<span class="lineNum">     326 </span><span class="lineNoCov">          0 : close_context (ctrl_t ctrl, assuan_context_t ctx)</span>
+<span class="lineNum">     327 </span>            : {
+<span class="lineNum">     328 </span>            :   dirmngr_local_t dml;
+<span class="lineNum">     329 </span>            : 
+<span class="lineNum">     330 </span><span class="lineNoCov">          0 :   if (!ctx)</span>
+<span class="lineNum">     331 </span><span class="lineNoCov">          0 :     return;</span>
+<span class="lineNum">     332 </span>            : 
+<span class="lineNum">     333 </span><span class="lineNoCov">          0 :   for (dml = ctrl-&gt;dirmngr_local; dml; dml = dml-&gt;next)</span>
+<span class="lineNum">     334 </span>            :     {
+<span class="lineNum">     335 </span><span class="lineNoCov">          0 :       if (dml-&gt;ctx == ctx)</span>
+<span class="lineNum">     336 </span>            :         {
+<span class="lineNum">     337 </span><span class="lineNoCov">          0 :           if (!dml-&gt;is_active)</span>
+<span class="lineNum">     338 </span><span class="lineNoCov">          0 :             log_fatal (&quot;closing inactive dirmngr context %p\n&quot;, ctx);</span>
+<span class="lineNum">     339 </span><span class="lineNoCov">          0 :           dml-&gt;is_active = 0;</span>
+<span class="lineNum">     340 </span><span class="lineNoCov">          0 :           return;</span>
+<span class="lineNum">     341 </span>            :         }
+<span class="lineNum">     342 </span>            :     }
+<span class="lineNum">     343 </span><span class="lineNoCov">          0 :   log_fatal (&quot;closing unknown dirmngr ctx %p\n&quot;, ctx);</span>
+<span class="lineNum">     344 </span>            : }
+<span class="lineNum">     345 </span>            : 
+<span class="lineNum">     346 </span>            : 
+<a name="347"><span class="lineNum">     347 </span>            : /* Clear the set_keyservers_done flag on context CTX.  */</a>
+<span class="lineNum">     348 </span>            : static void
+<span class="lineNum">     349 </span><span class="lineNoCov">          0 : clear_context_flags (ctrl_t ctrl, assuan_context_t ctx)</span>
+<span class="lineNum">     350 </span>            : {
+<span class="lineNum">     351 </span>            :   dirmngr_local_t dml;
+<span class="lineNum">     352 </span>            : 
+<span class="lineNum">     353 </span><span class="lineNoCov">          0 :   if (!ctx)</span>
+<span class="lineNum">     354 </span><span class="lineNoCov">          0 :     return;</span>
+<span class="lineNum">     355 </span>            : 
+<span class="lineNum">     356 </span><span class="lineNoCov">          0 :   for (dml = ctrl-&gt;dirmngr_local; dml; dml = dml-&gt;next)</span>
+<span class="lineNum">     357 </span>            :     {
+<span class="lineNum">     358 </span><span class="lineNoCov">          0 :       if (dml-&gt;ctx == ctx)</span>
+<span class="lineNum">     359 </span>            :         {
+<span class="lineNum">     360 </span><span class="lineNoCov">          0 :           if (!dml-&gt;is_active)</span>
+<span class="lineNum">     361 </span><span class="lineNoCov">          0 :             log_fatal (&quot;clear_context_flags on inactive dirmngr ctx %p\n&quot;, ctx);</span>
+<span class="lineNum">     362 </span><span class="lineNoCov">          0 :           dml-&gt;set_keyservers_done = 0;</span>
+<span class="lineNum">     363 </span><span class="lineNoCov">          0 :           return;</span>
+<span class="lineNum">     364 </span>            :         }
+<span class="lineNum">     365 </span>            :     }
+<span class="lineNum">     366 </span><span class="lineNoCov">          0 :   log_fatal (&quot;clear_context_flags on unknown dirmngr ctx %p\n&quot;, ctx);</span>
+<span class="lineNum">     367 </span>            : }
+<span class="lineNum">     368 </span>            : 
+<span class="lineNum">     369 </span>            : 
+<span class="lineNum">     370 </span>            : 
+<a name="371"><span class="lineNum">     371 </span>            : /* Status callback for ks_list, ks_get and ks_search.  */</a>
+<span class="lineNum">     372 </span>            : static gpg_error_t
+<span class="lineNum">     373 </span><span class="lineNoCov">          0 : ks_status_cb (void *opaque, const char *line)</span>
+<span class="lineNum">     374 </span>            : {
+<span class="lineNum">     375 </span><span class="lineNoCov">          0 :   struct ks_status_parm_s *parm = opaque;</span>
+<span class="lineNum">     376 </span><span class="lineNoCov">          0 :   gpg_error_t err = 0;</span>
+<span class="lineNum">     377 </span>            :   const char *s, *s2;
+<span class="lineNum">     378 </span>            :   const char *warn;
+<span class="lineNum">     379 </span>            : 
+<span class="lineNum">     380 </span><span class="lineNoCov">          0 :   if ((s = has_leading_keyword (line, parm-&gt;keyword? parm-&gt;keyword : &quot;SOURCE&quot;)))</span>
+<span class="lineNum">     381 </span>            :     {
+<span class="lineNum">     382 </span><span class="lineNoCov">          0 :       if (!parm-&gt;source)</span>
+<span class="lineNum">     383 </span>            :         {
+<span class="lineNum">     384 </span><span class="lineNoCov">          0 :           parm-&gt;source = xtrystrdup (s);</span>
+<span class="lineNum">     385 </span><span class="lineNoCov">          0 :           if (!parm-&gt;source)</span>
+<span class="lineNum">     386 </span><span class="lineNoCov">          0 :             err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     387 </span>            :         }
+<span class="lineNum">     388 </span>            :     }
+<span class="lineNum">     389 </span><span class="lineNoCov">          0 :   else if ((s = has_leading_keyword (line, &quot;WARNING&quot;)))</span>
+<span class="lineNum">     390 </span>            :     {
+<span class="lineNum">     391 </span><span class="lineNoCov">          0 :       if ((s2 = has_leading_keyword (s, &quot;tor_not_running&quot;)))</span>
+<span class="lineNum">     392 </span><span class="lineNoCov">          0 :         warn = _(&quot;Tor is not running&quot;);</span>
+<span class="lineNum">     393 </span><span class="lineNoCov">          0 :       else if ((s2 = has_leading_keyword (s, &quot;tor_config_problem&quot;)))</span>
+<span class="lineNum">     394 </span><span class="lineNoCov">          0 :         warn = _(&quot;Tor is not properly configured&quot;);</span>
+<span class="lineNum">     395 </span>            :       else
+<span class="lineNum">     396 </span><span class="lineNoCov">          0 :         warn = NULL;</span>
+<span class="lineNum">     397 </span>            : 
+<span class="lineNum">     398 </span><span class="lineNoCov">          0 :       if (warn)</span>
+<span class="lineNum">     399 </span>            :         {
+<span class="lineNum">     400 </span><span class="lineNoCov">          0 :           log_info (_(&quot;WARNING: %s\n&quot;), warn);</span>
+<span class="lineNum">     401 </span><span class="lineNoCov">          0 :           if (s2)</span>
+<span class="lineNum">     402 </span>            :             {
+<span class="lineNum">     403 </span><span class="lineNoCov">          0 :               while (*s2 &amp;&amp; !spacep (s2))</span>
+<span class="lineNum">     404 </span><span class="lineNoCov">          0 :                 s2++;</span>
+<span class="lineNum">     405 </span><span class="lineNoCov">          0 :               while (*s2 &amp;&amp; spacep (s2))</span>
+<span class="lineNum">     406 </span><span class="lineNoCov">          0 :                 s2++;</span>
+<span class="lineNum">     407 </span><span class="lineNoCov">          0 :               if (*s2)</span>
+<span class="lineNum">     408 </span><span class="lineNoCov">          0 :                 print_further_info (&quot;%s&quot;, s2);</span>
+<span class="lineNum">     409 </span>            :             }
+<span class="lineNum">     410 </span>            :         }
+<span class="lineNum">     411 </span>            :     }
+<span class="lineNum">     412 </span>            : 
+<span class="lineNum">     413 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     414 </span>            : }
+<span class="lineNum">     415 </span>            : 
+<span class="lineNum">     416 </span>            : 
+<span class="lineNum">     417 </span>            : 
+<span class="lineNum">     418 </span>            : /* Run the &quot;KEYSERVER&quot; command to return the name of the used
+<a name="419"><span class="lineNum">     419 </span>            :    keyserver at R_KEYSERVER.  */</a>
+<span class="lineNum">     420 </span>            : gpg_error_t
+<span class="lineNum">     421 </span><span class="lineNoCov">          0 : gpg_dirmngr_ks_list (ctrl_t ctrl, char **r_keyserver)</span>
+<span class="lineNum">     422 </span>            : {
+<span class="lineNum">     423 </span>            :   gpg_error_t err;
+<span class="lineNum">     424 </span>            :   assuan_context_t ctx;
+<span class="lineNum">     425 </span>            :   struct ks_status_parm_s stparm;
+<span class="lineNum">     426 </span>            : 
+<span class="lineNum">     427 </span><span class="lineNoCov">          0 :   memset (&amp;stparm, 0, sizeof stparm);</span>
+<span class="lineNum">     428 </span><span class="lineNoCov">          0 :   stparm.keyword = &quot;KEYSERVER&quot;;</span>
+<span class="lineNum">     429 </span><span class="lineNoCov">          0 :   if (r_keyserver)</span>
+<span class="lineNum">     430 </span><span class="lineNoCov">          0 :     *r_keyserver = NULL;</span>
+<span class="lineNum">     431 </span>            : 
+<span class="lineNum">     432 </span><span class="lineNoCov">          0 :   err = open_context (ctrl, &amp;ctx);</span>
+<span class="lineNum">     433 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     434 </span><span class="lineNoCov">          0 :     return err;</span>
+<span class="lineNum">     435 </span>            : 
+<span class="lineNum">     436 </span><span class="lineNoCov">          0 :   err = assuan_transact (ctx, &quot;KEYSERVER&quot;, NULL, NULL,</span>
+<span class="lineNum">     437 </span>            :                          NULL, NULL, ks_status_cb, &amp;stparm);
+<span class="lineNum">     438 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     439 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     440 </span><span class="lineNoCov">          0 :   if (!stparm.source)</span>
+<span class="lineNum">     441 </span>            :     {
+<span class="lineNum">     442 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_NO_KEYSERVER);</span>
+<span class="lineNum">     443 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     444 </span>            :     }
+<span class="lineNum">     445 </span>            : 
+<span class="lineNum">     446 </span><span class="lineNoCov">          0 :   if (r_keyserver)</span>
+<span class="lineNum">     447 </span><span class="lineNoCov">          0 :     *r_keyserver = stparm.source;</span>
+<span class="lineNum">     448 </span>            :   else
+<span class="lineNum">     449 </span><span class="lineNoCov">          0 :     xfree (stparm.source);</span>
+<span class="lineNum">     450 </span><span class="lineNoCov">          0 :   stparm.source = NULL;</span>
+<span class="lineNum">     451 </span>            : 
+<span class="lineNum">     452 </span>            :  leave:
+<span class="lineNum">     453 </span><span class="lineNoCov">          0 :   xfree (stparm.source);</span>
+<span class="lineNum">     454 </span><span class="lineNoCov">          0 :   close_context (ctrl, ctx);</span>
+<span class="lineNum">     455 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     456 </span>            : }
+<span class="lineNum">     457 </span>            : 
+<span class="lineNum">     458 </span>            : 
+<span class="lineNum">     459 </span>            : 
+<a name="460"><span class="lineNum">     460 </span>            : /* Data callback for the KS_SEARCH command. */</a>
+<span class="lineNum">     461 </span>            : static gpg_error_t
+<span class="lineNum">     462 </span><span class="lineNoCov">          0 : ks_search_data_cb (void *opaque, const void *data, size_t datalen)</span>
+<span class="lineNum">     463 </span>            : {
+<span class="lineNum">     464 </span><span class="lineNoCov">          0 :   gpg_error_t err = 0;</span>
+<span class="lineNum">     465 </span><span class="lineNoCov">          0 :   struct ks_search_parm_s *parm = opaque;</span>
+<span class="lineNum">     466 </span>            :   const char *line, *s;
+<span class="lineNum">     467 </span>            :   size_t rawlen, linelen;
+<span class="lineNum">     468 </span>            :   char fixedbuf[256];
+<span class="lineNum">     469 </span>            : 
+<span class="lineNum">     470 </span><span class="lineNoCov">          0 :   if (parm-&gt;lasterr)</span>
+<span class="lineNum">     471 </span><span class="lineNoCov">          0 :     return 0;</span>
+<span class="lineNum">     472 </span>            : 
+<span class="lineNum">     473 </span><span class="lineNoCov">          0 :   if (parm-&gt;stparm-&gt;source)</span>
+<span class="lineNum">     474 </span>            :     {
+<span class="lineNum">     475 </span><span class="lineNoCov">          0 :       err = parm-&gt;data_cb (parm-&gt;data_cb_value, 1, parm-&gt;stparm-&gt;source);</span>
+<span class="lineNum">     476 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     477 </span>            :         {
+<span class="lineNum">     478 </span><span class="lineNoCov">          0 :           parm-&gt;lasterr = err;</span>
+<span class="lineNum">     479 </span><span class="lineNoCov">          0 :           return err;</span>
+<span class="lineNum">     480 </span>            :         }
+<span class="lineNum">     481 </span>            :       /* Clear it so that we won't get back here unless the server
+<span class="lineNum">     482 </span>            :          accidentally sends a second source status line.  Note that
+<span class="lineNum">     483 </span>            :          will not see all accidentally sent source lines because it
+<span class="lineNum">     484 </span>            :          depends on whether data lines have been send in between.  */
+<span class="lineNum">     485 </span><span class="lineNoCov">          0 :       xfree (parm-&gt;stparm-&gt;source);</span>
+<span class="lineNum">     486 </span><span class="lineNoCov">          0 :       parm-&gt;stparm-&gt;source = NULL;</span>
+<span class="lineNum">     487 </span>            :     }
+<span class="lineNum">     488 </span>            : 
+<span class="lineNum">     489 </span><span class="lineNoCov">          0 :   if (!data)</span>
+<span class="lineNum">     490 </span><span class="lineNoCov">          0 :     return 0;  /* Ignore END commands.  */</span>
+<span class="lineNum">     491 </span>            : 
+<span class="lineNum">     492 </span><span class="lineNoCov">          0 :   put_membuf (&amp;parm-&gt;saveddata, data, datalen);</span>
+<span class="lineNum">     493 </span>            : 
+<span class="lineNum">     494 </span>            :  again:
+<span class="lineNum">     495 </span><span class="lineNoCov">          0 :   line = peek_membuf (&amp;parm-&gt;saveddata, &amp;rawlen);</span>
+<span class="lineNum">     496 </span><span class="lineNoCov">          0 :   if (!line)</span>
+<span class="lineNum">     497 </span>            :     {
+<span class="lineNum">     498 </span><span class="lineNoCov">          0 :       parm-&gt;lasterr = gpg_error_from_syserror ();</span>
+<span class="lineNum">     499 </span><span class="lineNoCov">          0 :       return parm-&gt;lasterr; /* Tell the server about our problem.  */</span>
+<span class="lineNum">     500 </span>            :     }
+<span class="lineNum">     501 </span><span class="lineNoCov">          0 :   if ((s = memchr (line, '\n', rawlen)))</span>
+<span class="lineNum">     502 </span>            :     {
+<span class="lineNum">     503 </span><span class="lineNoCov">          0 :       linelen = s - line;  /* That is the length excluding the LF.  */</span>
+<span class="lineNum">     504 </span><span class="lineNoCov">          0 :       if (linelen + 1 &lt; sizeof fixedbuf)</span>
+<span class="lineNum">     505 </span>            :         {
+<span class="lineNum">     506 </span>            :           /* We can use the static buffer.  */
+<span class="lineNum">     507 </span><span class="lineNoCov">          0 :           memcpy (fixedbuf, line, linelen);</span>
+<span class="lineNum">     508 </span><span class="lineNoCov">          0 :           fixedbuf[linelen] = 0;</span>
+<span class="lineNum">     509 </span><span class="lineNoCov">          0 :           if (linelen &amp;&amp; fixedbuf[linelen-1] == '\r')</span>
+<span class="lineNum">     510 </span><span class="lineNoCov">          0 :             fixedbuf[linelen-1] = 0;</span>
+<span class="lineNum">     511 </span><span class="lineNoCov">          0 :           err = parm-&gt;data_cb (parm-&gt;data_cb_value, 0, fixedbuf);</span>
+<span class="lineNum">     512 </span>            :         }
+<span class="lineNum">     513 </span>            :       else
+<span class="lineNum">     514 </span>            :         {
+<span class="lineNum">     515 </span><span class="lineNoCov">          0 :           if (linelen + 1 &gt;= parm-&gt;helpbufsize)</span>
+<span class="lineNum">     516 </span>            :             {
+<span class="lineNum">     517 </span><span class="lineNoCov">          0 :               xfree (parm-&gt;helpbuf);</span>
+<span class="lineNum">     518 </span><span class="lineNoCov">          0 :               parm-&gt;helpbufsize = linelen + 1 + 1024;</span>
+<span class="lineNum">     519 </span><span class="lineNoCov">          0 :               parm-&gt;helpbuf = xtrymalloc (parm-&gt;helpbufsize);</span>
+<span class="lineNum">     520 </span><span class="lineNoCov">          0 :               if (!parm-&gt;helpbuf)</span>
+<span class="lineNum">     521 </span>            :                 {
+<span class="lineNum">     522 </span><span class="lineNoCov">          0 :                   parm-&gt;lasterr = gpg_error_from_syserror ();</span>
+<span class="lineNum">     523 </span><span class="lineNoCov">          0 :                   return parm-&gt;lasterr;</span>
+<span class="lineNum">     524 </span>            :                 }
+<span class="lineNum">     525 </span>            :             }
+<span class="lineNum">     526 </span><span class="lineNoCov">          0 :           memcpy (parm-&gt;helpbuf, line, linelen);</span>
+<span class="lineNum">     527 </span><span class="lineNoCov">          0 :           parm-&gt;helpbuf[linelen] = 0;</span>
+<span class="lineNum">     528 </span><span class="lineNoCov">          0 :           if (linelen &amp;&amp; parm-&gt;helpbuf[linelen-1] == '\r')</span>
+<span class="lineNum">     529 </span><span class="lineNoCov">          0 :             parm-&gt;helpbuf[linelen-1] = 0;</span>
+<span class="lineNum">     530 </span><span class="lineNoCov">          0 :           err = parm-&gt;data_cb (parm-&gt;data_cb_value, 0, parm-&gt;helpbuf);</span>
+<span class="lineNum">     531 </span>            :         }
+<span class="lineNum">     532 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     533 </span><span class="lineNoCov">          0 :         parm-&gt;lasterr = err;</span>
+<span class="lineNum">     534 </span>            :       else
+<span class="lineNum">     535 </span>            :         {
+<span class="lineNum">     536 </span><span class="lineNoCov">          0 :           clear_membuf (&amp;parm-&gt;saveddata, linelen+1);</span>
+<span class="lineNum">     537 </span><span class="lineNoCov">          0 :           goto again;  /* There might be another complete line.  */</span>
+<span class="lineNum">     538 </span>            :         }
+<span class="lineNum">     539 </span>            :     }
+<span class="lineNum">     540 </span>            : 
+<span class="lineNum">     541 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     542 </span>            : }
+<span class="lineNum">     543 </span>            : 
+<span class="lineNum">     544 </span>            : 
+<span class="lineNum">     545 </span>            : /* Run the KS_SEARCH command using the search string SEARCHSTR.  All
+<span class="lineNum">     546 </span>            :    data lines are passed to the CB function.  That function is called
+<span class="lineNum">     547 </span>            :    with CB_VALUE as its first argument, a 0 as second argument, and
+<span class="lineNum">     548 </span>            :    the decoded data line as third argument.  The callback function may
+<span class="lineNum">     549 </span>            :    modify the data line and it is guaranteed that this data line is a
+<span class="lineNum">     550 </span>            :    complete line with a terminating 0 character but without the
+<a name="551"><span class="lineNum">     551 </span>            :    linefeed.  NULL is passed to the callback to indicate EOF.  */</a>
+<span class="lineNum">     552 </span>            : gpg_error_t
+<span class="lineNum">     553 </span><span class="lineNoCov">          0 : gpg_dirmngr_ks_search (ctrl_t ctrl, const char *searchstr,</span>
+<span class="lineNum">     554 </span>            :                        gpg_error_t (*cb)(void*, int, char *), void *cb_value)
+<span class="lineNum">     555 </span>            : {
+<span class="lineNum">     556 </span>            :   gpg_error_t err;
+<span class="lineNum">     557 </span>            :   assuan_context_t ctx;
+<span class="lineNum">     558 </span>            :   struct ks_status_parm_s stparm;
+<span class="lineNum">     559 </span>            :   struct ks_search_parm_s parm;
+<span class="lineNum">     560 </span>            :   char line[ASSUAN_LINELENGTH];
+<span class="lineNum">     561 </span>            : 
+<span class="lineNum">     562 </span><span class="lineNoCov">          0 :   err = open_context (ctrl, &amp;ctx);</span>
+<span class="lineNum">     563 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     564 </span><span class="lineNoCov">          0 :     return err;</span>
+<span class="lineNum">     565 </span>            : 
+<span class="lineNum">     566 </span>            :   {
+<span class="lineNum">     567 </span><span class="lineNoCov">          0 :     char *escsearchstr = percent_plus_escape (searchstr);</span>
+<span class="lineNum">     568 </span><span class="lineNoCov">          0 :     if (!escsearchstr)</span>
+<span class="lineNum">     569 </span>            :       {
+<span class="lineNum">     570 </span><span class="lineNoCov">          0 :         err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     571 </span><span class="lineNoCov">          0 :         close_context (ctrl, ctx);</span>
+<span class="lineNum">     572 </span><span class="lineNoCov">          0 :         return err;</span>
+<span class="lineNum">     573 </span>            :       }
+<span class="lineNum">     574 </span><span class="lineNoCov">          0 :     snprintf (line, sizeof line, &quot;KS_SEARCH -- %s&quot;, escsearchstr);</span>
+<span class="lineNum">     575 </span><span class="lineNoCov">          0 :     xfree (escsearchstr);</span>
+<span class="lineNum">     576 </span>            :   }
+<span class="lineNum">     577 </span>            : 
+<span class="lineNum">     578 </span><span class="lineNoCov">          0 :   memset (&amp;stparm, 0, sizeof stparm);</span>
+<span class="lineNum">     579 </span><span class="lineNoCov">          0 :   memset (&amp;parm, 0, sizeof parm);</span>
+<span class="lineNum">     580 </span><span class="lineNoCov">          0 :   init_membuf (&amp;parm.saveddata, 1024);</span>
+<span class="lineNum">     581 </span><span class="lineNoCov">          0 :   parm.data_cb = cb;</span>
+<span class="lineNum">     582 </span><span class="lineNoCov">          0 :   parm.data_cb_value = cb_value;</span>
+<span class="lineNum">     583 </span><span class="lineNoCov">          0 :   parm.stparm = &amp;stparm;</span>
+<span class="lineNum">     584 </span>            : 
+<span class="lineNum">     585 </span><span class="lineNoCov">          0 :   err = assuan_transact (ctx, line, ks_search_data_cb, &amp;parm,</span>
+<span class="lineNum">     586 </span>            :                         NULL, NULL, ks_status_cb, &amp;stparm);
+<span class="lineNum">     587 </span><span class="lineNoCov">          0 :   if (!err)</span>
+<span class="lineNum">     588 </span><span class="lineNoCov">          0 :     err = cb (cb_value, 0, NULL);  /* Send EOF.  */</span>
+<span class="lineNum">     589 </span>            : 
+<span class="lineNum">     590 </span><span class="lineNoCov">          0 :   xfree (get_membuf (&amp;parm.saveddata, NULL));</span>
+<span class="lineNum">     591 </span><span class="lineNoCov">          0 :   xfree (parm.helpbuf);</span>
+<span class="lineNum">     592 </span><span class="lineNoCov">          0 :   xfree (stparm.source);</span>
+<span class="lineNum">     593 </span>            : 
+<span class="lineNum">     594 </span><span class="lineNoCov">          0 :   close_context (ctrl, ctx);</span>
+<span class="lineNum">     595 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     596 </span>            : }
+<span class="lineNum">     597 </span>            : 
+<span class="lineNum">     598 </span>            : 
+<span class="lineNum">     599 </span>            : 
+<a name="600"><span class="lineNum">     600 </span>            : /* Data callback for the KS_GET and KS_FETCH commands. */</a>
+<span class="lineNum">     601 </span>            : static gpg_error_t
+<span class="lineNum">     602 </span><span class="lineNoCov">          0 : ks_get_data_cb (void *opaque, const void *data, size_t datalen)</span>
+<span class="lineNum">     603 </span>            : {
+<span class="lineNum">     604 </span><span class="lineNoCov">          0 :   gpg_error_t err = 0;</span>
+<span class="lineNum">     605 </span><span class="lineNoCov">          0 :   struct ks_get_parm_s *parm = opaque;</span>
+<span class="lineNum">     606 </span>            :   size_t nwritten;
+<span class="lineNum">     607 </span>            : 
+<span class="lineNum">     608 </span><span class="lineNoCov">          0 :   if (!data)</span>
+<span class="lineNum">     609 </span><span class="lineNoCov">          0 :     return 0;  /* Ignore END commands.  */</span>
+<span class="lineNum">     610 </span>            : 
+<span class="lineNum">     611 </span><span class="lineNoCov">          0 :   if (es_write (parm-&gt;memfp, data, datalen, &amp;nwritten))</span>
+<span class="lineNum">     612 </span><span class="lineNoCov">          0 :     err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     613 </span>            : 
+<span class="lineNum">     614 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     615 </span>            : }
+<span class="lineNum">     616 </span>            : 
+<span class="lineNum">     617 </span>            : 
+<span class="lineNum">     618 </span>            : /* Run the KS_GET command using the patterns in the array PATTERN.  On
+<span class="lineNum">     619 </span>            :    success an estream object is returned to retrieve the keys.  On
+<span class="lineNum">     620 </span>            :    error an error code is returned and NULL stored at R_FP.
+<span class="lineNum">     621 </span>            : 
+<span class="lineNum">     622 </span>            :    The pattern may only use search specification which a keyserver can
+<span class="lineNum">     623 </span>            :    use to retrieve keys.  Because we know the format of the pattern we
+<span class="lineNum">     624 </span>            :    don't need to escape the patterns before sending them to the
+<span class="lineNum">     625 </span>            :    server.
+<span class="lineNum">     626 </span>            : 
+<span class="lineNum">     627 </span>            :    If QUICK is set the dirmngr is advised to use a shorter timeout.
+<span class="lineNum">     628 </span>            : 
+<span class="lineNum">     629 </span>            :    If R_SOURCE is not NULL the source of the data is stored as a
+<span class="lineNum">     630 </span>            :    malloced string there.  If a source is not known NULL is stored.
+<span class="lineNum">     631 </span>            : 
+<span class="lineNum">     632 </span>            :    If there are too many patterns the function returns an error.  That
+<span class="lineNum">     633 </span>            :    could be fixed by issuing several search commands or by
+<span class="lineNum">     634 </span>            :    implementing a different interface.  However with long keyids we
+<a name="635"><span class="lineNum">     635 </span>            :    are able to ask for (1000-10-1)/(2+8+1) = 90 keys at once.  */</a>
+<span class="lineNum">     636 </span>            : gpg_error_t
+<span class="lineNum">     637 </span><span class="lineNoCov">          0 : gpg_dirmngr_ks_get (ctrl_t ctrl, char **pattern,</span>
+<span class="lineNum">     638 </span>            :                     keyserver_spec_t override_keyserver, int quick,
+<span class="lineNum">     639 </span>            :                     estream_t *r_fp, char **r_source)
+<span class="lineNum">     640 </span>            : {
+<span class="lineNum">     641 </span>            :   gpg_error_t err;
+<span class="lineNum">     642 </span>            :   assuan_context_t ctx;
+<span class="lineNum">     643 </span>            :   struct ks_status_parm_s stparm;
+<span class="lineNum">     644 </span>            :   struct ks_get_parm_s parm;
+<span class="lineNum">     645 </span><span class="lineNoCov">          0 :   char *line = NULL;</span>
+<span class="lineNum">     646 </span>            :   size_t linelen;
+<span class="lineNum">     647 </span>            :   membuf_t mb;
+<span class="lineNum">     648 </span>            :   int idx;
+<span class="lineNum">     649 </span>            : 
+<span class="lineNum">     650 </span><span class="lineNoCov">          0 :   memset (&amp;stparm, 0, sizeof stparm);</span>
+<span class="lineNum">     651 </span><span class="lineNoCov">          0 :   memset (&amp;parm, 0, sizeof parm);</span>
+<span class="lineNum">     652 </span>            : 
+<span class="lineNum">     653 </span><span class="lineNoCov">          0 :   *r_fp = NULL;</span>
+<span class="lineNum">     654 </span><span class="lineNoCov">          0 :   if (r_source)</span>
+<span class="lineNum">     655 </span><span class="lineNoCov">          0 :     *r_source = NULL;</span>
+<span class="lineNum">     656 </span>            : 
+<span class="lineNum">     657 </span><span class="lineNoCov">          0 :   err = open_context (ctrl, &amp;ctx);</span>
+<span class="lineNum">     658 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     659 </span><span class="lineNoCov">          0 :     return err;</span>
+<span class="lineNum">     660 </span>            : 
+<span class="lineNum">     661 </span>            :   /* If we have an override keyserver we first indicate that the next
+<span class="lineNum">     662 </span>            :      user of the context needs to again setup the global keyservers and
+<span class="lineNum">     663 </span>            :      them we send the override keyserver.  */
+<span class="lineNum">     664 </span><span class="lineNoCov">          0 :   if (override_keyserver)</span>
+<span class="lineNum">     665 </span>            :     {
+<span class="lineNum">     666 </span><span class="lineNoCov">          0 :       clear_context_flags (ctrl, ctx);</span>
+<span class="lineNum">     667 </span><span class="lineNoCov">          0 :       line = xtryasprintf (&quot;KEYSERVER --clear %s&quot;, override_keyserver-&gt;uri);</span>
+<span class="lineNum">     668 </span><span class="lineNoCov">          0 :       if (!line)</span>
+<span class="lineNum">     669 </span>            :         {
+<span class="lineNum">     670 </span><span class="lineNoCov">          0 :           err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     671 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     672 </span>            :         }
+<span class="lineNum">     673 </span><span class="lineNoCov">          0 :       err = assuan_transact (ctx, line, NULL, NULL, NULL,</span>
+<span class="lineNum">     674 </span>            :                              NULL, NULL, NULL);
+<span class="lineNum">     675 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     676 </span><span class="lineNoCov">          0 :         goto leave;</span>
+<span class="lineNum">     677 </span>            : 
+<span class="lineNum">     678 </span><span class="lineNoCov">          0 :       xfree (line);</span>
+<span class="lineNum">     679 </span><span class="lineNoCov">          0 :       line = NULL;</span>
+<span class="lineNum">     680 </span>            :     }
+<span class="lineNum">     681 </span>            : 
+<span class="lineNum">     682 </span>            :   /* Lump all patterns into one string.  */
+<span class="lineNum">     683 </span><span class="lineNoCov">          0 :   init_membuf (&amp;mb, 1024);</span>
+<span class="lineNum">     684 </span><span class="lineNoCov">          0 :   put_membuf_str (&amp;mb, quick? &quot;KS_GET --quick --&quot; : &quot;KS_GET --&quot;);</span>
+<span class="lineNum">     685 </span><span class="lineNoCov">          0 :   for (idx=0; pattern[idx]; idx++)</span>
+<span class="lineNum">     686 </span>            :     {
+<span class="lineNum">     687 </span><span class="lineNoCov">          0 :       put_membuf (&amp;mb, &quot; &quot;, 1); /* Append Delimiter.  */</span>
+<span class="lineNum">     688 </span><span class="lineNoCov">          0 :       put_membuf_str (&amp;mb, pattern[idx]);</span>
+<span class="lineNum">     689 </span>            :     }
+<span class="lineNum">     690 </span><span class="lineNoCov">          0 :   put_membuf (&amp;mb, &quot;&quot;, 1); /* Append Nul.  */</span>
+<span class="lineNum">     691 </span><span class="lineNoCov">          0 :   line = get_membuf (&amp;mb, &amp;linelen);</span>
+<span class="lineNum">     692 </span><span class="lineNoCov">          0 :   if (!line)</span>
+<span class="lineNum">     693 </span>            :     {
+<span class="lineNum">     694 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     695 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     696 </span>            :     }
+<span class="lineNum">     697 </span><span class="lineNoCov">          0 :   if (linelen + 2 &gt;= ASSUAN_LINELENGTH)</span>
+<span class="lineNum">     698 </span>            :     {
+<span class="lineNum">     699 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_TOO_MANY);</span>
+<span class="lineNum">     700 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     701 </span>            :     }
+<span class="lineNum">     702 </span>            : 
+<span class="lineNum">     703 </span><span class="lineNoCov">          0 :   parm.memfp = es_fopenmem (0, &quot;rwb&quot;);</span>
+<span class="lineNum">     704 </span><span class="lineNoCov">          0 :   if (!parm.memfp)</span>
+<span class="lineNum">     705 </span>            :     {
+<span class="lineNum">     706 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     707 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     708 </span>            :     }
+<span class="lineNum">     709 </span><span class="lineNoCov">          0 :   err = assuan_transact (ctx, line, ks_get_data_cb, &amp;parm,</span>
+<span class="lineNum">     710 </span>            :                          NULL, NULL, ks_status_cb, &amp;stparm);
+<span class="lineNum">     711 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     712 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     713 </span>            : 
+<span class="lineNum">     714 </span><span class="lineNoCov">          0 :   es_rewind (parm.memfp);</span>
+<span class="lineNum">     715 </span><span class="lineNoCov">          0 :   *r_fp = parm.memfp;</span>
+<span class="lineNum">     716 </span><span class="lineNoCov">          0 :   parm.memfp = NULL;</span>
+<span class="lineNum">     717 </span>            : 
+<span class="lineNum">     718 </span><span class="lineNoCov">          0 :   if (r_source)</span>
+<span class="lineNum">     719 </span>            :     {
+<span class="lineNum">     720 </span><span class="lineNoCov">          0 :       *r_source = stparm.source;</span>
+<span class="lineNum">     721 </span><span class="lineNoCov">          0 :       stparm.source = NULL;</span>
+<span class="lineNum">     722 </span>            :     }
+<span class="lineNum">     723 </span>            : 
+<span class="lineNum">     724 </span>            :  leave:
+<span class="lineNum">     725 </span><span class="lineNoCov">          0 :   es_fclose (parm.memfp);</span>
+<span class="lineNum">     726 </span><span class="lineNoCov">          0 :   xfree (stparm.source);</span>
+<span class="lineNum">     727 </span><span class="lineNoCov">          0 :   xfree (line);</span>
+<span class="lineNum">     728 </span><span class="lineNoCov">          0 :   close_context (ctrl, ctx);</span>
+<span class="lineNum">     729 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     730 </span>            : }
+<span class="lineNum">     731 </span>            : 
+<span class="lineNum">     732 </span>            : 
+<span class="lineNum">     733 </span>            : /* Run the KS_FETCH and pass URL as argument.  On success an estream
+<span class="lineNum">     734 </span>            :    object is returned to retrieve the keys.  On error an error code is
+<span class="lineNum">     735 </span>            :    returned and NULL stored at R_FP.
+<span class="lineNum">     736 </span>            : 
+<span class="lineNum">     737 </span>            :    The url is expected to point to a small set of keys; in many cases
+<span class="lineNum">     738 </span>            :    only to one key.  However, schemes like finger may return several
+<span class="lineNum">     739 </span>            :    keys.  Note that the configured keyservers are ignored by the
+<a name="740"><span class="lineNum">     740 </span>            :    KS_FETCH command.  */</a>
+<span class="lineNum">     741 </span>            : gpg_error_t
+<span class="lineNum">     742 </span><span class="lineNoCov">          0 : gpg_dirmngr_ks_fetch (ctrl_t ctrl, const char *url, estream_t *r_fp)</span>
+<span class="lineNum">     743 </span>            : {
+<span class="lineNum">     744 </span>            :   gpg_error_t err;
+<span class="lineNum">     745 </span>            :   assuan_context_t ctx;
+<span class="lineNum">     746 </span>            :   struct ks_get_parm_s parm;
+<span class="lineNum">     747 </span><span class="lineNoCov">          0 :   char *line = NULL;</span>
+<span class="lineNum">     748 </span>            : 
+<span class="lineNum">     749 </span><span class="lineNoCov">          0 :   memset (&amp;parm, 0, sizeof parm);</span>
+<span class="lineNum">     750 </span>            : 
+<span class="lineNum">     751 </span><span class="lineNoCov">          0 :   *r_fp = NULL;</span>
+<span class="lineNum">     752 </span>            : 
+<span class="lineNum">     753 </span><span class="lineNoCov">          0 :   err = open_context (ctrl, &amp;ctx);</span>
+<span class="lineNum">     754 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     755 </span><span class="lineNoCov">          0 :     return err;</span>
+<span class="lineNum">     756 </span>            : 
+<span class="lineNum">     757 </span><span class="lineNoCov">          0 :   line = strconcat (&quot;KS_FETCH -- &quot;, url, NULL);</span>
+<span class="lineNum">     758 </span><span class="lineNoCov">          0 :   if (!line)</span>
+<span class="lineNum">     759 </span>            :     {
+<span class="lineNum">     760 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     761 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     762 </span>            :     }
+<span class="lineNum">     763 </span><span class="lineNoCov">          0 :   if (strlen (line) + 2 &gt;= ASSUAN_LINELENGTH)</span>
+<span class="lineNum">     764 </span>            :     {
+<span class="lineNum">     765 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_TOO_LARGE);</span>
+<span class="lineNum">     766 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     767 </span>            :     }
+<span class="lineNum">     768 </span>            : 
+<span class="lineNum">     769 </span><span class="lineNoCov">          0 :   parm.memfp = es_fopenmem (0, &quot;rwb&quot;);</span>
+<span class="lineNum">     770 </span><span class="lineNoCov">          0 :   if (!parm.memfp)</span>
+<span class="lineNum">     771 </span>            :     {
+<span class="lineNum">     772 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     773 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     774 </span>            :     }
+<span class="lineNum">     775 </span><span class="lineNoCov">          0 :   err = assuan_transact (ctx, line, ks_get_data_cb, &amp;parm,</span>
+<span class="lineNum">     776 </span>            :                          NULL, NULL, NULL, NULL);
+<span class="lineNum">     777 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     778 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     779 </span>            : 
+<span class="lineNum">     780 </span><span class="lineNoCov">          0 :   es_rewind (parm.memfp);</span>
+<span class="lineNum">     781 </span><span class="lineNoCov">          0 :   *r_fp = parm.memfp;</span>
+<span class="lineNum">     782 </span><span class="lineNoCov">          0 :   parm.memfp = NULL;</span>
+<span class="lineNum">     783 </span>            : 
+<span class="lineNum">     784 </span>            :  leave:
+<span class="lineNum">     785 </span><span class="lineNoCov">          0 :   es_fclose (parm.memfp);</span>
+<span class="lineNum">     786 </span><span class="lineNoCov">          0 :   xfree (line);</span>
+<span class="lineNum">     787 </span><span class="lineNoCov">          0 :   close_context (ctrl, ctx);</span>
+<span class="lineNum">     788 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     789 </span>            : }
+<span class="lineNum">     790 </span>            : 
+<span class="lineNum">     791 </span>            : 
+<a name="792"><span class="lineNum">     792 </span>            : </a>
+<span class="lineNum">     793 </span>            : static void
+<span class="lineNum">     794 </span><span class="lineNoCov">          0 : record_output (estream_t output,</span>
+<span class="lineNum">     795 </span>            :                pkttype_t type,
+<span class="lineNum">     796 </span>            :                const char *validity,
+<span class="lineNum">     797 </span>            :                /* The public key length or -1.  */
+<span class="lineNum">     798 </span>            :                int pub_key_length,
+<span class="lineNum">     799 </span>            :                /* The public key algo or -1.  */
+<span class="lineNum">     800 </span>            :                int pub_key_algo,
+<span class="lineNum">     801 </span>            :                /* 2 ulongs or NULL.  */
+<span class="lineNum">     802 </span>            :                const u32 *keyid,
+<span class="lineNum">     803 </span>            :                /* The creation / expiration date or 0.  */
+<span class="lineNum">     804 </span>            :                u32 creation_date,
+<span class="lineNum">     805 </span>            :                u32 expiration_date,
+<span class="lineNum">     806 </span>            :                const char *userid)
+<span class="lineNum">     807 </span>            : {
+<span class="lineNum">     808 </span><span class="lineNoCov">          0 :   const char *type_str = NULL;</span>
+<span class="lineNum">     809 </span><span class="lineNoCov">          0 :   char *pub_key_length_str = NULL;</span>
+<span class="lineNum">     810 </span><span class="lineNoCov">          0 :   char *pub_key_algo_str = NULL;</span>
+<span class="lineNum">     811 </span><span class="lineNoCov">          0 :   char *keyid_str = NULL;</span>
+<span class="lineNum">     812 </span><span class="lineNoCov">          0 :   char *creation_date_str = NULL;</span>
+<span class="lineNum">     813 </span><span class="lineNoCov">          0 :   char *expiration_date_str = NULL;</span>
+<span class="lineNum">     814 </span><span class="lineNoCov">          0 :   char *userid_escaped = NULL;</span>
+<span class="lineNum">     815 </span>            : 
+<span class="lineNum">     816 </span><span class="lineNoCov">          0 :   switch (type)</span>
+<span class="lineNum">     817 </span>            :     {
+<span class="lineNum">     818 </span>            :     case PKT_PUBLIC_KEY:
+<span class="lineNum">     819 </span><span class="lineNoCov">          0 :       type_str = &quot;pub&quot;;</span>
+<span class="lineNum">     820 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     821 </span>            :     case PKT_PUBLIC_SUBKEY:
+<span class="lineNum">     822 </span><span class="lineNoCov">          0 :       type_str = &quot;sub&quot;;</span>
+<span class="lineNum">     823 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     824 </span>            :     case PKT_USER_ID:
+<span class="lineNum">     825 </span><span class="lineNoCov">          0 :       type_str = &quot;uid&quot;;</span>
+<span class="lineNum">     826 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     827 </span>            :     case PKT_SIGNATURE:
+<span class="lineNum">     828 </span><span class="lineNoCov">          0 :       type_str = &quot;sig&quot;;</span>
+<span class="lineNum">     829 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     830 </span>            :     default:
+<span class="lineNum">     831 </span><span class="lineNoCov">          0 :       log_assert (! &quot;Unhandled type.&quot;);</span>
+<span class="lineNum">     832 </span>            :     }
+<span class="lineNum">     833 </span>            : 
+<span class="lineNum">     834 </span><span class="lineNoCov">          0 :   if (pub_key_length &gt; 0)</span>
+<span class="lineNum">     835 </span><span class="lineNoCov">          0 :     pub_key_length_str = xasprintf (&quot;%d&quot;, pub_key_length);</span>
+<span class="lineNum">     836 </span>            : 
+<span class="lineNum">     837 </span><span class="lineNoCov">          0 :   if (pub_key_algo != -1)</span>
+<span class="lineNum">     838 </span><span class="lineNoCov">          0 :     pub_key_algo_str = xasprintf (&quot;%d&quot;, pub_key_algo);</span>
+<span class="lineNum">     839 </span>            : 
+<span class="lineNum">     840 </span><span class="lineNoCov">          0 :   if (keyid)</span>
+<span class="lineNum">     841 </span><span class="lineNoCov">          0 :     keyid_str = xasprintf (&quot;%08lX%08lX&quot;, (ulong) keyid[0], (ulong) keyid[1]);</span>
+<span class="lineNum">     842 </span>            : 
+<span class="lineNum">     843 </span><span class="lineNoCov">          0 :   if (creation_date)</span>
+<span class="lineNum">     844 </span><span class="lineNoCov">          0 :     creation_date_str = xstrdup (colon_strtime (creation_date));</span>
+<span class="lineNum">     845 </span>            : 
+<span class="lineNum">     846 </span><span class="lineNoCov">          0 :   if (expiration_date)</span>
+<span class="lineNum">     847 </span><span class="lineNoCov">          0 :     expiration_date_str = xstrdup (colon_strtime (expiration_date));</span>
+<span class="lineNum">     848 </span>            : 
+<span class="lineNum">     849 </span>            :   /* Quote ':', '%', and any 8-bit characters.  */
+<span class="lineNum">     850 </span><span class="lineNoCov">          0 :   if (userid)</span>
+<span class="lineNum">     851 </span>            :     {
+<span class="lineNum">     852 </span>            :       int r;
+<span class="lineNum">     853 </span><span class="lineNoCov">          0 :       int w = 0;</span>
+<span class="lineNum">     854 </span>            : 
+<span class="lineNum">     855 </span><span class="lineNoCov">          0 :       int len = strlen (userid);</span>
+<span class="lineNum">     856 </span>            :       /* A 100k character limit on the uid should be way more than
+<span class="lineNum">     857 </span>            :          enough.  */
+<span class="lineNum">     858 </span><span class="lineNoCov">          0 :       if (len &gt; 100 * 1024)</span>
+<span class="lineNum">     859 </span><span class="lineNoCov">          0 :         len = 100 * 1024;</span>
+<span class="lineNum">     860 </span>            : 
+<span class="lineNum">     861 </span>            :       /* The minimum amount of space that we need.  */
+<span class="lineNum">     862 </span><span class="lineNoCov">          0 :       userid_escaped = xmalloc (len * 3 + 1);</span>
+<span class="lineNum">     863 </span>            : 
+<span class="lineNum">     864 </span><span class="lineNoCov">          0 :       for (r = 0; r &lt; len; r++)</span>
+<span class="lineNum">     865 </span>            :         {
+<span class="lineNum">     866 </span><span class="lineNoCov">          0 :           if (userid[r] == ':' || userid[r]== '%' || (userid[r] &amp; 0x80))</span>
+<span class="lineNum">     867 </span>            :             {
+<span class="lineNum">     868 </span><span class="lineNoCov">          0 :               sprintf (&amp;userid_escaped[w], &quot;%%%02X&quot;, (byte) userid[r]);</span>
+<span class="lineNum">     869 </span><span class="lineNoCov">          0 :               w += 3;</span>
+<span class="lineNum">     870 </span>            :             }
+<span class="lineNum">     871 </span>            :           else
+<span class="lineNum">     872 </span><span class="lineNoCov">          0 :             userid_escaped[w ++] = userid[r];</span>
+<span class="lineNum">     873 </span>            :         }
+<span class="lineNum">     874 </span><span class="lineNoCov">          0 :       userid_escaped[w] = '\0';</span>
+<span class="lineNum">     875 </span>            :     }
+<span class="lineNum">     876 </span>            : 
+<span class="lineNum">     877 </span><span class="lineNoCov">          0 :   es_fprintf (output, &quot;%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s\n&quot;,</span>
+<span class="lineNum">     878 </span>            :               type_str,
+<span class="lineNum">     879 </span><span class="lineNoCov">          0 :               validity ?: &quot;&quot;,</span>
+<span class="lineNum">     880 </span><span class="lineNoCov">          0 :               pub_key_length_str ?: &quot;&quot;,</span>
+<span class="lineNum">     881 </span><span class="lineNoCov">          0 :               pub_key_algo_str ?: &quot;&quot;,</span>
+<span class="lineNum">     882 </span><span class="lineNoCov">          0 :               keyid_str ?: &quot;&quot;,</span>
+<span class="lineNum">     883 </span><span class="lineNoCov">          0 :               creation_date_str ?: &quot;&quot;,</span>
+<span class="lineNum">     884 </span><span class="lineNoCov">          0 :               expiration_date_str ?: &quot;&quot;,</span>
+<span class="lineNum">     885 </span>            :               &quot;&quot; /* Certificate S/N */,
+<span class="lineNum">     886 </span>            :               &quot;&quot; /* Ownertrust.  */,
+<span class="lineNum">     887 </span><span class="lineNoCov">          0 :               userid_escaped ?: &quot;&quot;,</span>
+<span class="lineNum">     888 </span>            :               &quot;&quot; /* Signature class.  */,
+<span class="lineNum">     889 </span>            :               &quot;&quot; /* Key capabilities.  */,
+<span class="lineNum">     890 </span>            :               &quot;&quot; /* Issuer certificate fingerprint.  */,
+<span class="lineNum">     891 </span>            :               &quot;&quot; /* Flag field.  */,
+<span class="lineNum">     892 </span>            :               &quot;&quot; /* S/N of a token.  */,
+<span class="lineNum">     893 </span>            :               &quot;&quot; /* Hash algo.  */,
+<span class="lineNum">     894 </span>            :               &quot;&quot; /* Curve name.  */);
+<span class="lineNum">     895 </span>            : 
+<span class="lineNum">     896 </span><span class="lineNoCov">          0 :   xfree (userid_escaped);</span>
+<span class="lineNum">     897 </span><span class="lineNoCov">          0 :   xfree (expiration_date_str);</span>
+<span class="lineNum">     898 </span><span class="lineNoCov">          0 :   xfree (creation_date_str);</span>
+<span class="lineNum">     899 </span><span class="lineNoCov">          0 :   xfree (keyid_str);</span>
+<span class="lineNum">     900 </span><span class="lineNoCov">          0 :   xfree (pub_key_algo_str);</span>
+<span class="lineNum">     901 </span><span class="lineNoCov">          0 :   xfree (pub_key_length_str);</span>
+<span class="lineNum">     902 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     903 </span>            : 
+<a name="904"><span class="lineNum">     904 </span>            : /* Handle the KS_PUT inquiries. */</a>
+<span class="lineNum">     905 </span>            : static gpg_error_t
+<span class="lineNum">     906 </span><span class="lineNoCov">          0 : ks_put_inq_cb (void *opaque, const char *line)</span>
+<span class="lineNum">     907 </span>            : {
+<span class="lineNum">     908 </span><span class="lineNoCov">          0 :   struct ks_put_parm_s *parm = opaque;</span>
+<span class="lineNum">     909 </span><span class="lineNoCov">          0 :   gpg_error_t err = 0;</span>
+<span class="lineNum">     910 </span>            : 
+<span class="lineNum">     911 </span><span class="lineNoCov">          0 :   if (has_leading_keyword (line, &quot;KEYBLOCK&quot;))</span>
+<span class="lineNum">     912 </span>            :     {
+<span class="lineNum">     913 </span><span class="lineNoCov">          0 :       if (parm-&gt;data)</span>
+<span class="lineNum">     914 </span><span class="lineNoCov">          0 :         err = assuan_send_data (parm-&gt;ctx, parm-&gt;data, parm-&gt;datalen);</span>
+<span class="lineNum">     915 </span>            :     }
+<span class="lineNum">     916 </span><span class="lineNoCov">          0 :   else if (has_leading_keyword (line, &quot;KEYBLOCK_INFO&quot;))</span>
+<span class="lineNum">     917 </span>            :     {
+<span class="lineNum">     918 </span>            :       kbnode_t node;
+<span class="lineNum">     919 </span>            :       estream_t fp;
+<span class="lineNum">     920 </span>            : 
+<span class="lineNum">     921 </span>            :       /* Parse the keyblock and send info lines back to the server.  */
+<span class="lineNum">     922 </span><span class="lineNoCov">          0 :       fp = es_fopenmem (0, &quot;rw,samethread&quot;);</span>
+<span class="lineNum">     923 </span><span class="lineNoCov">          0 :       if (!fp)</span>
+<span class="lineNum">     924 </span><span class="lineNoCov">          0 :         err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     925 </span>            : 
+<span class="lineNum">     926 </span>            :       /* Note: the output format for the INFO block follows the colon
+<span class="lineNum">     927 </span>            :          format as described in doc/DETAILS.  We don't actually reuse
+<span class="lineNum">     928 </span>            :          the functionality from g10/keylist.c to produce the output,
+<span class="lineNum">     929 </span>            :          because we don't need all of it and some of it is quite
+<span class="lineNum">     930 </span>            :          expensive to generate.
+<span class="lineNum">     931 </span>            : 
+<span class="lineNum">     932 </span>            :          The fields are (the starred fields are the ones we need):
+<span class="lineNum">     933 </span>            : 
+<span class="lineNum">     934 </span>            :            * Field 1 - Type of record
+<span class="lineNum">     935 </span>            :            * Field 2 - Validity
+<span class="lineNum">     936 </span>            :            * Field 3 - Key length
+<span class="lineNum">     937 </span>            :            * Field 4 - Public key algorithm
+<span class="lineNum">     938 </span>            :            * Field 5 - KeyID
+<span class="lineNum">     939 </span>            :            * Field 6 - Creation date
+<span class="lineNum">     940 </span>            :            * Field 7 - Expiration date
+<span class="lineNum">     941 </span>            :              Field 8 - Certificate S/N, UID hash, trust signature info
+<span class="lineNum">     942 </span>            :              Field 9 -  Ownertrust
+<span class="lineNum">     943 </span>            :            * Field 10 - User-ID
+<span class="lineNum">     944 </span>            :              Field 11 - Signature class
+<span class="lineNum">     945 </span>            :              Field 12 - Key capabilities
+<span class="lineNum">     946 </span>            :              Field 13 - Issuer certificate fingerprint or other info
+<span class="lineNum">     947 </span>            :              Field 14 - Flag field
+<span class="lineNum">     948 </span>            :              Field 15 - S/N of a token
+<span class="lineNum">     949 </span>            :              Field 16 - Hash algorithm
+<span class="lineNum">     950 </span>            :              Field 17 - Curve name
+<span class="lineNum">     951 </span>            :        */
+<span class="lineNum">     952 </span><span class="lineNoCov">          0 :       for (node = parm-&gt;keyblock; !err &amp;&amp; node; node=node-&gt;next)</span>
+<span class="lineNum">     953 </span>            :         {
+<span class="lineNum">     954 </span><span class="lineNoCov">          0 :           switch (node-&gt;pkt-&gt;pkttype)</span>
+<span class="lineNum">     955 </span>            :             {
+<span class="lineNum">     956 </span>            :             case PKT_PUBLIC_KEY:
+<span class="lineNum">     957 </span>            :             case PKT_PUBLIC_SUBKEY:
+<span class="lineNum">     958 </span>            :               {
+<span class="lineNum">     959 </span><span class="lineNoCov">          0 :                 PKT_public_key *pk = node-&gt;pkt-&gt;pkt.public_key;</span>
+<span class="lineNum">     960 </span>            : 
+<span class="lineNum">     961 </span>            :                 char validity[3];
+<span class="lineNum">     962 </span>            :                 int i;
+<span class="lineNum">     963 </span>            : 
+<span class="lineNum">     964 </span><span class="lineNoCov">          0 :                 i = 0;</span>
+<span class="lineNum">     965 </span><span class="lineNoCov">          0 :                 if (pk-&gt;flags.revoked)</span>
+<span class="lineNum">     966 </span><span class="lineNoCov">          0 :                   validity[i ++] = 'r';</span>
+<span class="lineNum">     967 </span><span class="lineNoCov">          0 :                 if (pk-&gt;has_expired)</span>
+<span class="lineNum">     968 </span><span class="lineNoCov">          0 :                   validity[i ++] = 'e';</span>
+<span class="lineNum">     969 </span><span class="lineNoCov">          0 :                 validity[i] = '\0';</span>
+<span class="lineNum">     970 </span>            : 
+<span class="lineNum">     971 </span><span class="lineNoCov">          0 :                 keyid_from_pk (pk, NULL);</span>
+<span class="lineNum">     972 </span>            : 
+<span class="lineNum">     973 </span><span class="lineNoCov">          0 :                 record_output (fp, node-&gt;pkt-&gt;pkttype, validity,</span>
+<span class="lineNum">     974 </span><span class="lineNoCov">          0 :                                nbits_from_pk (pk), pk-&gt;pubkey_algo,</span>
+<span class="lineNum">     975 </span><span class="lineNoCov">          0 :                                pk-&gt;keyid, pk-&gt;timestamp, pk-&gt;expiredate,</span>
+<span class="lineNum">     976 </span>            :                                NULL);
+<span class="lineNum">     977 </span>            :               }
+<span class="lineNum">     978 </span><span class="lineNoCov">          0 :               break;</span>
+<span class="lineNum">     979 </span>            : 
+<span class="lineNum">     980 </span>            :             case PKT_USER_ID:
+<span class="lineNum">     981 </span>            :               {
+<span class="lineNum">     982 </span><span class="lineNoCov">          0 :                 PKT_user_id *uid = node-&gt;pkt-&gt;pkt.user_id;</span>
+<span class="lineNum">     983 </span>            : 
+<span class="lineNum">     984 </span><span class="lineNoCov">          0 :                 if (!uid-&gt;attrib_data)</span>
+<span class="lineNum">     985 </span>            :                   {
+<span class="lineNum">     986 </span>            :                     char validity[3];
+<span class="lineNum">     987 </span>            :                     int i;
+<span class="lineNum">     988 </span>            : 
+<span class="lineNum">     989 </span><span class="lineNoCov">          0 :                     i = 0;</span>
+<span class="lineNum">     990 </span><span class="lineNoCov">          0 :                     if (uid-&gt;flags.revoked)</span>
+<span class="lineNum">     991 </span><span class="lineNoCov">          0 :                       validity[i ++] = 'r';</span>
+<span class="lineNum">     992 </span><span class="lineNoCov">          0 :                     if (uid-&gt;flags.expired)</span>
+<span class="lineNum">     993 </span><span class="lineNoCov">          0 :                       validity[i ++] = 'e';</span>
+<span class="lineNum">     994 </span><span class="lineNoCov">          0 :                     validity[i] = '\0';</span>
+<span class="lineNum">     995 </span>            : 
+<span class="lineNum">     996 </span><span class="lineNoCov">          0 :                     record_output (fp, node-&gt;pkt-&gt;pkttype, validity,</span>
+<span class="lineNum">     997 </span>            :                                    -1, -1, NULL,
+<span class="lineNum">     998 </span>            :                                    uid-&gt;created, uid-&gt;expiredate,
+<span class="lineNum">     999 </span><span class="lineNoCov">          0 :                                    uid-&gt;name);</span>
+<span class="lineNum">    1000 </span>            :                   }
+<span class="lineNum">    1001 </span>            :               }
+<span class="lineNum">    1002 </span><span class="lineNoCov">          0 :               break;</span>
+<span class="lineNum">    1003 </span>            : 
+<span class="lineNum">    1004 </span>            :               /* This bit is really for the benefit of people who
+<span class="lineNum">    1005 </span>            :                  store their keys in LDAP servers.  It makes it easy
+<span class="lineNum">    1006 </span>            :                  to do queries for things like &quot;all keys signed by
+<span class="lineNum">    1007 </span>            :                  Isabella&quot;.  */
+<span class="lineNum">    1008 </span>            :             case PKT_SIGNATURE:
+<span class="lineNum">    1009 </span>            :               {
+<span class="lineNum">    1010 </span><span class="lineNoCov">          0 :                 PKT_signature *sig = node-&gt;pkt-&gt;pkt.signature;</span>
+<span class="lineNum">    1011 </span>            : 
+<span class="lineNum">    1012 </span><span class="lineNoCov">          0 :                 if (IS_UID_SIG (sig))</span>
+<span class="lineNum">    1013 </span><span class="lineNoCov">          0 :                   record_output (fp, node-&gt;pkt-&gt;pkttype, NULL,</span>
+<span class="lineNum">    1014 </span><span class="lineNoCov">          0 :                                  -1, -1, sig-&gt;keyid,</span>
+<span class="lineNum">    1015 </span>            :                                  sig-&gt;timestamp, sig-&gt;expiredate, NULL);
+<span class="lineNum">    1016 </span>            :               }
+<span class="lineNum">    1017 </span><span class="lineNoCov">          0 :               break;</span>
+<span class="lineNum">    1018 </span>            : 
+<span class="lineNum">    1019 </span>            :             default:
+<span class="lineNum">    1020 </span><span class="lineNoCov">          0 :               continue;</span>
+<span class="lineNum">    1021 </span>            :             }
+<span class="lineNum">    1022 </span>            :           /* Given that the last operation was an es_fprintf we should
+<span class="lineNum">    1023 </span>            :              get the correct ERRNO if ferror indicates an error.  */
+<span class="lineNum">    1024 </span><span class="lineNoCov">          0 :           if (es_ferror (fp))</span>
+<span class="lineNum">    1025 </span><span class="lineNoCov">          0 :             err = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1026 </span>            :         }
+<span class="lineNum">    1027 </span>            : 
+<span class="lineNum">    1028 </span>            :       /* Without an error and if we have an keyblock at all, send the
+<span class="lineNum">    1029 </span>            :          data back.  */
+<span class="lineNum">    1030 </span><span class="lineNoCov">          0 :       if (!err &amp;&amp; parm-&gt;keyblock)</span>
+<span class="lineNum">    1031 </span>            :         {
+<span class="lineNum">    1032 </span>            :           int rc;
+<span class="lineNum">    1033 </span>            :           char buffer[512];
+<span class="lineNum">    1034 </span>            :           size_t nread;
+<span class="lineNum">    1035 </span>            : 
+<span class="lineNum">    1036 </span><span class="lineNoCov">          0 :           es_rewind (fp);</span>
+<span class="lineNum">    1037 </span><span class="lineNoCov">          0 :           while (!(rc=es_read (fp, buffer, sizeof buffer, &amp;nread)) &amp;&amp; nread)</span>
+<span class="lineNum">    1038 </span>            :             {
+<span class="lineNum">    1039 </span><span class="lineNoCov">          0 :               err = assuan_send_data (parm-&gt;ctx, buffer, nread);</span>
+<span class="lineNum">    1040 </span><span class="lineNoCov">          0 :               if (err)</span>
+<span class="lineNum">    1041 </span><span class="lineNoCov">          0 :                 break;</span>
+<span class="lineNum">    1042 </span>            :             }
+<span class="lineNum">    1043 </span><span class="lineNoCov">          0 :           if (!err &amp;&amp; rc)</span>
+<span class="lineNum">    1044 </span><span class="lineNoCov">          0 :             err = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1045 </span>            :         }
+<span class="lineNum">    1046 </span><span class="lineNoCov">          0 :       es_fclose (fp);</span>
+<span class="lineNum">    1047 </span>            :     }
+<span class="lineNum">    1048 </span>            :   else
+<span class="lineNum">    1049 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_ASS_UNKNOWN_INQUIRE);</span>
+<span class="lineNum">    1050 </span>            : 
+<span class="lineNum">    1051 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">    1052 </span>            : }
+<span class="lineNum">    1053 </span>            : 
+<span class="lineNum">    1054 </span>            : 
+<span class="lineNum">    1055 </span>            : /* Send a key to the configured server.  {DATA,DATLEN} contains the
+<span class="lineNum">    1056 </span>            :    key in OpenPGP binary transport format.  If KEYBLOCK is not NULL it
+<span class="lineNum">    1057 </span>            :    has the internal representaion of that key; this is for example
+<a name="1058"><span class="lineNum">    1058 </span>            :    used to convey meta data to LDAP keyservers.  */</a>
+<span class="lineNum">    1059 </span>            : gpg_error_t
+<span class="lineNum">    1060 </span><span class="lineNoCov">          0 : gpg_dirmngr_ks_put (ctrl_t ctrl, void *data, size_t datalen, kbnode_t keyblock)</span>
+<span class="lineNum">    1061 </span>            : {
+<span class="lineNum">    1062 </span>            :   gpg_error_t err;
+<span class="lineNum">    1063 </span>            :   assuan_context_t ctx;
+<span class="lineNum">    1064 </span>            :   struct ks_put_parm_s parm;
+<span class="lineNum">    1065 </span>            : 
+<span class="lineNum">    1066 </span><span class="lineNoCov">          0 :   memset (&amp;parm, 0, sizeof parm);</span>
+<span class="lineNum">    1067 </span>            : 
+<span class="lineNum">    1068 </span>            :   /* We are going to parse the keyblock, thus we better make sure the
+<span class="lineNum">    1069 </span>            :      all information is readily available.  */
+<span class="lineNum">    1070 </span><span class="lineNoCov">          0 :   if (keyblock)</span>
+<span class="lineNum">    1071 </span><span class="lineNoCov">          0 :     merge_keys_and_selfsig (ctrl, keyblock);</span>
+<span class="lineNum">    1072 </span>            : 
+<span class="lineNum">    1073 </span><span class="lineNoCov">          0 :   err = open_context (ctrl, &amp;ctx);</span>
+<span class="lineNum">    1074 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">    1075 </span><span class="lineNoCov">          0 :     return err;</span>
+<span class="lineNum">    1076 </span>            : 
+<span class="lineNum">    1077 </span><span class="lineNoCov">          0 :   parm.ctx = ctx;</span>
+<span class="lineNum">    1078 </span><span class="lineNoCov">          0 :   parm.keyblock = keyblock;</span>
+<span class="lineNum">    1079 </span><span class="lineNoCov">          0 :   parm.data = data;</span>
+<span class="lineNum">    1080 </span><span class="lineNoCov">          0 :   parm.datalen = datalen;</span>
+<span class="lineNum">    1081 </span>            : 
+<span class="lineNum">    1082 </span><span class="lineNoCov">          0 :   err = assuan_transact (ctx, &quot;KS_PUT&quot;, NULL, NULL,</span>
+<span class="lineNum">    1083 </span>            :                          ks_put_inq_cb, &amp;parm, NULL, NULL);
+<span class="lineNum">    1084 </span>            : 
+<span class="lineNum">    1085 </span><span class="lineNoCov">          0 :   close_context (ctrl, ctx);</span>
+<span class="lineNum">    1086 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">    1087 </span>            : }
+<span class="lineNum">    1088 </span>            : 
+<span class="lineNum">    1089 </span>            : 
+<span class="lineNum">    1090 </span>            : 
+<a name="1091"><span class="lineNum">    1091 </span>            : /* Data callback for the DNS_CERT and WKD_GET commands. */</a>
+<span class="lineNum">    1092 </span>            : static gpg_error_t
+<span class="lineNum">    1093 </span><span class="lineNoCov">          0 : dns_cert_data_cb (void *opaque, const void *data, size_t datalen)</span>
+<span class="lineNum">    1094 </span>            : {
+<span class="lineNum">    1095 </span><span class="lineNoCov">          0 :   struct dns_cert_parm_s *parm = opaque;</span>
+<span class="lineNum">    1096 </span><span class="lineNoCov">          0 :   gpg_error_t err = 0;</span>
+<span class="lineNum">    1097 </span>            :   size_t nwritten;
+<span class="lineNum">    1098 </span>            : 
+<span class="lineNum">    1099 </span><span class="lineNoCov">          0 :   if (!data)</span>
+<span class="lineNum">    1100 </span><span class="lineNoCov">          0 :     return 0;  /* Ignore END commands.  */</span>
+<span class="lineNum">    1101 </span><span class="lineNoCov">          0 :   if (!parm-&gt;memfp)</span>
+<span class="lineNum">    1102 </span><span class="lineNoCov">          0 :     return 0;  /* Data is not required.  */</span>
+<span class="lineNum">    1103 </span>            : 
+<span class="lineNum">    1104 </span><span class="lineNoCov">          0 :   if (es_write (parm-&gt;memfp, data, datalen, &amp;nwritten))</span>
+<span class="lineNum">    1105 </span><span class="lineNoCov">          0 :     err = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1106 </span>            : 
+<span class="lineNum">    1107 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">    1108 </span>            : }
+<span class="lineNum">    1109 </span>            : 
+<span class="lineNum">    1110 </span>            : 
+<a name="1111"><span class="lineNum">    1111 </span>            : /* Status callback for the DNS_CERT command.  */</a>
+<span class="lineNum">    1112 </span>            : static gpg_error_t
+<span class="lineNum">    1113 </span><span class="lineNoCov">          0 : dns_cert_status_cb (void *opaque, const char *line)</span>
+<span class="lineNum">    1114 </span>            : {
+<span class="lineNum">    1115 </span><span class="lineNoCov">          0 :   struct dns_cert_parm_s *parm = opaque;</span>
+<span class="lineNum">    1116 </span><span class="lineNoCov">          0 :   gpg_error_t err = 0;</span>
+<span class="lineNum">    1117 </span>            :   const char *s;
+<span class="lineNum">    1118 </span>            :   size_t nbytes;
+<span class="lineNum">    1119 </span>            : 
+<span class="lineNum">    1120 </span><span class="lineNoCov">          0 :   if ((s = has_leading_keyword (line, &quot;FPR&quot;)))</span>
+<span class="lineNum">    1121 </span>            :     {
+<span class="lineNum">    1122 </span>            :       char *buf;
+<span class="lineNum">    1123 </span>            : 
+<span class="lineNum">    1124 </span><span class="lineNoCov">          0 :       if (!(buf = xtrystrdup (s)))</span>
+<span class="lineNum">    1125 </span><span class="lineNoCov">          0 :         err = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1126 </span><span class="lineNoCov">          0 :       else if (parm-&gt;fpr)</span>
+<span class="lineNum">    1127 </span><span class="lineNoCov">          0 :         err = gpg_error (GPG_ERR_DUP_KEY);</span>
+<span class="lineNum">    1128 </span><span class="lineNoCov">          0 :       else if (!hex2str (buf, buf, strlen (buf)+1, &amp;nbytes))</span>
+<span class="lineNum">    1129 </span><span class="lineNoCov">          0 :         err = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1130 </span><span class="lineNoCov">          0 :       else if (nbytes &lt; 20)</span>
+<span class="lineNum">    1131 </span><span class="lineNoCov">          0 :         err = gpg_error (GPG_ERR_TOO_SHORT);</span>
+<span class="lineNum">    1132 </span>            :       else
+<span class="lineNum">    1133 </span>            :         {
+<span class="lineNum">    1134 </span><span class="lineNoCov">          0 :           parm-&gt;fpr = xtrymalloc (nbytes);</span>
+<span class="lineNum">    1135 </span><span class="lineNoCov">          0 :           if (!parm-&gt;fpr)</span>
+<span class="lineNum">    1136 </span><span class="lineNoCov">          0 :             err = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1137 </span>            :           else
+<span class="lineNum">    1138 </span><span class="lineNoCov">          0 :             memcpy (parm-&gt;fpr, buf, (parm-&gt;fprlen = nbytes));</span>
+<span class="lineNum">    1139 </span>            :         }
+<span class="lineNum">    1140 </span><span class="lineNoCov">          0 :       xfree (buf);</span>
+<span class="lineNum">    1141 </span>            :     }
+<span class="lineNum">    1142 </span><span class="lineNoCov">          0 :   else if ((s = has_leading_keyword (line, &quot;URL&quot;)) &amp;&amp; *s)</span>
+<span class="lineNum">    1143 </span>            :     {
+<span class="lineNum">    1144 </span><span class="lineNoCov">          0 :       if (parm-&gt;url)</span>
+<span class="lineNum">    1145 </span><span class="lineNoCov">          0 :         err = gpg_error (GPG_ERR_DUP_KEY);</span>
+<span class="lineNum">    1146 </span><span class="lineNoCov">          0 :       else if (!(parm-&gt;url = xtrystrdup (s)))</span>
+<span class="lineNum">    1147 </span><span class="lineNoCov">          0 :         err = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1148 </span>            :     }
+<span class="lineNum">    1149 </span>            : 
+<span class="lineNum">    1150 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">    1151 </span>            : }
+<span class="lineNum">    1152 </span>            : 
+<span class="lineNum">    1153 </span>            : /* Ask the dirmngr for a DNS CERT record.  Depending on the found
+<span class="lineNum">    1154 </span>            :    subtypes different return values are set:
+<span class="lineNum">    1155 </span>            : 
+<span class="lineNum">    1156 </span>            :    - For a PGP subtype a new estream with that key will be returned at
+<span class="lineNum">    1157 </span>            :      R_KEY and the other return parameters are set to NULL/0.
+<span class="lineNum">    1158 </span>            : 
+<span class="lineNum">    1159 </span>            :    - For an IPGP subtype the fingerprint is stored as a malloced block
+<span class="lineNum">    1160 </span>            :      at (R_FPR,R_FPRLEN).  If an URL is available it is stored as a
+<span class="lineNum">    1161 </span>            :      malloced string at R_URL; NULL is stored if there is no URL.
+<span class="lineNum">    1162 </span>            : 
+<span class="lineNum">    1163 </span>            :    If CERTTYPE is DNS_CERTTYPE_ANY this function returns the first
+<span class="lineNum">    1164 </span>            :    CERT record found with a supported type; it is expected that only
+<span class="lineNum">    1165 </span>            :    one CERT record is used.  If CERTTYPE is one of the supported
+<span class="lineNum">    1166 </span>            :    certtypes, only records with this certtype are considered and the
+<span class="lineNum">    1167 </span>            :    first one found is returned.  All R_* args are optional.
+<span class="lineNum">    1168 </span>            : 
+<span class="lineNum">    1169 </span>            :    If CERTTYPE is NULL the DANE method is used to fetch the key.
+<a name="1170"><span class="lineNum">    1170 </span>            :  */</a>
+<span class="lineNum">    1171 </span>            : gpg_error_t
+<span class="lineNum">    1172 </span><span class="lineNoCov">          0 : gpg_dirmngr_dns_cert (ctrl_t ctrl, const char *name, const char *certtype,</span>
+<span class="lineNum">    1173 </span>            :                       estream_t *r_key,
+<span class="lineNum">    1174 </span>            :                       unsigned char **r_fpr, size_t *r_fprlen,
+<span class="lineNum">    1175 </span>            :                       char **r_url)
+<span class="lineNum">    1176 </span>            : {
+<span class="lineNum">    1177 </span>            :   gpg_error_t err;
+<span class="lineNum">    1178 </span>            :   assuan_context_t ctx;
+<span class="lineNum">    1179 </span>            :   struct dns_cert_parm_s parm;
+<span class="lineNum">    1180 </span><span class="lineNoCov">          0 :   char *line = NULL;</span>
+<span class="lineNum">    1181 </span>            : 
+<span class="lineNum">    1182 </span><span class="lineNoCov">          0 :   memset (&amp;parm, 0, sizeof parm);</span>
+<span class="lineNum">    1183 </span><span class="lineNoCov">          0 :   if (r_key)</span>
+<span class="lineNum">    1184 </span><span class="lineNoCov">          0 :     *r_key = NULL;</span>
+<span class="lineNum">    1185 </span><span class="lineNoCov">          0 :   if (r_fpr)</span>
+<span class="lineNum">    1186 </span><span class="lineNoCov">          0 :     *r_fpr = NULL;</span>
+<span class="lineNum">    1187 </span><span class="lineNoCov">          0 :   if (r_fprlen)</span>
+<span class="lineNum">    1188 </span><span class="lineNoCov">          0 :     *r_fprlen = 0;</span>
+<span class="lineNum">    1189 </span><span class="lineNoCov">          0 :   if (r_url)</span>
+<span class="lineNum">    1190 </span><span class="lineNoCov">          0 :     *r_url = NULL;</span>
+<span class="lineNum">    1191 </span>            : 
+<span class="lineNum">    1192 </span><span class="lineNoCov">          0 :   err = open_context (ctrl, &amp;ctx);</span>
+<span class="lineNum">    1193 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">    1194 </span><span class="lineNoCov">          0 :     return err;</span>
+<span class="lineNum">    1195 </span>            : 
+<span class="lineNum">    1196 </span><span class="lineNoCov">          0 :   line = es_bsprintf (&quot;DNS_CERT %s %s&quot;, certtype? certtype : &quot;--dane&quot;, name);</span>
+<span class="lineNum">    1197 </span><span class="lineNoCov">          0 :   if (!line)</span>
+<span class="lineNum">    1198 </span>            :     {
+<span class="lineNum">    1199 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1200 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">    1201 </span>            :     }
+<span class="lineNum">    1202 </span><span class="lineNoCov">          0 :   if (strlen (line) + 2 &gt;= ASSUAN_LINELENGTH)</span>
+<span class="lineNum">    1203 </span>            :     {
+<span class="lineNum">    1204 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_TOO_LARGE);</span>
+<span class="lineNum">    1205 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">    1206 </span>            :     }
+<span class="lineNum">    1207 </span>            : 
+<span class="lineNum">    1208 </span><span class="lineNoCov">          0 :   parm.memfp = es_fopenmem (0, &quot;rwb&quot;);</span>
+<span class="lineNum">    1209 </span><span class="lineNoCov">          0 :   if (!parm.memfp)</span>
+<span class="lineNum">    1210 </span>            :     {
+<span class="lineNum">    1211 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1212 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">    1213 </span>            :     }
+<span class="lineNum">    1214 </span><span class="lineNoCov">          0 :   err = assuan_transact (ctx, line, dns_cert_data_cb, &amp;parm,</span>
+<span class="lineNum">    1215 </span>            :                          NULL, NULL, dns_cert_status_cb, &amp;parm);
+<span class="lineNum">    1216 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">    1217 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">    1218 </span>            : 
+<span class="lineNum">    1219 </span><span class="lineNoCov">          0 :   if (r_key)</span>
+<span class="lineNum">    1220 </span>            :     {
+<span class="lineNum">    1221 </span><span class="lineNoCov">          0 :       es_rewind (parm.memfp);</span>
+<span class="lineNum">    1222 </span><span class="lineNoCov">          0 :       *r_key = parm.memfp;</span>
+<span class="lineNum">    1223 </span><span class="lineNoCov">          0 :       parm.memfp = NULL;</span>
+<span class="lineNum">    1224 </span>            :     }
+<span class="lineNum">    1225 </span>            : 
+<span class="lineNum">    1226 </span><span class="lineNoCov">          0 :   if (r_fpr &amp;&amp; parm.fpr)</span>
+<span class="lineNum">    1227 </span>            :     {
+<span class="lineNum">    1228 </span><span class="lineNoCov">          0 :       *r_fpr = parm.fpr;</span>
+<span class="lineNum">    1229 </span><span class="lineNoCov">          0 :       parm.fpr = NULL;</span>
+<span class="lineNum">    1230 </span>            :     }
+<span class="lineNum">    1231 </span><span class="lineNoCov">          0 :   if (r_fprlen)</span>
+<span class="lineNum">    1232 </span><span class="lineNoCov">          0 :     *r_fprlen = parm.fprlen;</span>
+<span class="lineNum">    1233 </span>            : 
+<span class="lineNum">    1234 </span><span class="lineNoCov">          0 :   if (r_url &amp;&amp; parm.url)</span>
+<span class="lineNum">    1235 </span>            :     {
+<span class="lineNum">    1236 </span><span class="lineNoCov">          0 :       *r_url = parm.url;</span>
+<span class="lineNum">    1237 </span><span class="lineNoCov">          0 :       parm.url = NULL;</span>
+<span class="lineNum">    1238 </span>            :     }
+<span class="lineNum">    1239 </span>            : 
+<span class="lineNum">    1240 </span>            :  leave:
+<span class="lineNum">    1241 </span><span class="lineNoCov">          0 :   xfree (parm.fpr);</span>
+<span class="lineNum">    1242 </span><span class="lineNoCov">          0 :   xfree (parm.url);</span>
+<span class="lineNum">    1243 </span><span class="lineNoCov">          0 :   es_fclose (parm.memfp);</span>
+<span class="lineNum">    1244 </span><span class="lineNoCov">          0 :   xfree (line);</span>
+<span class="lineNum">    1245 </span><span class="lineNoCov">          0 :   close_context (ctrl, ctx);</span>
+<span class="lineNum">    1246 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">    1247 </span>            : }
+<span class="lineNum">    1248 </span>            : 
+<span class="lineNum">    1249 </span>            : 
+<span class="lineNum">    1250 </span>            : /* Ask the dirmngr for PKA info.  On success the retrieved fingerprint
+<span class="lineNum">    1251 </span>            :    is returned in a malloced buffer at R_FPR and its length is stored
+<span class="lineNum">    1252 </span>            :    at R_FPRLEN.  If an URL is available it is stored as a malloced
+<a name="1253"><span class="lineNum">    1253 </span>            :    string at R_URL.  On error all return values are set to NULL/0.  */</a>
+<span class="lineNum">    1254 </span>            : gpg_error_t
+<span class="lineNum">    1255 </span><span class="lineNoCov">          0 : gpg_dirmngr_get_pka (ctrl_t ctrl, const char *userid,</span>
+<span class="lineNum">    1256 </span>            :                      unsigned char **r_fpr, size_t *r_fprlen,
+<span class="lineNum">    1257 </span>            :                      char **r_url)
+<span class="lineNum">    1258 </span>            : {
+<span class="lineNum">    1259 </span>            :   gpg_error_t err;
+<span class="lineNum">    1260 </span>            :   assuan_context_t ctx;
+<span class="lineNum">    1261 </span>            :   struct dns_cert_parm_s parm;
+<span class="lineNum">    1262 </span><span class="lineNoCov">          0 :   char *line = NULL;</span>
+<span class="lineNum">    1263 </span>            : 
+<span class="lineNum">    1264 </span><span class="lineNoCov">          0 :   memset (&amp;parm, 0, sizeof parm);</span>
+<span class="lineNum">    1265 </span><span class="lineNoCov">          0 :   if (r_fpr)</span>
+<span class="lineNum">    1266 </span><span class="lineNoCov">          0 :     *r_fpr = NULL;</span>
+<span class="lineNum">    1267 </span><span class="lineNoCov">          0 :   if (r_fprlen)</span>
+<span class="lineNum">    1268 </span><span class="lineNoCov">          0 :     *r_fprlen = 0;</span>
+<span class="lineNum">    1269 </span><span class="lineNoCov">          0 :   if (r_url)</span>
+<span class="lineNum">    1270 </span><span class="lineNoCov">          0 :     *r_url = NULL;</span>
+<span class="lineNum">    1271 </span>            : 
+<span class="lineNum">    1272 </span><span class="lineNoCov">          0 :   err = open_context (ctrl, &amp;ctx);</span>
+<span class="lineNum">    1273 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">    1274 </span><span class="lineNoCov">          0 :     return err;</span>
+<span class="lineNum">    1275 </span>            : 
+<span class="lineNum">    1276 </span><span class="lineNoCov">          0 :   line = es_bsprintf (&quot;DNS_CERT --pka -- %s&quot;, userid);</span>
+<span class="lineNum">    1277 </span><span class="lineNoCov">          0 :   if (!line)</span>
+<span class="lineNum">    1278 </span>            :     {
+<span class="lineNum">    1279 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1280 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">    1281 </span>            :     }
+<span class="lineNum">    1282 </span><span class="lineNoCov">          0 :   if (strlen (line) + 2 &gt;= ASSUAN_LINELENGTH)</span>
+<span class="lineNum">    1283 </span>            :     {
+<span class="lineNum">    1284 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_TOO_LARGE);</span>
+<span class="lineNum">    1285 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">    1286 </span>            :     }
+<span class="lineNum">    1287 </span>            : 
+<span class="lineNum">    1288 </span><span class="lineNoCov">          0 :   err = assuan_transact (ctx, line, dns_cert_data_cb, &amp;parm,</span>
+<span class="lineNum">    1289 </span>            :                          NULL, NULL, dns_cert_status_cb, &amp;parm);
+<span class="lineNum">    1290 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">    1291 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">    1292 </span>            : 
+<span class="lineNum">    1293 </span><span class="lineNoCov">          0 :   if (r_fpr &amp;&amp; parm.fpr)</span>
+<span class="lineNum">    1294 </span>            :     {
+<span class="lineNum">    1295 </span><span class="lineNoCov">          0 :       *r_fpr = parm.fpr;</span>
+<span class="lineNum">    1296 </span><span class="lineNoCov">          0 :       parm.fpr = NULL;</span>
+<span class="lineNum">    1297 </span>            :     }
+<span class="lineNum">    1298 </span><span class="lineNoCov">          0 :   if (r_fprlen)</span>
+<span class="lineNum">    1299 </span><span class="lineNoCov">          0 :     *r_fprlen = parm.fprlen;</span>
+<span class="lineNum">    1300 </span>            : 
+<span class="lineNum">    1301 </span><span class="lineNoCov">          0 :   if (r_url &amp;&amp; parm.url)</span>
+<span class="lineNum">    1302 </span>            :     {
+<span class="lineNum">    1303 </span><span class="lineNoCov">          0 :       *r_url = parm.url;</span>
+<span class="lineNum">    1304 </span><span class="lineNoCov">          0 :       parm.url = NULL;</span>
+<span class="lineNum">    1305 </span>            :     }
+<span class="lineNum">    1306 </span>            : 
+<span class="lineNum">    1307 </span>            :  leave:
+<span class="lineNum">    1308 </span><span class="lineNoCov">          0 :   xfree (parm.fpr);</span>
+<span class="lineNum">    1309 </span><span class="lineNoCov">          0 :   xfree (parm.url);</span>
+<span class="lineNum">    1310 </span><span class="lineNoCov">          0 :   xfree (line);</span>
+<span class="lineNum">    1311 </span><span class="lineNoCov">          0 :   close_context (ctrl, ctx);</span>
+<span class="lineNum">    1312 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">    1313 </span>            : }
+<span class="lineNum">    1314 </span>            : 
+<span class="lineNum">    1315 </span>            : 
+<span class="lineNum">    1316 </span>            : 
+<span class="lineNum">    1317 </span>            : /* Ask the dirmngr to retrieve a key via the Web Key Directory
+<span class="lineNum">    1318 </span>            :  * protocol.  If QUICK is set the dirmngr is advised to use a shorter
+<span class="lineNum">    1319 </span>            :  * timeout.  On success a new estream with the key is stored at R_KEY.
+<a name="1320"><span class="lineNum">    1320 </span>            :  */</a>
+<span class="lineNum">    1321 </span>            : gpg_error_t
+<span class="lineNum">    1322 </span><span class="lineNoCov">          0 : gpg_dirmngr_wkd_get (ctrl_t ctrl, const char *name, int quick, estream_t *r_key)</span>
+<span class="lineNum">    1323 </span>            : {
+<span class="lineNum">    1324 </span>            :   gpg_error_t err;
+<span class="lineNum">    1325 </span>            :   assuan_context_t ctx;
+<span class="lineNum">    1326 </span>            :   struct dns_cert_parm_s parm;
+<span class="lineNum">    1327 </span><span class="lineNoCov">          0 :   char *line = NULL;</span>
+<span class="lineNum">    1328 </span>            : 
+<span class="lineNum">    1329 </span><span class="lineNoCov">          0 :   memset (&amp;parm, 0, sizeof parm);</span>
+<span class="lineNum">    1330 </span>            : 
+<span class="lineNum">    1331 </span><span class="lineNoCov">          0 :   err = open_context (ctrl, &amp;ctx);</span>
+<span class="lineNum">    1332 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">    1333 </span><span class="lineNoCov">          0 :     return err;</span>
+<span class="lineNum">    1334 </span>            : 
+<span class="lineNum">    1335 </span><span class="lineNoCov">          0 :   line = es_bsprintf (&quot;WKD_GET%s -- %s&quot;, quick?&quot; --quick&quot;:&quot;&quot;, name);</span>
+<span class="lineNum">    1336 </span><span class="lineNoCov">          0 :   if (!line)</span>
+<span class="lineNum">    1337 </span>            :     {
+<span class="lineNum">    1338 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1339 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">    1340 </span>            :     }
+<span class="lineNum">    1341 </span><span class="lineNoCov">          0 :   if (strlen (line) + 2 &gt;= ASSUAN_LINELENGTH)</span>
+<span class="lineNum">    1342 </span>            :     {
+<span class="lineNum">    1343 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_TOO_LARGE);</span>
+<span class="lineNum">    1344 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">    1345 </span>            :     }
+<span class="lineNum">    1346 </span>            : 
+<span class="lineNum">    1347 </span><span class="lineNoCov">          0 :   parm.memfp = es_fopenmem (0, &quot;rwb&quot;);</span>
+<span class="lineNum">    1348 </span><span class="lineNoCov">          0 :   if (!parm.memfp)</span>
+<span class="lineNum">    1349 </span>            :     {
+<span class="lineNum">    1350 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1351 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">    1352 </span>            :     }
+<span class="lineNum">    1353 </span><span class="lineNoCov">          0 :   err = assuan_transact (ctx, line, dns_cert_data_cb, &amp;parm,</span>
+<span class="lineNum">    1354 </span>            :                          NULL, NULL, NULL, &amp;parm);
+<span class="lineNum">    1355 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">    1356 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">    1357 </span>            : 
+<span class="lineNum">    1358 </span><span class="lineNoCov">          0 :   if (r_key)</span>
+<span class="lineNum">    1359 </span>            :     {
+<span class="lineNum">    1360 </span><span class="lineNoCov">          0 :       es_rewind (parm.memfp);</span>
+<span class="lineNum">    1361 </span><span class="lineNoCov">          0 :       *r_key = parm.memfp;</span>
+<span class="lineNum">    1362 </span><span class="lineNoCov">          0 :       parm.memfp = NULL;</span>
+<span class="lineNum">    1363 </span>            :     }
+<span class="lineNum">    1364 </span>            : 
+<span class="lineNum">    1365 </span>            :  leave:
+<span class="lineNum">    1366 </span><span class="lineNoCov">          0 :   xfree (parm.fpr);</span>
+<span class="lineNum">    1367 </span><span class="lineNoCov">          0 :   xfree (parm.url);</span>
+<span class="lineNum">    1368 </span><span class="lineNoCov">          0 :   es_fclose (parm.memfp);</span>
+<span class="lineNum">    1369 </span><span class="lineNoCov">          0 :   xfree (line);</span>
+<span class="lineNum">    1370 </span><span class="lineNoCov">          0 :   close_context (ctrl, ctx);</span>
+<span class="lineNum">    1371 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">    1372 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

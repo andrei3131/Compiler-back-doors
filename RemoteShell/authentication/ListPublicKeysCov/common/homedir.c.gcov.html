@@ -1,0 +1,1118 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - common/homedir.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">common</a> - homedir.c<span style="font-size: 80%;"> (source / <a href="homedir.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">14</td>
+            <td class="headerCovTableEntry">176</td>
+            <td class="headerCovTableEntryLo">8.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 14:05:58</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">3</td>
+            <td class="headerCovTableEntry">21</td>
+            <td class="headerCovTableEntryLo">14.3 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* homedir.c - Setup the home directory.</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 2004, 2006, 2007, 2010 Free Software Foundation, Inc.
+<span class="lineNum">       3 </span>            :  * Copyright (C) 2013, 2016 Werner Koch
+<span class="lineNum">       4 </span>            :  *
+<span class="lineNum">       5 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       6 </span>            :  *
+<span class="lineNum">       7 </span>            :  * This file is free software; you can redistribute it and/or modify
+<span class="lineNum">       8 </span>            :  * it under the terms of either
+<span class="lineNum">       9 </span>            :  *
+<span class="lineNum">      10 </span>            :  *   - the GNU Lesser General Public License as published by the Free
+<span class="lineNum">      11 </span>            :  *     Software Foundation; either version 3 of the License, or (at
+<span class="lineNum">      12 </span>            :  *     your option) any later version.
+<span class="lineNum">      13 </span>            :  *
+<span class="lineNum">      14 </span>            :  * or
+<span class="lineNum">      15 </span>            :  *
+<span class="lineNum">      16 </span>            :  *   - the GNU General Public License as published by the Free
+<span class="lineNum">      17 </span>            :  *     Software Foundation; either version 2 of the License, or (at
+<span class="lineNum">      18 </span>            :  *     your option) any later version.
+<span class="lineNum">      19 </span>            :  *
+<span class="lineNum">      20 </span>            :  * or both in parallel, as here.
+<span class="lineNum">      21 </span>            :  *
+<span class="lineNum">      22 </span>            :  * This file is distributed in the hope that it will be useful,
+<span class="lineNum">      23 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      24 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      25 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      26 </span>            :  *
+<span class="lineNum">      27 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      28 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      29 </span>            :  */
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      32 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      33 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      34 </span>            : #include &lt;fcntl.h&gt;
+<span class="lineNum">      35 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">      38 </span>            : #include &lt;winsock2.h&gt;   /* Due to the stupid mingw64 requirement to
+<span class="lineNum">      39 </span>            :                            include this header before windows.h which
+<span class="lineNum">      40 </span>            :                            is often implicitly included.  */
+<span class="lineNum">      41 </span>            : #include &lt;shlobj.h&gt;
+<span class="lineNum">      42 </span>            : #ifndef CSIDL_APPDATA
+<span class="lineNum">      43 </span>            : #define CSIDL_APPDATA 0x001a
+<span class="lineNum">      44 </span>            : #endif
+<span class="lineNum">      45 </span>            : #ifndef CSIDL_LOCAL_APPDATA
+<span class="lineNum">      46 </span>            : #define CSIDL_LOCAL_APPDATA 0x001c
+<span class="lineNum">      47 </span>            : #endif
+<span class="lineNum">      48 </span>            : #ifndef CSIDL_COMMON_APPDATA
+<span class="lineNum">      49 </span>            : #define CSIDL_COMMON_APPDATA 0x0023
+<span class="lineNum">      50 </span>            : #endif
+<span class="lineNum">      51 </span>            : #ifndef CSIDL_FLAG_CREATE
+<span class="lineNum">      52 </span>            : #define CSIDL_FLAG_CREATE 0x8000
+<span class="lineNum">      53 </span>            : #endif
+<span class="lineNum">      54 </span>            : #endif /*HAVE_W32_SYSTEM*/
+<span class="lineNum">      55 </span>            : 
+<span class="lineNum">      56 </span>            : #ifdef HAVE_STAT
+<span class="lineNum">      57 </span>            : #include &lt;sys/stat.h&gt; /* for stat() */
+<span class="lineNum">      58 </span>            : #endif
+<span class="lineNum">      59 </span>            : 
+<span class="lineNum">      60 </span>            : 
+<span class="lineNum">      61 </span>            : 
+<span class="lineNum">      62 </span>            : #include &quot;util.h&quot;
+<span class="lineNum">      63 </span>            : #include &quot;sysutils.h&quot;
+<span class="lineNum">      64 </span>            : #include &quot;zb32.h&quot;
+<span class="lineNum">      65 </span>            : 
+<span class="lineNum">      66 </span>            : /* The GnuPG homedir.  This is only accessed by the functions
+<span class="lineNum">      67 </span>            :  * gnupg_homedir and gnupg_set_homedir.  Malloced.  */
+<span class="lineNum">      68 </span>            : static char *the_gnupg_homedir;
+<span class="lineNum">      69 </span>            : 
+<span class="lineNum">      70 </span>            : /* Flag indicating that home directory is not the default one.  */
+<span class="lineNum">      71 </span>            : static byte non_default_homedir;
+<span class="lineNum">      72 </span>            : 
+<span class="lineNum">      73 </span>            : 
+<span class="lineNum">      74 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">      75 </span>            : /* A flag used to indicate that a control file for gpgconf has been
+<span class="lineNum">      76 </span>            :    detected.  Under Windows the presence of this file indicates a
+<span class="lineNum">      77 </span>            :    portable installations and triggers several changes:
+<span class="lineNum">      78 </span>            : 
+<span class="lineNum">      79 </span>            :    - The GNUGHOME directory is fixed relative to installation
+<span class="lineNum">      80 </span>            :      directory.  All other means to set the home directory are ignore.
+<span class="lineNum">      81 </span>            : 
+<span class="lineNum">      82 </span>            :    - All registry variables will be ignored.
+<span class="lineNum">      83 </span>            : 
+<span class="lineNum">      84 </span>            :    This flag is not used on Unix systems.
+<span class="lineNum">      85 </span>            :  */
+<span class="lineNum">      86 </span>            : static byte w32_portable_app;
+<span class="lineNum">      87 </span>            : #endif /*HAVE_W32_SYSTEM*/
+<span class="lineNum">      88 </span>            : 
+<span class="lineNum">      89 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">      90 </span>            : /* This flag is true if this process' binary has been installed under
+<span class="lineNum">      91 </span>            :    bin and not in the root directory as often used before GnuPG 2.1. */
+<span class="lineNum">      92 </span>            : static byte w32_bin_is_bin;
+<span class="lineNum">      93 </span>            : #endif /*HAVE_W32_SYSTEM*/
+<span class="lineNum">      94 </span>            : 
+<span class="lineNum">      95 </span>            : 
+<span class="lineNum">      96 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">      97 </span>            : static const char *w32_rootdir (void);
+<span class="lineNum">      98 </span>            : #endif
+<span class="lineNum">      99 </span>            : 
+<span class="lineNum">     100 </span>            : 
+<span class="lineNum">     101 </span>            : 
+<span class="lineNum">     102 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     103 </span>            : static void
+<span class="lineNum">     104 </span>            : w32_try_mkdir (const char *dir)
+<span class="lineNum">     105 </span>            : {
+<span class="lineNum">     106 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">     107 </span>            :   wchar_t *wdir = utf8_to_wchar (dir);
+<span class="lineNum">     108 </span>            :   if (wdir)
+<span class="lineNum">     109 </span>            :     {
+<span class="lineNum">     110 </span>            :       CreateDirectory (wdir, NULL);
+<span class="lineNum">     111 </span>            :       xfree (wdir);
+<span class="lineNum">     112 </span>            :     }
+<span class="lineNum">     113 </span>            : #else
+<span class="lineNum">     114 </span>            :   CreateDirectory (dir, NULL);
+<span class="lineNum">     115 </span>            : #endif
+<span class="lineNum">     116 </span>            : }
+<span class="lineNum">     117 </span>            : #endif
+<span class="lineNum">     118 </span>            : 
+<span class="lineNum">     119 </span>            : 
+<span class="lineNum">     120 </span>            : /* This is a helper function to load a Windows function from either of
+<span class="lineNum">     121 </span>            :    one DLLs. */
+<span class="lineNum">     122 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     123 </span>            : static HRESULT
+<span class="lineNum">     124 </span>            : w32_shgetfolderpath (HWND a, int b, HANDLE c, DWORD d, LPSTR e)
+<span class="lineNum">     125 </span>            : {
+<span class="lineNum">     126 </span>            :   static int initialized;
+<span class="lineNum">     127 </span>            :   static HRESULT (WINAPI * func)(HWND,int,HANDLE,DWORD,LPSTR);
+<span class="lineNum">     128 </span>            : 
+<span class="lineNum">     129 </span>            :   if (!initialized)
+<span class="lineNum">     130 </span>            :     {
+<span class="lineNum">     131 </span>            :       static char *dllnames[] = { &quot;shell32.dll&quot;, &quot;shfolder.dll&quot;, NULL };
+<span class="lineNum">     132 </span>            :       void *handle;
+<span class="lineNum">     133 </span>            :       int i;
+<span class="lineNum">     134 </span>            : 
+<span class="lineNum">     135 </span>            :       initialized = 1;
+<span class="lineNum">     136 </span>            : 
+<span class="lineNum">     137 </span>            :       for (i=0, handle = NULL; !handle &amp;&amp; dllnames[i]; i++)
+<span class="lineNum">     138 </span>            :         {
+<span class="lineNum">     139 </span>            :           handle = dlopen (dllnames[i], RTLD_LAZY);
+<span class="lineNum">     140 </span>            :           if (handle)
+<span class="lineNum">     141 </span>            :             {
+<span class="lineNum">     142 </span>            :               func = dlsym (handle, &quot;SHGetFolderPathA&quot;);
+<span class="lineNum">     143 </span>            :               if (!func)
+<span class="lineNum">     144 </span>            :                 {
+<span class="lineNum">     145 </span>            :                   dlclose (handle);
+<span class="lineNum">     146 </span>            :                   handle = NULL;
+<span class="lineNum">     147 </span>            :                 }
+<span class="lineNum">     148 </span>            :             }
+<span class="lineNum">     149 </span>            :         }
+<span class="lineNum">     150 </span>            :     }
+<span class="lineNum">     151 </span>            : 
+<span class="lineNum">     152 </span>            :   if (func)
+<span class="lineNum">     153 </span>            :     return func (a,b,c,d,e);
+<span class="lineNum">     154 </span>            :   else
+<span class="lineNum">     155 </span>            :     return -1;
+<span class="lineNum">     156 </span>            : }
+<span class="lineNum">     157 </span>            : #endif /*HAVE_W32_SYSTEM*/
+<span class="lineNum">     158 </span>            : 
+<span class="lineNum">     159 </span>            : 
+<a name="160"><span class="lineNum">     160 </span>            : /* Check whether DIR is the default homedir.  */</a>
+<span class="lineNum">     161 </span>            : static int
+<span class="lineNum">     162 </span><span class="lineNoCov">          0 : is_gnupg_default_homedir (const char *dir)</span>
+<span class="lineNum">     163 </span>            : {
+<span class="lineNum">     164 </span>            :   int result;
+<span class="lineNum">     165 </span><span class="lineNoCov">          0 :   char *a = make_absfilename (dir, NULL);</span>
+<span class="lineNum">     166 </span><span class="lineNoCov">          0 :   char *b = make_absfilename (GNUPG_DEFAULT_HOMEDIR, NULL);</span>
+<span class="lineNum">     167 </span><span class="lineNoCov">          0 :   result = !compare_filenames (a, b);</span>
+<span class="lineNum">     168 </span><span class="lineNoCov">          0 :   xfree (b);</span>
+<span class="lineNum">     169 </span><span class="lineNoCov">          0 :   xfree (a);</span>
+<span class="lineNum">     170 </span><span class="lineNoCov">          0 :   return result;</span>
+<span class="lineNum">     171 </span>            : }
+<span class="lineNum">     172 </span>            : 
+<span class="lineNum">     173 </span>            : 
+<span class="lineNum">     174 </span>            : /* Get the standard home directory.  In general this function should
+<span class="lineNum">     175 </span>            :    not be used as it does not consider a registry value (under W32) or
+<span class="lineNum">     176 </span>            :    the GNUPGHOME environment variable.  It is better to use
+<a name="177"><span class="lineNum">     177 </span>            :    default_homedir(). */</a>
+<span class="lineNum">     178 </span>            : const char *
+<span class="lineNum">     179 </span><span class="lineNoCov">          0 : standard_homedir (void)</span>
+<span class="lineNum">     180 </span>            : {
+<span class="lineNum">     181 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     182 </span>            :   static const char *dir;
+<span class="lineNum">     183 </span>            : 
+<span class="lineNum">     184 </span>            :   if (!dir)
+<span class="lineNum">     185 </span>            :     {
+<span class="lineNum">     186 </span>            :       const char *rdir;
+<span class="lineNum">     187 </span>            : 
+<span class="lineNum">     188 </span>            :       rdir = w32_rootdir ();
+<span class="lineNum">     189 </span>            :       if (w32_portable_app)
+<span class="lineNum">     190 </span>            :         {
+<span class="lineNum">     191 </span>            :           dir = xstrconcat (rdir, DIRSEP_S &quot;home&quot;, NULL);
+<span class="lineNum">     192 </span>            :         }
+<span class="lineNum">     193 </span>            :       else
+<span class="lineNum">     194 </span>            :         {
+<span class="lineNum">     195 </span>            :           char path[MAX_PATH];
+<span class="lineNum">     196 </span>            : 
+<span class="lineNum">     197 </span>            :           /* It might be better to use LOCAL_APPDATA because this is
+<span class="lineNum">     198 </span>            :              defined as &quot;non roaming&quot; and thus more likely to be kept
+<span class="lineNum">     199 </span>            :              locally.  For private keys this is desired.  However,
+<span class="lineNum">     200 </span>            :              given that many users copy private keys anyway forth and
+<span class="lineNum">     201 </span>            :              back, using a system roaming services might be better
+<span class="lineNum">     202 </span>            :              than to let them do it manually.  A security conscious
+<span class="lineNum">     203 </span>            :              user will anyway use the registry entry to have better
+<span class="lineNum">     204 </span>            :              control.  */
+<span class="lineNum">     205 </span>            :           if (w32_shgetfolderpath (NULL, CSIDL_APPDATA|CSIDL_FLAG_CREATE,
+<span class="lineNum">     206 </span>            :                                    NULL, 0, path) &gt;= 0)
+<span class="lineNum">     207 </span>            :             {
+<span class="lineNum">     208 </span>            :               char *tmp = xmalloc (strlen (path) + 6 +1);
+<span class="lineNum">     209 </span>            :               strcpy (stpcpy (tmp, path), &quot;\\gnupg&quot;);
+<span class="lineNum">     210 </span>            :               dir = tmp;
+<span class="lineNum">     211 </span>            : 
+<span class="lineNum">     212 </span>            :               /* Try to create the directory if it does not yet exists.  */
+<span class="lineNum">     213 </span>            :               if (access (dir, F_OK))
+<span class="lineNum">     214 </span>            :                 w32_try_mkdir (dir);
+<span class="lineNum">     215 </span>            :             }
+<span class="lineNum">     216 </span>            :           else
+<span class="lineNum">     217 </span>            :             dir = GNUPG_DEFAULT_HOMEDIR;
+<span class="lineNum">     218 </span>            :         }
+<span class="lineNum">     219 </span>            :     }
+<span class="lineNum">     220 </span>            :   return dir;
+<span class="lineNum">     221 </span>            : #else/*!HAVE_W32_SYSTEM*/
+<span class="lineNum">     222 </span><span class="lineNoCov">          0 :   return GNUPG_DEFAULT_HOMEDIR;</span>
+<span class="lineNum">     223 </span>            : #endif /*!HAVE_W32_SYSTEM*/
+<span class="lineNum">     224 </span>            : }
+<span class="lineNum">     225 </span>            : 
+<span class="lineNum">     226 </span>            : /* Set up the default home directory.  The usual --homedir option
+<a name="227"><span class="lineNum">     227 </span>            :    should be parsed later. */</a>
+<span class="lineNum">     228 </span>            : const char *
+<span class="lineNum">     229 </span><span class="lineCov">          1 : default_homedir (void)</span>
+<span class="lineNum">     230 </span>            : {
+<span class="lineNum">     231 </span>            :   const char *dir;
+<span class="lineNum">     232 </span>            : 
+<span class="lineNum">     233 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     234 </span>            :   /* For a portable application we only use the standard homedir.  */
+<span class="lineNum">     235 </span>            :   w32_rootdir ();
+<span class="lineNum">     236 </span>            :   if (w32_portable_app)
+<span class="lineNum">     237 </span>            :     return standard_homedir ();
+<span class="lineNum">     238 </span>            : #endif /*HAVE_W32_SYSTEM*/
+<span class="lineNum">     239 </span>            : 
+<span class="lineNum">     240 </span><span class="lineCov">          1 :   dir = getenv (&quot;GNUPGHOME&quot;);</span>
+<span class="lineNum">     241 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     242 </span>            :   if (!dir || !*dir)
+<span class="lineNum">     243 </span>            :     {
+<span class="lineNum">     244 </span>            :       static const char *saved_dir;
+<span class="lineNum">     245 </span>            : 
+<span class="lineNum">     246 </span>            :       if (!saved_dir)
+<span class="lineNum">     247 </span>            :         {
+<span class="lineNum">     248 </span>            :           if (!dir || !*dir)
+<span class="lineNum">     249 </span>            :             {
+<span class="lineNum">     250 </span>            :               char *tmp;
+<span class="lineNum">     251 </span>            : 
+<span class="lineNum">     252 </span>            :               tmp = read_w32_registry_string (NULL,
+<span class="lineNum">     253 </span>            :                                               GNUPG_REGISTRY_DIR,
+<span class="lineNum">     254 </span>            :                                               &quot;HomeDir&quot;);
+<span class="lineNum">     255 </span>            :               if (tmp &amp;&amp; !*tmp)
+<span class="lineNum">     256 </span>            :                 {
+<span class="lineNum">     257 </span>            :                   xfree (tmp);
+<span class="lineNum">     258 </span>            :                   tmp = NULL;
+<span class="lineNum">     259 </span>            :                 }
+<span class="lineNum">     260 </span>            :               if (tmp)
+<span class="lineNum">     261 </span>            :                 saved_dir = tmp;
+<span class="lineNum">     262 </span>            :             }
+<span class="lineNum">     263 </span>            : 
+<span class="lineNum">     264 </span>            :           if (!saved_dir)
+<span class="lineNum">     265 </span>            :             saved_dir = standard_homedir ();
+<span class="lineNum">     266 </span>            :         }
+<span class="lineNum">     267 </span>            :       dir = saved_dir;
+<span class="lineNum">     268 </span>            :     }
+<span class="lineNum">     269 </span>            : #endif /*HAVE_W32_SYSTEM*/
+<span class="lineNum">     270 </span><span class="lineCov">          1 :   if (!dir || !*dir)</span>
+<span class="lineNum">     271 </span><span class="lineCov">          1 :     dir = GNUPG_DEFAULT_HOMEDIR;</span>
+<span class="lineNum">     272 </span><span class="lineNoCov">          0 :   else if (!is_gnupg_default_homedir (dir))</span>
+<span class="lineNum">     273 </span><span class="lineNoCov">          0 :     non_default_homedir = 1;</span>
+<span class="lineNum">     274 </span>            : 
+<span class="lineNum">     275 </span><span class="lineCov">          1 :   return dir;</span>
+<span class="lineNum">     276 </span>            : }
+<span class="lineNum">     277 </span>            : 
+<span class="lineNum">     278 </span>            : 
+<span class="lineNum">     279 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     280 </span>            : /* Check whether gpgconf is installed and if so read the gpgconf.ctl
+<span class="lineNum">     281 </span>            :    file. */
+<span class="lineNum">     282 </span>            : static void
+<span class="lineNum">     283 </span>            : check_portable_app (const char *dir)
+<span class="lineNum">     284 </span>            : {
+<span class="lineNum">     285 </span>            :   char *fname;
+<span class="lineNum">     286 </span>            : 
+<span class="lineNum">     287 </span>            :   fname = xstrconcat (dir, DIRSEP_S &quot;gpgconf.exe&quot;, NULL);
+<span class="lineNum">     288 </span>            :   if (!access (fname, F_OK))
+<span class="lineNum">     289 </span>            :     {
+<span class="lineNum">     290 </span>            :       strcpy (fname + strlen (fname) - 3, &quot;ctl&quot;);
+<span class="lineNum">     291 </span>            :       if (!access (fname, F_OK))
+<span class="lineNum">     292 </span>            :         {
+<span class="lineNum">     293 </span>            :           /* gpgconf.ctl file found.  Record this fact.  */
+<span class="lineNum">     294 </span>            :           w32_portable_app = 1;
+<span class="lineNum">     295 </span>            :           {
+<span class="lineNum">     296 </span>            :             unsigned int flags;
+<span class="lineNum">     297 </span>            :             log_get_prefix (&amp;flags);
+<span class="lineNum">     298 </span>            :             log_set_prefix (NULL, (flags | GPGRT_LOG_NO_REGISTRY));
+<span class="lineNum">     299 </span>            :           }
+<span class="lineNum">     300 </span>            :           /* FIXME: We should read the file to detect special flags
+<span class="lineNum">     301 </span>            :              and print a warning if we don't understand them  */
+<span class="lineNum">     302 </span>            :         }
+<span class="lineNum">     303 </span>            :     }
+<span class="lineNum">     304 </span>            :   xfree (fname);
+<span class="lineNum">     305 </span>            : }
+<span class="lineNum">     306 </span>            : 
+<span class="lineNum">     307 </span>            : 
+<span class="lineNum">     308 </span>            : /* Determine the root directory of the gnupg installation on Windows.  */
+<span class="lineNum">     309 </span>            : static const char *
+<span class="lineNum">     310 </span>            : w32_rootdir (void)
+<span class="lineNum">     311 </span>            : {
+<span class="lineNum">     312 </span>            :   static int got_dir;
+<span class="lineNum">     313 </span>            :   static char dir[MAX_PATH+5];
+<span class="lineNum">     314 </span>            : 
+<span class="lineNum">     315 </span>            :   if (!got_dir)
+<span class="lineNum">     316 </span>            :     {
+<span class="lineNum">     317 </span>            :       char *p;
+<span class="lineNum">     318 </span>            :       int rc;
+<span class="lineNum">     319 </span>            :       wchar_t wdir [MAX_PATH+5];
+<span class="lineNum">     320 </span>            : 
+<span class="lineNum">     321 </span>            :       rc = GetModuleFileNameW (NULL, wdir, MAX_PATH);
+<span class="lineNum">     322 </span>            :       if (rc &amp;&amp; WideCharToMultiByte (CP_UTF8, 0, wdir, -1, dir, MAX_PATH-4,
+<span class="lineNum">     323 </span>            :                                      NULL, NULL) &lt; 0)
+<span class="lineNum">     324 </span>            :         rc = 0;
+<span class="lineNum">     325 </span>            :       if (!rc)
+<span class="lineNum">     326 </span>            :         {
+<span class="lineNum">     327 </span>            :           log_debug (&quot;GetModuleFileName failed: %s\n&quot;, w32_strerror (-1));
+<span class="lineNum">     328 </span>            :           *dir = 0;
+<span class="lineNum">     329 </span>            :         }
+<span class="lineNum">     330 </span>            :       got_dir = 1;
+<span class="lineNum">     331 </span>            :       p = strrchr (dir, DIRSEP_C);
+<span class="lineNum">     332 </span>            :       if (p)
+<span class="lineNum">     333 </span>            :         {
+<span class="lineNum">     334 </span>            :           *p = 0;
+<span class="lineNum">     335 </span>            : 
+<span class="lineNum">     336 </span>            :           check_portable_app (dir);
+<span class="lineNum">     337 </span>            : 
+<span class="lineNum">     338 </span>            :           /* If we are installed below &quot;bin&quot; we strip that and use
+<span class="lineNum">     339 </span>            :              the top directory instead.  */
+<span class="lineNum">     340 </span>            :           p = strrchr (dir, DIRSEP_C);
+<span class="lineNum">     341 </span>            :           if (p &amp;&amp; !strcmp (p+1, &quot;bin&quot;))
+<span class="lineNum">     342 </span>            :             {
+<span class="lineNum">     343 </span>            :               *p = 0;
+<span class="lineNum">     344 </span>            :               w32_bin_is_bin = 1;
+<span class="lineNum">     345 </span>            :             }
+<span class="lineNum">     346 </span>            :         }
+<span class="lineNum">     347 </span>            :       if (!p)
+<span class="lineNum">     348 </span>            :         {
+<span class="lineNum">     349 </span>            :           log_debug (&quot;bad filename '%s' returned for this process\n&quot;, dir);
+<span class="lineNum">     350 </span>            :           *dir = 0;
+<span class="lineNum">     351 </span>            :         }
+<span class="lineNum">     352 </span>            :     }
+<span class="lineNum">     353 </span>            : 
+<span class="lineNum">     354 </span>            :   if (*dir)
+<span class="lineNum">     355 </span>            :     return dir;
+<span class="lineNum">     356 </span>            :   /* Fallback to the hardwired value. */
+<span class="lineNum">     357 </span>            :   return GNUPG_LIBEXECDIR;
+<span class="lineNum">     358 </span>            : }
+<span class="lineNum">     359 </span>            : 
+<span class="lineNum">     360 </span>            : static const char *
+<span class="lineNum">     361 </span>            : w32_commondir (void)
+<span class="lineNum">     362 </span>            : {
+<span class="lineNum">     363 </span>            :   static char *dir;
+<span class="lineNum">     364 </span>            : 
+<span class="lineNum">     365 </span>            :   if (!dir)
+<span class="lineNum">     366 </span>            :     {
+<span class="lineNum">     367 </span>            :       const char *rdir;
+<span class="lineNum">     368 </span>            :       char path[MAX_PATH];
+<span class="lineNum">     369 </span>            : 
+<span class="lineNum">     370 </span>            :       /* Make sure that w32_rootdir has been called so that we are
+<span class="lineNum">     371 </span>            :          able to check the portable application flag.  The common dir
+<span class="lineNum">     372 </span>            :          is the identical to the rootdir.  In that case there is also
+<span class="lineNum">     373 </span>            :          no need to strdup its value.  */
+<span class="lineNum">     374 </span>            :       rdir = w32_rootdir ();
+<span class="lineNum">     375 </span>            :       if (w32_portable_app)
+<span class="lineNum">     376 </span>            :         return rdir;
+<span class="lineNum">     377 </span>            : 
+<span class="lineNum">     378 </span>            :       if (w32_shgetfolderpath (NULL, CSIDL_COMMON_APPDATA,
+<span class="lineNum">     379 </span>            :                                NULL, 0, path) &gt;= 0)
+<span class="lineNum">     380 </span>            :         {
+<span class="lineNum">     381 </span>            :           char *tmp = xmalloc (strlen (path) + 4 +1);
+<span class="lineNum">     382 </span>            :           strcpy (stpcpy (tmp, path), &quot;\\GNU&quot;);
+<span class="lineNum">     383 </span>            :           dir = tmp;
+<span class="lineNum">     384 </span>            :           /* No auto create of the directory.  Either the installer or
+<span class="lineNum">     385 </span>            :              the admin has to create these directories.  */
+<span class="lineNum">     386 </span>            :         }
+<span class="lineNum">     387 </span>            :       else
+<span class="lineNum">     388 </span>            :         {
+<span class="lineNum">     389 </span>            :           /* Ooops: Not defined - probably an old Windows version.
+<span class="lineNum">     390 </span>            :              Use the installation directory instead.  */
+<span class="lineNum">     391 </span>            :           dir = xstrdup (rdir);
+<span class="lineNum">     392 </span>            :         }
+<span class="lineNum">     393 </span>            :     }
+<span class="lineNum">     394 </span>            : 
+<span class="lineNum">     395 </span>            :   return dir;
+<span class="lineNum">     396 </span>            : }
+<span class="lineNum">     397 </span>            : #endif /*HAVE_W32_SYSTEM*/
+<span class="lineNum">     398 </span>            : 
+<span class="lineNum">     399 </span>            : 
+<span class="lineNum">     400 </span>            : /* Change the homedir.  Some care must be taken to set this early
+<span class="lineNum">     401 </span>            :  * enough because previous calls to gnupg_homedir may else return a
+<a name="402"><span class="lineNum">     402 </span>            :  * different string.  */</a>
+<span class="lineNum">     403 </span>            : void
+<span class="lineNum">     404 </span><span class="lineCov">          1 : gnupg_set_homedir (const char *newdir)</span>
+<span class="lineNum">     405 </span>            : {
+<span class="lineNum">     406 </span><span class="lineCov">          1 :   if (!newdir || !*newdir)</span>
+<span class="lineNum">     407 </span><span class="lineCov">          1 :     newdir = default_homedir ();</span>
+<span class="lineNum">     408 </span><span class="lineNoCov">          0 :   else if (!is_gnupg_default_homedir (newdir))</span>
+<span class="lineNum">     409 </span><span class="lineNoCov">          0 :     non_default_homedir = 1;</span>
+<span class="lineNum">     410 </span><span class="lineCov">          1 :   xfree (the_gnupg_homedir);</span>
+<span class="lineNum">     411 </span><span class="lineCov">          1 :   the_gnupg_homedir = make_absfilename (newdir, NULL);;</span>
+<span class="lineNum">     412 </span><span class="lineCov">          1 : }</span>
+<span class="lineNum">     413 </span>            : 
+<span class="lineNum">     414 </span>            : 
+<span class="lineNum">     415 </span>            : /* Return the homedir.  The returned string is valid until another
+<span class="lineNum">     416 </span>            :  * gnupg-set-homedir call.  This is always an absolute directory name.
+<a name="417"><span class="lineNum">     417 </span>            :  * The function replaces the former global var opt.homedir.  */</a>
+<span class="lineNum">     418 </span>            : const char *
+<span class="lineNum">     419 </span><span class="lineCov">         11 : gnupg_homedir (void)</span>
+<span class="lineNum">     420 </span>            : {
+<span class="lineNum">     421 </span>            :   /* If a homedir has not been set, set it to the default.  */
+<span class="lineNum">     422 </span><span class="lineCov">         11 :   if (!the_gnupg_homedir)</span>
+<span class="lineNum">     423 </span><span class="lineNoCov">          0 :     the_gnupg_homedir = make_absfilename (default_homedir (), NULL);</span>
+<span class="lineNum">     424 </span><span class="lineCov">         11 :   return the_gnupg_homedir;</span>
+<span class="lineNum">     425 </span>            : }
+<span class="lineNum">     426 </span>            : 
+<span class="lineNum">     427 </span>            : 
+<a name="428"><span class="lineNum">     428 </span>            : /* Return whether the home dir is the default one.  */</a>
+<span class="lineNum">     429 </span>            : int
+<span class="lineNum">     430 </span><span class="lineNoCov">          0 : gnupg_default_homedir_p (void)</span>
+<span class="lineNum">     431 </span>            : {
+<span class="lineNum">     432 </span><span class="lineNoCov">          0 :   return !non_default_homedir;</span>
+<span class="lineNum">     433 </span>            : }
+<span class="lineNum">     434 </span>            : 
+<span class="lineNum">     435 </span>            : 
+<span class="lineNum">     436 </span>            : /* Helper for gnupg-socketdir.  This is a global function, so that
+<span class="lineNum">     437 </span>            :  * gpgconf can use it for its --create-socketdir command.  If
+<span class="lineNum">     438 </span>            :  * SKIP_CHECKS is set permission checks etc. are not done.  The
+<span class="lineNum">     439 </span>            :  * function always returns a malloced directory name and stores these
+<span class="lineNum">     440 </span>            :  * bit flags at R_INFO:
+<span class="lineNum">     441 </span>            :  *
+<span class="lineNum">     442 </span>            :  *   1 := Internal error, stat failed, out of core, etc.
+<span class="lineNum">     443 </span>            :  *   2 := No /run/user directory.
+<span class="lineNum">     444 </span>            :  *   4 := Directory not owned by the user, not a directory
+<span class="lineNum">     445 </span>            :  *        or wrong permissions.
+<span class="lineNum">     446 </span>            :  *   8 := Same as 4 but for the subdir.
+<span class="lineNum">     447 </span>            :  *  16 := mkdir failed
+<span class="lineNum">     448 </span>            :  *  32 := Non default homedir; checking subdir.
+<span class="lineNum">     449 </span>            :  *  64 := Subdir does not exist.
+<span class="lineNum">     450 </span>            :  * 128 := Using homedir as fallback.
+<a name="451"><span class="lineNum">     451 </span>            :  */</a>
+<span class="lineNum">     452 </span>            : char *
+<span class="lineNum">     453 </span><span class="lineNoCov">          0 : _gnupg_socketdir_internal (int skip_checks, unsigned *r_info)</span>
+<span class="lineNum">     454 </span>            : {
+<span class="lineNum">     455 </span>            : #if defined(HAVE_W32_SYSTEM) || !defined(HAVE_STAT)
+<span class="lineNum">     456 </span>            : 
+<span class="lineNum">     457 </span>            :   char *name;
+<span class="lineNum">     458 </span>            : 
+<span class="lineNum">     459 </span>            :   (void)skip_checks;
+<span class="lineNum">     460 </span>            :   *r_info = 0;
+<span class="lineNum">     461 </span>            :   name = xstrdup (gnupg_homedir ());
+<span class="lineNum">     462 </span>            : 
+<span class="lineNum">     463 </span>            : #else /* Unix and stat(2) available. */
+<span class="lineNum">     464 </span>            : 
+<span class="lineNum">     465 </span>            :   static const char * const bases[] = { &quot;/run&quot;, &quot;/var/run&quot;, NULL};
+<span class="lineNum">     466 </span>            :   int i;
+<span class="lineNum">     467 </span>            :   struct stat sb;
+<span class="lineNum">     468 </span>            :   char prefix[13 + 1 + 20 + 6 + 1];
+<span class="lineNum">     469 </span>            :   const char *s;
+<span class="lineNum">     470 </span><span class="lineNoCov">          0 :   char *name = NULL;</span>
+<span class="lineNum">     471 </span>            : 
+<span class="lineNum">     472 </span><span class="lineNoCov">          0 :   *r_info = 0;</span>
+<span class="lineNum">     473 </span>            : 
+<span class="lineNum">     474 </span>            :   /* First make sure that non_default_homedir can be set.  */
+<span class="lineNum">     475 </span><span class="lineNoCov">          0 :   gnupg_homedir ();</span>
+<span class="lineNum">     476 </span>            : 
+<span class="lineNum">     477 </span>            :   /* It has been suggested to first check XDG_RUNTIME_DIR envvar.
+<span class="lineNum">     478 </span>            :    * However, the specs state that the lifetime of the directory MUST
+<span class="lineNum">     479 </span>            :    * be bound to the user being logged in.  Now GnuPG may also be run
+<span class="lineNum">     480 </span>            :    * as a background process with no (desktop) user logged in.  Thus
+<span class="lineNum">     481 </span>            :    * we better don't do that.  */
+<span class="lineNum">     482 </span>            : 
+<span class="lineNum">     483 </span>            :   /* Check whether we have a /run/user dir.  */
+<span class="lineNum">     484 </span><span class="lineNoCov">          0 :   for (i=0; bases[i]; i++)</span>
+<span class="lineNum">     485 </span>            :     {
+<span class="lineNum">     486 </span><span class="lineNoCov">          0 :       snprintf (prefix, sizeof prefix, &quot;%s/user/%u&quot;,</span>
+<span class="lineNum">     487 </span><span class="lineNoCov">          0 :                 bases[i], (unsigned int)getuid ());</span>
+<span class="lineNum">     488 </span><span class="lineNoCov">          0 :       if (!stat (prefix, &amp;sb) &amp;&amp; S_ISDIR(sb.st_mode))</span>
+<span class="lineNum">     489 </span><span class="lineNoCov">          0 :         break;</span>
+<span class="lineNum">     490 </span>            :     }
+<span class="lineNum">     491 </span><span class="lineNoCov">          0 :   if (!bases[i])</span>
+<span class="lineNum">     492 </span>            :     {
+<span class="lineNum">     493 </span><span class="lineNoCov">          0 :       *r_info |= 2; /* No /run/user directory.  */</span>
+<span class="lineNum">     494 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     495 </span>            :     }
+<span class="lineNum">     496 </span>            : 
+<span class="lineNum">     497 </span><span class="lineNoCov">          0 :   if (sb.st_uid != getuid ())</span>
+<span class="lineNum">     498 </span>            :     {
+<span class="lineNum">     499 </span><span class="lineNoCov">          0 :       *r_info |= 4; /* Not owned by the user.  */</span>
+<span class="lineNum">     500 </span><span class="lineNoCov">          0 :       if (!skip_checks)</span>
+<span class="lineNum">     501 </span><span class="lineNoCov">          0 :         goto leave;</span>
+<span class="lineNum">     502 </span>            :     }
+<span class="lineNum">     503 </span>            : 
+<span class="lineNum">     504 </span><span class="lineNoCov">          0 :   if (strlen (prefix) + 7 &gt;= sizeof prefix)</span>
+<span class="lineNum">     505 </span>            :     {
+<span class="lineNum">     506 </span><span class="lineNoCov">          0 :       *r_info |= 1; /* Ooops: Buffer too short to append &quot;/gnupg&quot;.  */</span>
+<span class="lineNum">     507 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     508 </span>            :     }
+<span class="lineNum">     509 </span><span class="lineNoCov">          0 :   strcat (prefix, &quot;/gnupg&quot;);</span>
+<span class="lineNum">     510 </span>            : 
+<span class="lineNum">     511 </span>            :   /* Check whether the gnupg sub directory has proper permissions.  */
+<span class="lineNum">     512 </span><span class="lineNoCov">          0 :   if (stat (prefix, &amp;sb))</span>
+<span class="lineNum">     513 </span>            :     {
+<span class="lineNum">     514 </span><span class="lineNoCov">          0 :       if (errno != ENOENT)</span>
+<span class="lineNum">     515 </span>            :         {
+<span class="lineNum">     516 </span><span class="lineNoCov">          0 :           *r_info |= 1; /* stat failed.  */</span>
+<span class="lineNum">     517 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     518 </span>            :         }
+<span class="lineNum">     519 </span>            : 
+<span class="lineNum">     520 </span>            :       /* Try to create the directory and check again.  */
+<span class="lineNum">     521 </span><span class="lineNoCov">          0 :       if (gnupg_mkdir (prefix, &quot;-rwx&quot;))</span>
+<span class="lineNum">     522 </span>            :         {
+<span class="lineNum">     523 </span><span class="lineNoCov">          0 :           *r_info |= 16; /* mkdir failed.  */</span>
+<span class="lineNum">     524 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     525 </span>            :         }
+<span class="lineNum">     526 </span><span class="lineNoCov">          0 :       if (stat (prefix, &amp;sb))</span>
+<span class="lineNum">     527 </span>            :         {
+<span class="lineNum">     528 </span><span class="lineNoCov">          0 :           *r_info |= 1; /* stat failed.  */</span>
+<span class="lineNum">     529 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     530 </span>            :         }
+<span class="lineNum">     531 </span>            :     }
+<span class="lineNum">     532 </span>            :   /* Check that it is a directory, owned by the user, and only the
+<span class="lineNum">     533 </span>            :    * user has permissions to use it.  */
+<span class="lineNum">     534 </span><span class="lineNoCov">          0 :   if (!S_ISDIR(sb.st_mode)</span>
+<span class="lineNum">     535 </span><span class="lineNoCov">          0 :       || sb.st_uid != getuid ()</span>
+<span class="lineNum">     536 </span><span class="lineNoCov">          0 :       || (sb.st_mode &amp; (S_IRWXG|S_IRWXO)))</span>
+<span class="lineNum">     537 </span>            :     {
+<span class="lineNum">     538 </span><span class="lineNoCov">          0 :       *r_info |= 4; /* Bad permissions or not a directory. */</span>
+<span class="lineNum">     539 </span><span class="lineNoCov">          0 :       if (!skip_checks)</span>
+<span class="lineNum">     540 </span><span class="lineNoCov">          0 :         goto leave;</span>
+<span class="lineNum">     541 </span>            :     }
+<span class="lineNum">     542 </span>            : 
+<span class="lineNum">     543 </span>            :   /* If a non default homedir is used, we check whether an
+<span class="lineNum">     544 </span>            :    * corresponding sub directory below the socket dir is available
+<span class="lineNum">     545 </span>            :    * and use that.  We hash the non default homedir to keep the new
+<span class="lineNum">     546 </span>            :    * subdir short enough.  */
+<span class="lineNum">     547 </span><span class="lineNoCov">          0 :   if (non_default_homedir)</span>
+<span class="lineNum">     548 </span>            :     {
+<span class="lineNum">     549 </span>            :       char sha1buf[20];
+<span class="lineNum">     550 </span>            :       char *suffix;
+<span class="lineNum">     551 </span>            : 
+<span class="lineNum">     552 </span><span class="lineNoCov">          0 :       *r_info |= 32; /* Testing subdir.  */</span>
+<span class="lineNum">     553 </span><span class="lineNoCov">          0 :       s = gnupg_homedir ();</span>
+<span class="lineNum">     554 </span><span class="lineNoCov">          0 :       gcry_md_hash_buffer (GCRY_MD_SHA1, sha1buf, s, strlen (s));</span>
+<span class="lineNum">     555 </span><span class="lineNoCov">          0 :       suffix = zb32_encode (sha1buf, 8*15);</span>
+<span class="lineNum">     556 </span><span class="lineNoCov">          0 :       if (!suffix)</span>
+<span class="lineNum">     557 </span>            :         {
+<span class="lineNum">     558 </span><span class="lineNoCov">          0 :           *r_info |= 1; /* Out of core etc. */</span>
+<span class="lineNum">     559 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     560 </span>            :         }
+<span class="lineNum">     561 </span><span class="lineNoCov">          0 :       name = strconcat (prefix, &quot;/d.&quot;, suffix, NULL);</span>
+<span class="lineNum">     562 </span><span class="lineNoCov">          0 :       xfree (suffix);</span>
+<span class="lineNum">     563 </span><span class="lineNoCov">          0 :       if (!name)</span>
+<span class="lineNum">     564 </span>            :         {
+<span class="lineNum">     565 </span><span class="lineNoCov">          0 :           *r_info |= 1; /* Out of core etc. */</span>
+<span class="lineNum">     566 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     567 </span>            :         }
+<span class="lineNum">     568 </span>            : 
+<span class="lineNum">     569 </span>            :       /* Stat that directory and check constraints.
+<span class="lineNum">     570 </span>            :        * The command
+<span class="lineNum">     571 </span>            :        *    gpgconf --remove-socketdir
+<span class="lineNum">     572 </span>            :        * can be used to remove that directory.  */
+<span class="lineNum">     573 </span><span class="lineNoCov">          0 :       if (stat (name, &amp;sb))</span>
+<span class="lineNum">     574 </span>            :         {
+<span class="lineNum">     575 </span><span class="lineNoCov">          0 :           if (errno != ENOENT)</span>
+<span class="lineNum">     576 </span><span class="lineNoCov">          0 :             *r_info |= 1; /* stat failed. */</span>
+<span class="lineNum">     577 </span><span class="lineNoCov">          0 :           else if (!skip_checks)</span>
+<span class="lineNum">     578 </span>            :             {
+<span class="lineNum">     579 </span>            :               /* Try to create the directory and check again.  */
+<span class="lineNum">     580 </span><span class="lineNoCov">          0 :               if (gnupg_mkdir (name, &quot;-rwx&quot;))</span>
+<span class="lineNum">     581 </span><span class="lineNoCov">          0 :                 *r_info |= 16; /* mkdir failed.  */</span>
+<span class="lineNum">     582 </span><span class="lineNoCov">          0 :               else if (stat (prefix, &amp;sb))</span>
+<span class="lineNum">     583 </span>            :                 {
+<span class="lineNum">     584 </span><span class="lineNoCov">          0 :                   if (errno != ENOENT)</span>
+<span class="lineNum">     585 </span><span class="lineNoCov">          0 :                     *r_info |= 1; /* stat failed. */</span>
+<span class="lineNum">     586 </span>            :                   else
+<span class="lineNum">     587 </span><span class="lineNoCov">          0 :                     *r_info |= 64; /* Subdir does not exist.  */</span>
+<span class="lineNum">     588 </span>            :                 }
+<span class="lineNum">     589 </span>            :               else
+<span class="lineNum">     590 </span><span class="lineNoCov">          0 :                 goto leave; /* Success!  */</span>
+<span class="lineNum">     591 </span>            :             }
+<span class="lineNum">     592 </span>            :           else
+<span class="lineNum">     593 </span><span class="lineNoCov">          0 :             *r_info |= 64; /* Subdir does not exist.  */</span>
+<span class="lineNum">     594 </span><span class="lineNoCov">          0 :           if (!skip_checks)</span>
+<span class="lineNum">     595 </span>            :             {
+<span class="lineNum">     596 </span><span class="lineNoCov">          0 :               xfree (name);</span>
+<span class="lineNum">     597 </span><span class="lineNoCov">          0 :               name = NULL;</span>
+<span class="lineNum">     598 </span><span class="lineNoCov">          0 :               goto leave;</span>
+<span class="lineNum">     599 </span>            :             }
+<span class="lineNum">     600 </span>            :         }
+<span class="lineNum">     601 </span><span class="lineNoCov">          0 :       else if (!S_ISDIR(sb.st_mode)</span>
+<span class="lineNum">     602 </span><span class="lineNoCov">          0 :                || sb.st_uid != getuid ()</span>
+<span class="lineNum">     603 </span><span class="lineNoCov">          0 :                || (sb.st_mode &amp; (S_IRWXG|S_IRWXO)))</span>
+<span class="lineNum">     604 </span>            :         {
+<span class="lineNum">     605 </span><span class="lineNoCov">          0 :           *r_info |= 8; /* Bad permissions or subdir is not a directory.  */</span>
+<span class="lineNum">     606 </span><span class="lineNoCov">          0 :           if (!skip_checks)</span>
+<span class="lineNum">     607 </span>            :             {
+<span class="lineNum">     608 </span><span class="lineNoCov">          0 :               xfree (name);</span>
+<span class="lineNum">     609 </span><span class="lineNoCov">          0 :               name = NULL;</span>
+<span class="lineNum">     610 </span><span class="lineNoCov">          0 :               goto leave;</span>
+<span class="lineNum">     611 </span>            :             }
+<span class="lineNum">     612 </span>            :         }
+<span class="lineNum">     613 </span>            :     }
+<span class="lineNum">     614 </span>            :   else
+<span class="lineNum">     615 </span><span class="lineNoCov">          0 :     name = xstrdup (prefix);</span>
+<span class="lineNum">     616 </span>            : 
+<span class="lineNum">     617 </span>            :  leave:
+<span class="lineNum">     618 </span>            :   /* If nothing works fall back to the homedir.  */
+<span class="lineNum">     619 </span><span class="lineNoCov">          0 :   if (!name)</span>
+<span class="lineNum">     620 </span>            :     {
+<span class="lineNum">     621 </span><span class="lineNoCov">          0 :       *r_info |= 128; /* Fallback.  */</span>
+<span class="lineNum">     622 </span><span class="lineNoCov">          0 :       name = xstrdup (gnupg_homedir ());</span>
+<span class="lineNum">     623 </span>            :     }
+<span class="lineNum">     624 </span>            : 
+<span class="lineNum">     625 </span>            : #endif /* Unix */
+<span class="lineNum">     626 </span>            : 
+<span class="lineNum">     627 </span><span class="lineNoCov">          0 :   return name;</span>
+<span class="lineNum">     628 </span>            : }
+<span class="lineNum">     629 </span>            : 
+<span class="lineNum">     630 </span>            : 
+<span class="lineNum">     631 </span>            : /*
+<span class="lineNum">     632 </span>            :  * Return the name of the socket dir.  That is the directory used for
+<span class="lineNum">     633 </span>            :  * the IPC local sockets.  This is an absolute directory name.
+<a name="634"><span class="lineNum">     634 </span>            :  */</a>
+<span class="lineNum">     635 </span>            : const char *
+<span class="lineNum">     636 </span><span class="lineNoCov">          0 : gnupg_socketdir (void)</span>
+<span class="lineNum">     637 </span>            : {
+<span class="lineNum">     638 </span>            :   static char *name;
+<span class="lineNum">     639 </span>            : 
+<span class="lineNum">     640 </span><span class="lineNoCov">          0 :   if (!name)</span>
+<span class="lineNum">     641 </span>            :     {
+<span class="lineNum">     642 </span>            :       unsigned int dummy;
+<span class="lineNum">     643 </span><span class="lineNoCov">          0 :       name = _gnupg_socketdir_internal (0, &amp;dummy);</span>
+<span class="lineNum">     644 </span>            :     }
+<span class="lineNum">     645 </span>            : 
+<span class="lineNum">     646 </span><span class="lineNoCov">          0 :   return name;</span>
+<span class="lineNum">     647 </span>            : }
+<span class="lineNum">     648 </span>            : 
+<span class="lineNum">     649 </span>            : 
+<span class="lineNum">     650 </span>            : /* Return the name of the sysconfdir.  This is a static string.  This
+<span class="lineNum">     651 </span>            :    function is required because under Windows we can't simply compile
+<a name="652"><span class="lineNum">     652 </span>            :    it in.  */</a>
+<span class="lineNum">     653 </span>            : const char *
+<span class="lineNum">     654 </span><span class="lineNoCov">          0 : gnupg_sysconfdir (void)</span>
+<span class="lineNum">     655 </span>            : {
+<span class="lineNum">     656 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     657 </span>            :   static char *name;
+<span class="lineNum">     658 </span>            : 
+<span class="lineNum">     659 </span>            :   if (!name)
+<span class="lineNum">     660 </span>            :     {
+<span class="lineNum">     661 </span>            :       const char *s1, *s2;
+<span class="lineNum">     662 </span>            :       s1 = w32_commondir ();
+<span class="lineNum">     663 </span>            :       s2 = DIRSEP_S &quot;etc&quot; DIRSEP_S &quot;gnupg&quot;;
+<span class="lineNum">     664 </span>            :       name = xmalloc (strlen (s1) + strlen (s2) + 1);
+<span class="lineNum">     665 </span>            :       strcpy (stpcpy (name, s1), s2);
+<span class="lineNum">     666 </span>            :     }
+<span class="lineNum">     667 </span>            :   return name;
+<span class="lineNum">     668 </span>            : #else /*!HAVE_W32_SYSTEM*/
+<span class="lineNum">     669 </span><span class="lineNoCov">          0 :   return GNUPG_SYSCONFDIR;</span>
+<span class="lineNum">     670 </span>            : #endif /*!HAVE_W32_SYSTEM*/
+<span class="lineNum">     671 </span>            : }
+<span class="lineNum">     672 </span>            : 
+<a name="673"><span class="lineNum">     673 </span>            : </a>
+<span class="lineNum">     674 </span>            : const char *
+<span class="lineNum">     675 </span><span class="lineNoCov">          0 : gnupg_bindir (void)</span>
+<span class="lineNum">     676 </span>            : {
+<span class="lineNum">     677 </span>            : #if defined (HAVE_W32CE_SYSTEM)
+<span class="lineNum">     678 </span>            :   static char *name;
+<span class="lineNum">     679 </span>            : 
+<span class="lineNum">     680 </span>            :   if (!name)
+<span class="lineNum">     681 </span>            :     name = xstrconcat (w32_rootdir (), DIRSEP_S &quot;bin&quot;, NULL);
+<span class="lineNum">     682 </span>            :   return name;
+<span class="lineNum">     683 </span>            : #elif defined(HAVE_W32_SYSTEM)
+<span class="lineNum">     684 </span>            :   const char *rdir;
+<span class="lineNum">     685 </span>            : 
+<span class="lineNum">     686 </span>            :   rdir = w32_rootdir ();
+<span class="lineNum">     687 </span>            :   if (w32_bin_is_bin)
+<span class="lineNum">     688 </span>            :     {
+<span class="lineNum">     689 </span>            :       static char *name;
+<span class="lineNum">     690 </span>            : 
+<span class="lineNum">     691 </span>            :       if (!name)
+<span class="lineNum">     692 </span>            :         name = xstrconcat (rdir, DIRSEP_S &quot;bin&quot;, NULL);
+<span class="lineNum">     693 </span>            :       return name;
+<span class="lineNum">     694 </span>            :     }
+<span class="lineNum">     695 </span>            :   else
+<span class="lineNum">     696 </span>            :     return rdir;
+<span class="lineNum">     697 </span>            : #else /*!HAVE_W32_SYSTEM*/
+<span class="lineNum">     698 </span><span class="lineNoCov">          0 :   return GNUPG_BINDIR;</span>
+<span class="lineNum">     699 </span>            : #endif /*!HAVE_W32_SYSTEM*/
+<span class="lineNum">     700 </span>            : }
+<span class="lineNum">     701 </span>            : 
+<span class="lineNum">     702 </span>            : 
+<span class="lineNum">     703 </span>            : /* Return the name of the libexec directory.  The name is allocated in
+<a name="704"><span class="lineNum">     704 </span>            :    a static area on the first use.  This function won't fail. */</a>
+<span class="lineNum">     705 </span>            : const char *
+<span class="lineNum">     706 </span><span class="lineNoCov">          0 : gnupg_libexecdir (void)</span>
+<span class="lineNum">     707 </span>            : {
+<span class="lineNum">     708 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     709 </span>            :   return gnupg_bindir ();
+<span class="lineNum">     710 </span>            : #else /*!HAVE_W32_SYSTEM*/
+<span class="lineNum">     711 </span><span class="lineNoCov">          0 :   return GNUPG_LIBEXECDIR;</span>
+<span class="lineNum">     712 </span>            : #endif /*!HAVE_W32_SYSTEM*/
+<span class="lineNum">     713 </span>            : }
+<a name="714"><span class="lineNum">     714 </span>            : </a>
+<span class="lineNum">     715 </span>            : const char *
+<span class="lineNum">     716 </span><span class="lineNoCov">          0 : gnupg_libdir (void)</span>
+<span class="lineNum">     717 </span>            : {
+<span class="lineNum">     718 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     719 </span>            :   static char *name;
+<span class="lineNum">     720 </span>            : 
+<span class="lineNum">     721 </span>            :   if (!name)
+<span class="lineNum">     722 </span>            :     name = xstrconcat (w32_rootdir (), DIRSEP_S &quot;lib&quot; DIRSEP_S &quot;gnupg&quot;, NULL);
+<span class="lineNum">     723 </span>            :   return name;
+<span class="lineNum">     724 </span>            : #else /*!HAVE_W32_SYSTEM*/
+<span class="lineNum">     725 </span><span class="lineNoCov">          0 :   return GNUPG_LIBDIR;</span>
+<span class="lineNum">     726 </span>            : #endif /*!HAVE_W32_SYSTEM*/
+<span class="lineNum">     727 </span>            : }
+<a name="728"><span class="lineNum">     728 </span>            : </a>
+<span class="lineNum">     729 </span>            : const char *
+<span class="lineNum">     730 </span><span class="lineNoCov">          0 : gnupg_datadir (void)</span>
+<span class="lineNum">     731 </span>            : {
+<span class="lineNum">     732 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     733 </span>            :   static char *name;
+<span class="lineNum">     734 </span>            : 
+<span class="lineNum">     735 </span>            :   if (!name)
+<span class="lineNum">     736 </span>            :     name = xstrconcat (w32_rootdir (), DIRSEP_S &quot;share&quot; DIRSEP_S &quot;gnupg&quot;, NULL);
+<span class="lineNum">     737 </span>            :   return name;
+<span class="lineNum">     738 </span>            : #else /*!HAVE_W32_SYSTEM*/
+<span class="lineNum">     739 </span><span class="lineNoCov">          0 :   return GNUPG_DATADIR;</span>
+<span class="lineNum">     740 </span>            : #endif /*!HAVE_W32_SYSTEM*/
+<span class="lineNum">     741 </span>            : }
+<span class="lineNum">     742 </span>            : 
+<a name="743"><span class="lineNum">     743 </span>            : </a>
+<span class="lineNum">     744 </span>            : const char *
+<span class="lineNum">     745 </span><span class="lineNoCov">          0 : gnupg_localedir (void)</span>
+<span class="lineNum">     746 </span>            : {
+<span class="lineNum">     747 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     748 </span>            :   static char *name;
+<span class="lineNum">     749 </span>            : 
+<span class="lineNum">     750 </span>            :   if (!name)
+<span class="lineNum">     751 </span>            :     name = xstrconcat (w32_rootdir (), DIRSEP_S &quot;share&quot; DIRSEP_S &quot;locale&quot;,
+<span class="lineNum">     752 </span>            :                        NULL);
+<span class="lineNum">     753 </span>            :   return name;
+<span class="lineNum">     754 </span>            : #else /*!HAVE_W32_SYSTEM*/
+<span class="lineNum">     755 </span><span class="lineNoCov">          0 :   return LOCALEDIR;</span>
+<span class="lineNum">     756 </span>            : #endif /*!HAVE_W32_SYSTEM*/
+<span class="lineNum">     757 </span>            : }
+<span class="lineNum">     758 </span>            : 
+<span class="lineNum">     759 </span>            : 
+<span class="lineNum">     760 </span>            : /* Return the name of the cache directory.  The name is allocated in a
+<span class="lineNum">     761 </span>            :    static area on the first use.  Windows only: If the directory does
+<a name="762"><span class="lineNum">     762 </span>            :    not exist it is created.  */</a>
+<span class="lineNum">     763 </span>            : const char *
+<span class="lineNum">     764 </span><span class="lineNoCov">          0 : gnupg_cachedir (void)</span>
+<span class="lineNum">     765 </span>            : {
+<span class="lineNum">     766 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     767 </span>            :   static const char *dir;
+<span class="lineNum">     768 </span>            : 
+<span class="lineNum">     769 </span>            :   if (!dir)
+<span class="lineNum">     770 </span>            :     {
+<span class="lineNum">     771 </span>            :       const char *rdir;
+<span class="lineNum">     772 </span>            : 
+<span class="lineNum">     773 </span>            :       rdir = w32_rootdir ();
+<span class="lineNum">     774 </span>            :       if (w32_portable_app)
+<span class="lineNum">     775 </span>            :         {
+<span class="lineNum">     776 </span>            :           dir = xstrconcat (rdir,
+<span class="lineNum">     777 </span>            :                             DIRSEP_S, &quot;var&quot;,
+<span class="lineNum">     778 </span>            :                             DIRSEP_S, &quot;cache&quot;,
+<span class="lineNum">     779 </span>            :                             DIRSEP_S, &quot;gnupg&quot;, NULL);
+<span class="lineNum">     780 </span>            :         }
+<span class="lineNum">     781 </span>            :       else
+<span class="lineNum">     782 </span>            :         {
+<span class="lineNum">     783 </span>            :           char path[MAX_PATH];
+<span class="lineNum">     784 </span>            :           const char *s1[] = { &quot;GNU&quot;, &quot;cache&quot;, &quot;gnupg&quot;, NULL };
+<span class="lineNum">     785 </span>            :           int s1_len;
+<span class="lineNum">     786 </span>            :           const char **comp;
+<span class="lineNum">     787 </span>            : 
+<span class="lineNum">     788 </span>            :           s1_len = 0;
+<span class="lineNum">     789 </span>            :           for (comp = s1; *comp; comp++)
+<span class="lineNum">     790 </span>            :             s1_len += 1 + strlen (*comp);
+<span class="lineNum">     791 </span>            : 
+<span class="lineNum">     792 </span>            :           if (w32_shgetfolderpath (NULL, CSIDL_LOCAL_APPDATA|CSIDL_FLAG_CREATE,
+<span class="lineNum">     793 </span>            :                                    NULL, 0, path) &gt;= 0)
+<span class="lineNum">     794 </span>            :             {
+<span class="lineNum">     795 </span>            :               char *tmp = xmalloc (strlen (path) + s1_len + 1);
+<span class="lineNum">     796 </span>            :               char *p;
+<span class="lineNum">     797 </span>            : 
+<span class="lineNum">     798 </span>            :               p = stpcpy (tmp, path);
+<span class="lineNum">     799 </span>            :               for (comp = s1; *comp; comp++)
+<span class="lineNum">     800 </span>            :                 {
+<span class="lineNum">     801 </span>            :                   p = stpcpy (p, &quot;\\&quot;);
+<span class="lineNum">     802 </span>            :                   p = stpcpy (p, *comp);
+<span class="lineNum">     803 </span>            : 
+<span class="lineNum">     804 </span>            :                   if (access (tmp, F_OK))
+<span class="lineNum">     805 </span>            :                     w32_try_mkdir (tmp);
+<span class="lineNum">     806 </span>            :                 }
+<span class="lineNum">     807 </span>            : 
+<span class="lineNum">     808 </span>            :               dir = tmp;
+<span class="lineNum">     809 </span>            :             }
+<span class="lineNum">     810 </span>            :           else
+<span class="lineNum">     811 </span>            :             {
+<span class="lineNum">     812 </span>            :               dir = &quot;c:\\temp\\cache\\gnupg&quot;;
+<span class="lineNum">     813 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">     814 </span>            :               dir += 2;
+<span class="lineNum">     815 </span>            :               w32_try_mkdir (&quot;\\temp\\cache&quot;);
+<span class="lineNum">     816 </span>            :               w32_try_mkdir (&quot;\\temp\\cache\\gnupg&quot;);
+<span class="lineNum">     817 </span>            : #endif
+<span class="lineNum">     818 </span>            :             }
+<span class="lineNum">     819 </span>            :         }
+<span class="lineNum">     820 </span>            :     }
+<span class="lineNum">     821 </span>            :   return dir;
+<span class="lineNum">     822 </span>            : #else /*!HAVE_W32_SYSTEM*/
+<span class="lineNum">     823 </span><span class="lineNoCov">          0 :   return GNUPG_LOCALSTATEDIR &quot;/cache/&quot; PACKAGE_NAME;</span>
+<span class="lineNum">     824 </span>            : #endif /*!HAVE_W32_SYSTEM*/
+<span class="lineNum">     825 </span>            : }
+<span class="lineNum">     826 </span>            : 
+<span class="lineNum">     827 </span>            : 
+<a name="828"><span class="lineNum">     828 </span>            : /* Return the user socket name used by DirMngr.  */</a>
+<span class="lineNum">     829 </span>            : const char *
+<span class="lineNum">     830 </span><span class="lineNoCov">          0 : dirmngr_socket_name (void)</span>
+<span class="lineNum">     831 </span>            : {
+<span class="lineNum">     832 </span>            :   static char *name;
+<span class="lineNum">     833 </span>            : 
+<span class="lineNum">     834 </span><span class="lineNoCov">          0 :   if (!name)</span>
+<span class="lineNum">     835 </span><span class="lineNoCov">          0 :     name = make_filename (gnupg_socketdir (), DIRMNGR_SOCK_NAME, NULL);</span>
+<span class="lineNum">     836 </span><span class="lineNoCov">          0 :   return name;</span>
+<span class="lineNum">     837 </span>            : }
+<span class="lineNum">     838 </span>            : 
+<span class="lineNum">     839 </span>            : 
+<span class="lineNum">     840 </span>            : /* Return the default pinentry name.  If RESET is true the internal
+<a name="841"><span class="lineNum">     841 </span>            :    cache is first flushed.  */</a>
+<span class="lineNum">     842 </span>            : static const char *
+<span class="lineNum">     843 </span><span class="lineNoCov">          0 : get_default_pinentry_name (int reset)</span>
+<span class="lineNum">     844 </span>            : {
+<span class="lineNum">     845 </span>            :   static struct {
+<span class="lineNum">     846 </span>            :     const char *(*rfnc)(void);
+<span class="lineNum">     847 </span>            :     const char *name;
+<span class="lineNum">     848 </span>            :   } names[] = {
+<span class="lineNum">     849 </span>            :     /* The first entry is what we return in case we found no
+<span class="lineNum">     850 </span>            :        other pinentry.  */
+<span class="lineNum">     851 </span>            :     { gnupg_bindir, DIRSEP_S &quot;pinentry&quot; EXEEXT_S },
+<span class="lineNum">     852 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     853 </span>            :     /* Try Gpg4win directory (with bin and without.) */
+<span class="lineNum">     854 </span>            :     { w32_rootdir, &quot;\\..\\Gpg4win\\bin\\pinentry.exe&quot; },
+<span class="lineNum">     855 </span>            :     { w32_rootdir, &quot;\\..\\Gpg4win\\pinentry.exe&quot; },
+<span class="lineNum">     856 </span>            :     /* Try old Gpgwin directory.  */
+<span class="lineNum">     857 </span>            :     { w32_rootdir, &quot;\\..\\GNU\\GnuPG\\pinentry.exe&quot; },
+<span class="lineNum">     858 </span>            :     /* Try a Pinentry from the common GNU dir.  */
+<span class="lineNum">     859 </span>            :     { w32_rootdir, &quot;\\..\\GNU\\bin\\pinentry.exe&quot; },
+<span class="lineNum">     860 </span>            : #endif
+<span class="lineNum">     861 </span>            :     /* Last chance is a pinentry-basic (which comes with the
+<span class="lineNum">     862 </span>            :        GnuPG 2.1 Windows installer).  */
+<span class="lineNum">     863 </span>            :     { gnupg_bindir, DIRSEP_S &quot;pinentry-basic&quot; EXEEXT_S }
+<span class="lineNum">     864 </span>            :   };
+<span class="lineNum">     865 </span>            :   static char *name;
+<span class="lineNum">     866 </span>            : 
+<span class="lineNum">     867 </span><span class="lineNoCov">          0 :   if (reset)</span>
+<span class="lineNum">     868 </span>            :     {
+<span class="lineNum">     869 </span><span class="lineNoCov">          0 :       xfree (name);</span>
+<span class="lineNum">     870 </span><span class="lineNoCov">          0 :       name = NULL;</span>
+<span class="lineNum">     871 </span>            :     }
+<span class="lineNum">     872 </span>            : 
+<span class="lineNum">     873 </span><span class="lineNoCov">          0 :   if (!name)</span>
+<span class="lineNum">     874 </span>            :     {
+<span class="lineNum">     875 </span>            :       int i;
+<span class="lineNum">     876 </span>            : 
+<span class="lineNum">     877 </span><span class="lineNoCov">          0 :       for (i=0; i &lt; DIM(names); i++)</span>
+<span class="lineNum">     878 </span>            :         {
+<span class="lineNum">     879 </span>            :           char *name2;
+<span class="lineNum">     880 </span>            : 
+<span class="lineNum">     881 </span><span class="lineNoCov">          0 :           name2 = xstrconcat (names[i].rfnc (), names[i].name, NULL);</span>
+<span class="lineNum">     882 </span><span class="lineNoCov">          0 :           if (!access (name2, F_OK))</span>
+<span class="lineNum">     883 </span>            :             {
+<span class="lineNum">     884 </span>            :               /* Use that pinentry.  */
+<span class="lineNum">     885 </span><span class="lineNoCov">          0 :               xfree (name);</span>
+<span class="lineNum">     886 </span><span class="lineNoCov">          0 :               name = name2;</span>
+<span class="lineNum">     887 </span><span class="lineNoCov">          0 :               break;</span>
+<span class="lineNum">     888 </span>            :             }
+<span class="lineNum">     889 </span><span class="lineNoCov">          0 :           if (!i) /* Store the first as fallback return.  */</span>
+<span class="lineNum">     890 </span><span class="lineNoCov">          0 :             name = name2;</span>
+<span class="lineNum">     891 </span>            :           else
+<span class="lineNum">     892 </span><span class="lineNoCov">          0 :             xfree (name2);</span>
+<span class="lineNum">     893 </span>            :         }
+<span class="lineNum">     894 </span>            :     }
+<span class="lineNum">     895 </span>            : 
+<span class="lineNum">     896 </span><span class="lineNoCov">          0 :   return name;</span>
+<span class="lineNum">     897 </span>            : }
+<span class="lineNum">     898 </span>            : 
+<span class="lineNum">     899 </span>            : 
+<span class="lineNum">     900 </span>            : /* If set, 'gnupg_module_name' returns modules from that build
+<span class="lineNum">     901 </span>            :  * directory.  */
+<span class="lineNum">     902 </span>            : static char *gnupg_build_directory;
+<span class="lineNum">     903 </span>            : 
+<span class="lineNum">     904 </span>            : /* For sanity checks.  */
+<span class="lineNum">     905 </span>            : static int gnupg_module_name_called;
+<span class="lineNum">     906 </span>            : 
+<span class="lineNum">     907 </span>            : 
+<span class="lineNum">     908 </span>            : /* Set NEWDIR as the new build directory.  This will make
+<span class="lineNum">     909 </span>            :  * 'gnupg_module_name' return modules from that build directory.  Must
+<span class="lineNum">     910 </span>            :  * be called before any invocation of 'gnupg_module_name', and must
+<span class="lineNum">     911 </span>            :  * not be called twice.  It can be used by test suites to make sure
+<span class="lineNum">     912 </span>            :  * the components from the build directory are used instead of
+<a name="913"><span class="lineNum">     913 </span>            :  * potentially outdated installed ones.  */</a>
+<span class="lineNum">     914 </span>            : void
+<span class="lineNum">     915 </span><span class="lineNoCov">          0 : gnupg_set_builddir (const char *newdir)</span>
+<span class="lineNum">     916 </span>            : {
+<span class="lineNum">     917 </span><span class="lineNoCov">          0 :   log_assert (! gnupg_module_name_called);</span>
+<span class="lineNum">     918 </span><span class="lineNoCov">          0 :   log_assert (! gnupg_build_directory);</span>
+<span class="lineNum">     919 </span><span class="lineNoCov">          0 :   gnupg_build_directory = xtrystrdup (newdir);</span>
+<span class="lineNum">     920 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     921 </span>            : 
+<span class="lineNum">     922 </span>            : 
+<span class="lineNum">     923 </span>            : /* If no build directory has been configured, try to set it from the
+<span class="lineNum">     924 </span>            :  * environment.  We only do this in development builds to avoid
+<span class="lineNum">     925 </span>            :  * increasing the set of influential environment variables and hence
+<a name="926"><span class="lineNum">     926 </span>            :  * the attack surface of production builds.  */</a>
+<span class="lineNum">     927 </span>            : static void
+<span class="lineNum">     928 </span><span class="lineNoCov">          0 : gnupg_set_builddir_from_env (void)</span>
+<span class="lineNum">     929 </span>            : {
+<span class="lineNum">     930 </span>            : #if defined(IS_DEVELOPMENT_VERSION) || defined(ENABLE_GNUPG_BUILDDIR_ENVVAR)
+<span class="lineNum">     931 </span>            :   if (gnupg_build_directory)
+<span class="lineNum">     932 </span>            :     return;
+<span class="lineNum">     933 </span>            : 
+<span class="lineNum">     934 </span>            :   gnupg_build_directory = getenv (&quot;GNUPG_BUILDDIR&quot;);
+<span class="lineNum">     935 </span>            : #endif
+<span class="lineNum">     936 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     937 </span>            : 
+<span class="lineNum">     938 </span>            : 
+<span class="lineNum">     939 </span>            : /* Return the file name of a helper tool.  WHICH is one of the
+<a name="940"><span class="lineNum">     940 </span>            :    GNUPG_MODULE_NAME_foo constants.  */</a>
+<span class="lineNum">     941 </span>            : const char *
+<span class="lineNum">     942 </span><span class="lineNoCov">          0 : gnupg_module_name (int which)</span>
+<span class="lineNum">     943 </span>            : {
+<span class="lineNum">     944 </span><span class="lineNoCov">          0 :   gnupg_set_builddir_from_env ();</span>
+<span class="lineNum">     945 </span><span class="lineNoCov">          0 :   gnupg_module_name_called = 1;</span>
+<span class="lineNum">     946 </span>            : 
+<span class="lineNum">     947 </span>            : #define X(a,b,c) do {                                                   \
+<span class="lineNum">     948 </span>            :     static char *name;                                                  \
+<span class="lineNum">     949 </span>            :     if (!name)                                                          \
+<span class="lineNum">     950 </span>            :       name = gnupg_build_directory                                      \
+<span class="lineNum">     951 </span>            :         ? xstrconcat (gnupg_build_directory,                            \
+<span class="lineNum">     952 </span>            :                       DIRSEP_S b DIRSEP_S c EXEEXT_S, NULL)             \
+<span class="lineNum">     953 </span>            :         : xstrconcat (gnupg_ ## a (), DIRSEP_S c EXEEXT_S, NULL);       \
+<span class="lineNum">     954 </span>            :     return name;                                                        \
+<span class="lineNum">     955 </span>            :   } while (0)
+<span class="lineNum">     956 </span>            : 
+<span class="lineNum">     957 </span><span class="lineNoCov">          0 :   switch (which)</span>
+<span class="lineNum">     958 </span>            :     {
+<span class="lineNum">     959 </span>            :     case GNUPG_MODULE_NAME_AGENT:
+<span class="lineNum">     960 </span>            : #ifdef GNUPG_DEFAULT_AGENT
+<span class="lineNum">     961 </span>            :       return GNUPG_DEFAULT_AGENT;
+<span class="lineNum">     962 </span>            : #else
+<span class="lineNum">     963 </span><span class="lineNoCov">          0 :       X(bindir, &quot;agent&quot;, &quot;gpg-agent&quot;);</span>
+<span class="lineNum">     964 </span>            : #endif
+<span class="lineNum">     965 </span>            : 
+<span class="lineNum">     966 </span>            :     case GNUPG_MODULE_NAME_PINENTRY:
+<span class="lineNum">     967 </span>            : #ifdef GNUPG_DEFAULT_PINENTRY
+<span class="lineNum">     968 </span>            :       return GNUPG_DEFAULT_PINENTRY;  /* (Set by a configure option) */
+<span class="lineNum">     969 </span>            : #else
+<span class="lineNum">     970 </span><span class="lineNoCov">          0 :       return get_default_pinentry_name (0);</span>
+<span class="lineNum">     971 </span>            : #endif
+<span class="lineNum">     972 </span>            : 
+<span class="lineNum">     973 </span>            :     case GNUPG_MODULE_NAME_SCDAEMON:
+<span class="lineNum">     974 </span>            : #ifdef GNUPG_DEFAULT_SCDAEMON
+<span class="lineNum">     975 </span>            :       return GNUPG_DEFAULT_SCDAEMON;
+<span class="lineNum">     976 </span>            : #else
+<span class="lineNum">     977 </span><span class="lineNoCov">          0 :       X(libexecdir, &quot;scd&quot;, &quot;scdaemon&quot;);</span>
+<span class="lineNum">     978 </span>            : #endif
+<span class="lineNum">     979 </span>            : 
+<span class="lineNum">     980 </span>            :     case GNUPG_MODULE_NAME_DIRMNGR:
+<span class="lineNum">     981 </span>            : #ifdef GNUPG_DEFAULT_DIRMNGR
+<span class="lineNum">     982 </span>            :       return GNUPG_DEFAULT_DIRMNGR;
+<span class="lineNum">     983 </span>            : #else
+<span class="lineNum">     984 </span><span class="lineNoCov">          0 :       X(bindir, &quot;dirmngr&quot;, DIRMNGR_NAME);</span>
+<span class="lineNum">     985 </span>            : #endif
+<span class="lineNum">     986 </span>            : 
+<span class="lineNum">     987 </span>            :     case GNUPG_MODULE_NAME_PROTECT_TOOL:
+<span class="lineNum">     988 </span>            : #ifdef GNUPG_DEFAULT_PROTECT_TOOL
+<span class="lineNum">     989 </span>            :       return GNUPG_DEFAULT_PROTECT_TOOL;
+<span class="lineNum">     990 </span>            : #else
+<span class="lineNum">     991 </span><span class="lineNoCov">          0 :       X(libexecdir, &quot;agent&quot;, &quot;gpg-protect-tool&quot;);</span>
+<span class="lineNum">     992 </span>            : #endif
+<span class="lineNum">     993 </span>            : 
+<span class="lineNum">     994 </span>            :     case GNUPG_MODULE_NAME_DIRMNGR_LDAP:
+<span class="lineNum">     995 </span>            : #ifdef GNUPG_DEFAULT_DIRMNGR_LDAP
+<span class="lineNum">     996 </span>            :       return GNUPG_DEFAULT_DIRMNGR_LDAP;
+<span class="lineNum">     997 </span>            : #else
+<span class="lineNum">     998 </span><span class="lineNoCov">          0 :       X(libexecdir, &quot;dirmngr&quot;, &quot;dirmngr_ldap&quot;);</span>
+<span class="lineNum">     999 </span>            : #endif
+<span class="lineNum">    1000 </span>            : 
+<span class="lineNum">    1001 </span>            :     case GNUPG_MODULE_NAME_CHECK_PATTERN:
+<span class="lineNum">    1002 </span><span class="lineNoCov">          0 :       X(libexecdir, &quot;tools&quot;, &quot;gpg-check-pattern&quot;);</span>
+<span class="lineNum">    1003 </span>            : 
+<span class="lineNum">    1004 </span>            :     case GNUPG_MODULE_NAME_GPGSM:
+<span class="lineNum">    1005 </span><span class="lineNoCov">          0 :       X(bindir, &quot;sm&quot;, &quot;gpgsm&quot;);</span>
+<span class="lineNum">    1006 </span>            : 
+<span class="lineNum">    1007 </span>            :     case GNUPG_MODULE_NAME_GPG:
+<span class="lineNum">    1008 </span>            : #if USE_GPG2_HACK
+<span class="lineNum">    1009 </span><span class="lineNoCov">          0 :       if (! gnupg_build_directory)</span>
+<span class="lineNum">    1010 </span><span class="lineNoCov">          0 :         X(bindir, &quot;g10&quot;, GPG_NAME &quot;2&quot;);</span>
+<span class="lineNum">    1011 </span>            :       else
+<span class="lineNum">    1012 </span>            : #endif
+<span class="lineNum">    1013 </span><span class="lineNoCov">          0 :         X(bindir, &quot;g10&quot;, GPG_NAME);</span>
+<span class="lineNum">    1014 </span>            : 
+<span class="lineNum">    1015 </span>            :     case GNUPG_MODULE_NAME_GPGV:
+<span class="lineNum">    1016 </span>            : #if USE_GPG2_HACK
+<span class="lineNum">    1017 </span><span class="lineNoCov">          0 :       if (! gnupg_build_directory)</span>
+<span class="lineNum">    1018 </span><span class="lineNoCov">          0 :         X(bindir, &quot;g10&quot;, GPG_NAME &quot;v2&quot;);</span>
+<span class="lineNum">    1019 </span>            :       else
+<span class="lineNum">    1020 </span>            : #endif
+<span class="lineNum">    1021 </span><span class="lineNoCov">          0 :         X(bindir, &quot;g10&quot;, GPG_NAME &quot;v&quot;);</span>
+<span class="lineNum">    1022 </span>            : 
+<span class="lineNum">    1023 </span>            :     case GNUPG_MODULE_NAME_CONNECT_AGENT:
+<span class="lineNum">    1024 </span><span class="lineNoCov">          0 :       X(bindir, &quot;tools&quot;, &quot;gpg-connect-agent&quot;);</span>
+<span class="lineNum">    1025 </span>            : 
+<span class="lineNum">    1026 </span>            :     case GNUPG_MODULE_NAME_GPGCONF:
+<span class="lineNum">    1027 </span><span class="lineNoCov">          0 :       X(bindir, &quot;tools&quot;, &quot;gpgconf&quot;);</span>
+<span class="lineNum">    1028 </span>            : 
+<span class="lineNum">    1029 </span>            :     default:
+<span class="lineNum">    1030 </span><span class="lineNoCov">          0 :       BUG ();</span>
+<span class="lineNum">    1031 </span>            :     }
+<span class="lineNum">    1032 </span>            : #undef X
+<span class="lineNum">    1033 </span>            : }
+<span class="lineNum">    1034 </span>            : 
+<span class="lineNum">    1035 </span>            : 
+<span class="lineNum">    1036 </span>            : /* Flush some of the cached module names.  This is for example used by
+<a name="1037"><span class="lineNum">    1037 </span>            :    gpg-agent to allow configuring a different pinentry.  */</a>
+<span class="lineNum">    1038 </span>            : void
+<span class="lineNum">    1039 </span><span class="lineNoCov">          0 : gnupg_module_name_flush_some (void)</span>
+<span class="lineNum">    1040 </span>            : {
+<span class="lineNum">    1041 </span><span class="lineNoCov">          0 :   (void)get_default_pinentry_name (1);</span>
+<span class="lineNum">    1042 </span><span class="lineNoCov">          0 : }</span>
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

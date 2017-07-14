@@ -1,0 +1,231 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - kbx/keybox-util.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">kbx</a> - keybox-util.c<span style="font-size: 80%;"> (source / <a href="keybox-util.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">14</td>
+            <td class="headerCovTableEntry">36</td>
+            <td class="headerCovTableEntryLo">38.9 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 14:46:13</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">2</td>
+            <td class="headerCovTableEntry">7</td>
+            <td class="headerCovTableEntryLo">28.6 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* keybox-util.c - Utility functions for Keybox</a>
+<span class="lineNum">       2 </span>            :  *      Copyright (C) 2001 Free Software Foundation, Inc.
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       7 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">       8 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">       9 </span>            :  * (at your option) any later version.
+<span class="lineNum">      10 </span>            :  *
+<span class="lineNum">      11 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      12 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      13 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      14 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      15 </span>            :  *
+<span class="lineNum">      16 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      17 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      18 </span>            :  */
+<span class="lineNum">      19 </span>            : 
+<span class="lineNum">      20 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      21 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      22 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      23 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      24 </span>            : #ifdef  HAVE_DOSISH_SYSTEM
+<span class="lineNum">      25 </span>            : # define WIN32_LEAN_AND_MEAN  /* We only need the OS core stuff.  */
+<span class="lineNum">      26 </span>            : # include &lt;windows.h&gt;
+<span class="lineNum">      27 </span>            : #endif
+<span class="lineNum">      28 </span>            : 
+<span class="lineNum">      29 </span>            : #include &quot;keybox-defs.h&quot;
+<span class="lineNum">      30 </span>            : #include &quot;../common/utilproto.h&quot;
+<span class="lineNum">      31 </span>            : 
+<span class="lineNum">      32 </span>            : 
+<span class="lineNum">      33 </span>            : static void *(*alloc_func)(size_t n) = malloc;
+<span class="lineNum">      34 </span>            : static void *(*realloc_func)(void *p, size_t n) = realloc;
+<span class="lineNum">      35 </span>            : static void (*free_func)(void*) = free;
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span>            : 
+<a name="38"><span class="lineNum">      38 </span>            : </a>
+<span class="lineNum">      39 </span>            : void
+<span class="lineNum">      40 </span><span class="lineNoCov">          0 : keybox_set_malloc_hooks ( void *(*new_alloc_func)(size_t n),</span>
+<span class="lineNum">      41 </span>            :                           void *(*new_realloc_func)(void *p, size_t n),
+<span class="lineNum">      42 </span>            :                           void (*new_free_func)(void*) )
+<span class="lineNum">      43 </span>            : {
+<span class="lineNum">      44 </span><span class="lineNoCov">          0 :   alloc_func        = new_alloc_func;</span>
+<span class="lineNum">      45 </span><span class="lineNoCov">          0 :   realloc_func      = new_realloc_func;</span>
+<span class="lineNum">      46 </span><span class="lineNoCov">          0 :   free_func         = new_free_func;</span>
+<span class="lineNum">      47 </span><span class="lineNoCov">          0 : }</span>
+<a name="48"><span class="lineNum">      48 </span>            : </a>
+<span class="lineNum">      49 </span>            : void *
+<span class="lineNum">      50 </span><span class="lineCov">          2 : _keybox_malloc (size_t n)</span>
+<span class="lineNum">      51 </span>            : {
+<span class="lineNum">      52 </span><span class="lineCov">          2 :   return alloc_func (n);</span>
+<span class="lineNum">      53 </span>            : }
+<a name="54"><span class="lineNum">      54 </span>            : </a>
+<span class="lineNum">      55 </span>            : void *
+<span class="lineNum">      56 </span><span class="lineNoCov">          0 : _keybox_realloc (void *a, size_t n)</span>
+<span class="lineNum">      57 </span>            : {
+<span class="lineNum">      58 </span><span class="lineNoCov">          0 :   return realloc_func (a, n);</span>
+<span class="lineNum">      59 </span>            : }
+<a name="60"><span class="lineNum">      60 </span>            : </a>
+<span class="lineNum">      61 </span>            : void *
+<span class="lineNum">      62 </span><span class="lineNoCov">          0 : _keybox_calloc (size_t n, size_t m)</span>
+<span class="lineNum">      63 </span>            : {
+<span class="lineNum">      64 </span><span class="lineNoCov">          0 :   void *p = _keybox_malloc (n*m);</span>
+<span class="lineNum">      65 </span><span class="lineNoCov">          0 :   if (p)</span>
+<span class="lineNum">      66 </span><span class="lineNoCov">          0 :     memset (p, 0, n* m);</span>
+<span class="lineNum">      67 </span><span class="lineNoCov">          0 :   return p;</span>
+<span class="lineNum">      68 </span>            : }
+<a name="69"><span class="lineNum">      69 </span>            : </a>
+<span class="lineNum">      70 </span>            : void
+<span class="lineNum">      71 </span><span class="lineNoCov">          0 : _keybox_free (void *p)</span>
+<span class="lineNum">      72 </span>            : {
+<span class="lineNum">      73 </span><span class="lineNoCov">          0 :   if (p)</span>
+<span class="lineNum">      74 </span><span class="lineNoCov">          0 :     free_func (p);</span>
+<span class="lineNum">      75 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">      76 </span>            : 
+<span class="lineNum">      77 </span>            : 
+<span class="lineNum">      78 </span>            : /* Store the two malloced temporary file names used for keybox updates
+<span class="lineNum">      79 </span>            :    of file FILENAME at R_BAKNAME and R_TMPNAME.  On error an error
+<span class="lineNum">      80 </span>            :    code is returned and NULL stored at R_BAKNAME and R_TMPNAME.  If
+<span class="lineNum">      81 </span>            :    FOR_KEYRING is true the returned names match those used by GnuPG's
+<a name="82"><span class="lineNum">      82 </span>            :    keyring code.  */</a>
+<span class="lineNum">      83 </span>            : gpg_error_t
+<span class="lineNum">      84 </span><span class="lineCov">          1 : keybox_tmp_names (const char *filename, int for_keyring,</span>
+<span class="lineNum">      85 </span>            :                   char **r_bakname, char **r_tmpname)
+<span class="lineNum">      86 </span>            : {
+<span class="lineNum">      87 </span>            :   gpg_error_t err;
+<span class="lineNum">      88 </span>            :   char *bak_name, *tmp_name;
+<span class="lineNum">      89 </span>            : 
+<span class="lineNum">      90 </span><span class="lineCov">          1 :   *r_bakname = NULL;</span>
+<span class="lineNum">      91 </span><span class="lineCov">          1 :   *r_tmpname = NULL;</span>
+<span class="lineNum">      92 </span>            : 
+<span class="lineNum">      93 </span>            : # ifdef USE_ONLY_8DOT3
+<span class="lineNum">      94 </span>            :   /* Here is another Windoze bug?:
+<span class="lineNum">      95 </span>            :    * you can't rename(&quot;pubring.kbx.tmp&quot;, &quot;pubring.kbx&quot;);
+<span class="lineNum">      96 </span>            :    * but        rename(&quot;pubring.kbx.tmp&quot;, &quot;pubring.aaa&quot;);
+<span class="lineNum">      97 </span>            :    * works.  So we replace &quot;.kbx&quot; by &quot;.kb_&quot; or &quot;.k__&quot;.  Note that we
+<span class="lineNum">      98 </span>            :    * can't use &quot;.bak&quot; and &quot;.tmp&quot;, because these suffixes are used by
+<span class="lineNum">      99 </span>            :    * gpg's keyrings and would lead to a sharing violation or data
+<span class="lineNum">     100 </span>            :    * corruption.  If the name does not end in &quot;.kbx&quot; we assume working
+<span class="lineNum">     101 </span>            :    * on a modern file system and append the suffix.  */
+<span class="lineNum">     102 </span>            :   {
+<span class="lineNum">     103 </span>            :     const char *ext   = for_keyring? EXTSEP_S GPGEXT_GPG : EXTSEP_S &quot;kbx&quot;;
+<span class="lineNum">     104 </span>            :     const char *b_ext = for_keyring? EXTSEP_S &quot;bak&quot;      : EXTSEP_S &quot;kb_&quot;;
+<span class="lineNum">     105 </span>            :     const char *t_ext = for_keyring? EXTSEP_S &quot;tmp&quot;      : EXTSEP_S &quot;k__&quot;;
+<span class="lineNum">     106 </span>            :     int repl;
+<span class="lineNum">     107 </span>            : 
+<span class="lineNum">     108 </span>            :     if (strlen (ext) != 4 || strlen (b_ext) != 4)
+<span class="lineNum">     109 </span>            :       BUG ();
+<span class="lineNum">     110 </span>            :     repl = (strlen (filename) &gt; 4
+<span class="lineNum">     111 </span>            :             &amp;&amp; !strcmp (filename + strlen (filename) - 4, ext));
+<span class="lineNum">     112 </span>            :     bak_name = xtrymalloc (strlen (filename) + (repl?0:4) + 1);
+<span class="lineNum">     113 </span>            :     if (!bak_name)
+<span class="lineNum">     114 </span>            :       return gpg_error_from_syserror ();
+<span class="lineNum">     115 </span>            :     strcpy (bak_name, filename);
+<span class="lineNum">     116 </span>            :     strcpy (bak_name + strlen (filename) - (repl?4:0), b_ext);
+<span class="lineNum">     117 </span>            : 
+<span class="lineNum">     118 </span>            :     tmp_name = xtrymalloc (strlen (filename) + (repl?0:4) + 1);
+<span class="lineNum">     119 </span>            :     if (!tmp_name)
+<span class="lineNum">     120 </span>            :       {
+<span class="lineNum">     121 </span>            :         err = gpg_error_from_syserror ();
+<span class="lineNum">     122 </span>            :         xfree (bak_name);
+<span class="lineNum">     123 </span>            :         return err;
+<span class="lineNum">     124 </span>            :       }
+<span class="lineNum">     125 </span>            :     strcpy (tmp_name, filename);
+<span class="lineNum">     126 </span>            :     strcpy (tmp_name + strlen (filename) - (repl?4:0), t_ext);
+<span class="lineNum">     127 </span>            :   }
+<span class="lineNum">     128 </span>            : # else /* Posix file names */
+<span class="lineNum">     129 </span>            :   (void)for_keyring;
+<span class="lineNum">     130 </span><span class="lineCov">          1 :   bak_name = xtrymalloc (strlen (filename) + 2);</span>
+<span class="lineNum">     131 </span><span class="lineCov">          1 :   if (!bak_name)</span>
+<span class="lineNum">     132 </span><span class="lineNoCov">          0 :     return gpg_error_from_syserror ();</span>
+<span class="lineNum">     133 </span><span class="lineCov">          1 :   strcpy (stpcpy (bak_name, filename), &quot;~&quot;);</span>
+<span class="lineNum">     134 </span>            : 
+<span class="lineNum">     135 </span><span class="lineCov">          1 :   tmp_name = xtrymalloc (strlen (filename) + 5);</span>
+<span class="lineNum">     136 </span><span class="lineCov">          1 :   if (!tmp_name)</span>
+<span class="lineNum">     137 </span>            :     {
+<span class="lineNum">     138 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     139 </span><span class="lineNoCov">          0 :       xfree (bak_name);</span>
+<span class="lineNum">     140 </span><span class="lineNoCov">          0 :       return err;</span>
+<span class="lineNum">     141 </span>            :     }
+<span class="lineNum">     142 </span><span class="lineCov">          1 :   strcpy (stpcpy (tmp_name,filename), EXTSEP_S &quot;tmp&quot;);</span>
+<span class="lineNum">     143 </span>            : # endif /* Posix filename */
+<span class="lineNum">     144 </span>            : 
+<span class="lineNum">     145 </span><span class="lineCov">          1 :   *r_bakname = bak_name;</span>
+<span class="lineNum">     146 </span><span class="lineCov">          1 :   *r_tmpname = tmp_name;</span>
+<span class="lineNum">     147 </span><span class="lineCov">          1 :   return 0;</span>
+<span class="lineNum">     148 </span>            : }
+<a name="149"><span class="lineNum">     149 </span>            : </a>
+<span class="lineNum">     150 </span>            : gpg_error_t
+<span class="lineNum">     151 </span><span class="lineNoCov">          0 : keybox_file_rename (const char *oldname, const char *newname,</span>
+<span class="lineNum">     152 </span>            :                     int *block_signals)
+<span class="lineNum">     153 </span>            : {
+<span class="lineNum">     154 </span><span class="lineNoCov">          0 :   return gnupg_rename_file (oldname, newname, block_signals);</span>
+<span class="lineNum">     155 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

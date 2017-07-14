@@ -1,0 +1,1178 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - common/logging.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">common</a> - logging.c<span style="font-size: 80%;"> (source / <a href="logging.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">108</td>
+            <td class="headerCovTableEntry">395</td>
+            <td class="headerCovTableEntryLo">27.3 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 14:46:13</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">11</td>
+            <td class="headerCovTableEntry">35</td>
+            <td class="headerCovTableEntryLo">31.4 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* logging.c - Useful logging functions</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 1998, 1999, 2000, 2001, 2003, 2004, 2005, 2006,
+<span class="lineNum">       3 </span>            :  *               2009, 2010 Free Software Foundation, Inc.
+<span class="lineNum">       4 </span>            :  *
+<span class="lineNum">       5 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       6 </span>            :  *
+<span class="lineNum">       7 </span>            :  * GnuPG is free software; you can redistribute and/or modify this
+<span class="lineNum">       8 </span>            :  * part of GnuPG under the terms of either
+<span class="lineNum">       9 </span>            :  *
+<span class="lineNum">      10 </span>            :  *   - the GNU Lesser General Public License as published by the Free
+<span class="lineNum">      11 </span>            :  *     Software Foundation; either version 3 of the License, or (at
+<span class="lineNum">      12 </span>            :  *     your option) any later version.
+<span class="lineNum">      13 </span>            :  *
+<span class="lineNum">      14 </span>            :  * or
+<span class="lineNum">      15 </span>            :  *
+<span class="lineNum">      16 </span>            :  *   - the GNU General Public License as published by the Free
+<span class="lineNum">      17 </span>            :  *     Software Foundation; either version 2 of the License, or (at
+<span class="lineNum">      18 </span>            :  *     your option) any later version.
+<span class="lineNum">      19 </span>            :  *
+<span class="lineNum">      20 </span>            :  * or both in parallel, as here.
+<span class="lineNum">      21 </span>            :  *
+<span class="lineNum">      22 </span>            :  * GnuPG is distributed in the hope that it will be useful, but
+<span class="lineNum">      23 </span>            :  * WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      24 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+<span class="lineNum">      25 </span>            :  * General Public License for more details.
+<span class="lineNum">      26 </span>            :  *
+<span class="lineNum">      27 </span>            :  * You should have received a copies of the GNU General Public License
+<span class="lineNum">      28 </span>            :  * and the GNU Lesser General Public License along with this program;
+<span class="lineNum">      29 </span>            :  * if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      30 </span>            :  */
+<span class="lineNum">      31 </span>            : 
+<span class="lineNum">      32 </span>            : 
+<span class="lineNum">      33 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      34 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      35 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      36 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      37 </span>            : #include &lt;stdarg.h&gt;
+<span class="lineNum">      38 </span>            : #include &lt;stddef.h&gt;
+<span class="lineNum">      39 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      40 </span>            : #include &lt;time.h&gt;
+<span class="lineNum">      41 </span>            : #include &lt;sys/types.h&gt;
+<span class="lineNum">      42 </span>            : #include &lt;sys/stat.h&gt;
+<span class="lineNum">      43 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">      44 </span>            : # ifdef HAVE_WINSOCK2_H
+<span class="lineNum">      45 </span>            : #  include &lt;winsock2.h&gt;
+<span class="lineNum">      46 </span>            : # endif
+<span class="lineNum">      47 </span>            : # include &lt;windows.h&gt;
+<span class="lineNum">      48 </span>            : #else /*!HAVE_W32_SYSTEM*/
+<span class="lineNum">      49 </span>            : # include &lt;sys/socket.h&gt;
+<span class="lineNum">      50 </span>            : # include &lt;sys/un.h&gt;
+<span class="lineNum">      51 </span>            : # include &lt;netinet/in.h&gt;
+<span class="lineNum">      52 </span>            : # include &lt;arpa/inet.h&gt;
+<span class="lineNum">      53 </span>            : #endif /*!HAVE_W32_SYSTEM*/
+<span class="lineNum">      54 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      55 </span>            : #include &lt;fcntl.h&gt;
+<span class="lineNum">      56 </span>            : #include &lt;assert.h&gt;
+<span class="lineNum">      57 </span>            : /* #include &lt;execinfo.h&gt; */
+<span class="lineNum">      58 </span>            : 
+<span class="lineNum">      59 </span>            : #define GNUPG_COMMON_NEED_AFLOCAL 1
+<span class="lineNum">      60 </span>            : #include &quot;util.h&quot;
+<span class="lineNum">      61 </span>            : #include &quot;i18n.h&quot;
+<span class="lineNum">      62 </span>            : #include &quot;common-defs.h&quot;
+<span class="lineNum">      63 </span>            : #include &quot;logging.h&quot;
+<span class="lineNum">      64 </span>            : #include &quot;sysutils.h&quot;
+<span class="lineNum">      65 </span>            : 
+<span class="lineNum">      66 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">      67 </span>            : # ifndef S_IRWXG
+<span class="lineNum">      68 </span>            : #  define S_IRGRP S_IRUSR
+<span class="lineNum">      69 </span>            : #  define S_IWGRP S_IWUSR
+<span class="lineNum">      70 </span>            : # endif
+<span class="lineNum">      71 </span>            : # ifndef S_IRWXO
+<span class="lineNum">      72 </span>            : #  define S_IROTH S_IRUSR
+<span class="lineNum">      73 </span>            : #  define S_IWOTH S_IWUSR
+<span class="lineNum">      74 </span>            : # endif
+<span class="lineNum">      75 </span>            : #endif
+<span class="lineNum">      76 </span>            : 
+<span class="lineNum">      77 </span>            : 
+<span class="lineNum">      78 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">      79 </span>            : # define isatty(a)  (0)
+<span class="lineNum">      80 </span>            : #endif
+<span class="lineNum">      81 </span>            : 
+<span class="lineNum">      82 </span>            : #undef WITH_IPV6
+<span class="lineNum">      83 </span>            : #if defined (AF_INET6) &amp;&amp; defined(PF_INET) \
+<span class="lineNum">      84 </span>            :     &amp;&amp; defined (INET6_ADDRSTRLEN) &amp;&amp; defined(HAVE_INET_PTON)
+<span class="lineNum">      85 </span>            : # define WITH_IPV6 1
+<span class="lineNum">      86 </span>            : #endif
+<span class="lineNum">      87 </span>            : 
+<span class="lineNum">      88 </span>            : #ifndef EAFNOSUPPORT
+<span class="lineNum">      89 </span>            : # define EAFNOSUPPORT EINVAL
+<span class="lineNum">      90 </span>            : #endif
+<span class="lineNum">      91 </span>            : #ifndef INADDR_NONE  /* Slowaris is missing that.  */
+<span class="lineNum">      92 </span>            : #define INADDR_NONE  ((unsigned long)(-1))
+<span class="lineNum">      93 </span>            : #endif /*INADDR_NONE*/
+<span class="lineNum">      94 </span>            : 
+<span class="lineNum">      95 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">      96 </span>            : #define sock_close(a)  closesocket(a)
+<span class="lineNum">      97 </span>            : #else
+<span class="lineNum">      98 </span>            : #define sock_close(a)  close(a)
+<span class="lineNum">      99 </span>            : #endif
+<span class="lineNum">     100 </span>            : 
+<span class="lineNum">     101 </span>            : 
+<span class="lineNum">     102 </span>            : static estream_t logstream;
+<span class="lineNum">     103 </span>            : static int log_socket = -1;
+<span class="lineNum">     104 </span>            : static char prefix_buffer[80];
+<span class="lineNum">     105 </span>            : static int with_time;
+<span class="lineNum">     106 </span>            : static int with_prefix;
+<span class="lineNum">     107 </span>            : static int with_pid;
+<span class="lineNum">     108 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     109 </span>            : static int no_registry;
+<span class="lineNum">     110 </span>            : #endif
+<span class="lineNum">     111 </span>            : static int (*get_pid_suffix_cb)(unsigned long *r_value);
+<span class="lineNum">     112 </span>            : static const char * (*socket_dir_cb)(void);
+<span class="lineNum">     113 </span>            : static int running_detached;
+<span class="lineNum">     114 </span>            : static int force_prefixes;
+<span class="lineNum">     115 </span>            : 
+<span class="lineNum">     116 </span>            : static int missing_lf;
+<span class="lineNum">     117 </span>            : static int errorcount;
+<span class="lineNum">     118 </span>            : 
+<a name="119"><span class="lineNum">     119 </span>            : </a>
+<span class="lineNum">     120 </span>            : int
+<span class="lineNum">     121 </span><span class="lineCov">          4 : log_get_errorcount (int clear)</span>
+<span class="lineNum">     122 </span>            : {
+<span class="lineNum">     123 </span><span class="lineCov">          4 :     int n = errorcount;</span>
+<span class="lineNum">     124 </span><span class="lineCov">          4 :     if( clear )</span>
+<span class="lineNum">     125 </span><span class="lineNoCov">          0 :         errorcount = 0;</span>
+<span class="lineNum">     126 </span><span class="lineCov">          4 :     return n;</span>
+<span class="lineNum">     127 </span>            : }
+<a name="128"><span class="lineNum">     128 </span>            : </a>
+<span class="lineNum">     129 </span>            : void
+<span class="lineNum">     130 </span><span class="lineNoCov">          0 : log_inc_errorcount (void)</span>
+<span class="lineNum">     131 </span>            : {
+<span class="lineNum">     132 </span><span class="lineNoCov">          0 :    errorcount++;</span>
+<span class="lineNum">     133 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     134 </span>            : 
+<span class="lineNum">     135 </span>            : 
+<span class="lineNum">     136 </span>            : /* The following 3 functions are used by es_fopencookie to write logs
+<span class="lineNum">     137 </span>            :    to a socket.  */
+<span class="lineNum">     138 </span>            : struct fun_cookie_s
+<span class="lineNum">     139 </span>            : {
+<span class="lineNum">     140 </span>            :   int fd;
+<span class="lineNum">     141 </span>            :   int quiet;
+<span class="lineNum">     142 </span>            :   int want_socket;
+<span class="lineNum">     143 </span>            :   int is_socket;
+<span class="lineNum">     144 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">     145 </span>            :   int use_writefile;
+<span class="lineNum">     146 </span>            : #endif
+<span class="lineNum">     147 </span>            :   char name[1];
+<span class="lineNum">     148 </span>            : };
+<span class="lineNum">     149 </span>            : 
+<span class="lineNum">     150 </span>            : 
+<a name="151"><span class="lineNum">     151 </span>            : /* Write NBYTES of BUFFER to file descriptor FD. */</a>
+<span class="lineNum">     152 </span>            : static int
+<span class="lineNum">     153 </span><span class="lineCov">          9 : writen (int fd, const void *buffer, size_t nbytes, int is_socket)</span>
+<span class="lineNum">     154 </span>            : {
+<span class="lineNum">     155 </span><span class="lineCov">          9 :   const char *buf = buffer;</span>
+<span class="lineNum">     156 </span><span class="lineCov">          9 :   size_t nleft = nbytes;</span>
+<span class="lineNum">     157 </span>            :   int nwritten;
+<span class="lineNum">     158 </span>            : #ifndef HAVE_W32_SYSTEM
+<span class="lineNum">     159 </span>            :   (void)is_socket; /* Not required.  */
+<span class="lineNum">     160 </span>            : #endif
+<span class="lineNum">     161 </span>            : 
+<span class="lineNum">     162 </span><span class="lineCov">         24 :   while (nleft &gt; 0)</span>
+<span class="lineNum">     163 </span>            :     {
+<span class="lineNum">     164 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     165 </span>            :       if (is_socket)
+<span class="lineNum">     166 </span>            :         nwritten = send (fd, buf, nleft, 0);
+<span class="lineNum">     167 </span>            :       else
+<span class="lineNum">     168 </span>            : #endif
+<span class="lineNum">     169 </span><span class="lineCov">          6 :         nwritten = write (fd, buf, nleft);</span>
+<span class="lineNum">     170 </span>            : 
+<span class="lineNum">     171 </span><span class="lineCov">          6 :       if (nwritten &lt; 0 &amp;&amp; errno == EINTR)</span>
+<span class="lineNum">     172 </span><span class="lineNoCov">          0 :         continue;</span>
+<span class="lineNum">     173 </span><span class="lineCov">          6 :       if (nwritten &lt; 0)</span>
+<span class="lineNum">     174 </span><span class="lineNoCov">          0 :         return -1;</span>
+<span class="lineNum">     175 </span><span class="lineCov">          6 :       nleft -= nwritten;</span>
+<span class="lineNum">     176 </span><span class="lineCov">          6 :       buf = buf + nwritten;</span>
+<span class="lineNum">     177 </span>            :     }
+<span class="lineNum">     178 </span>            : 
+<span class="lineNum">     179 </span><span class="lineCov">          9 :   return 0;</span>
+<span class="lineNum">     180 </span>            : }
+<span class="lineNum">     181 </span>            : 
+<span class="lineNum">     182 </span>            : 
+<span class="lineNum">     183 </span>            : /* Returns true if STR represents a valid port number in decimal
+<a name="184"><span class="lineNum">     184 </span>            :    notation and no garbage is following.  */</a>
+<span class="lineNum">     185 </span>            : static int
+<span class="lineNum">     186 </span><span class="lineNoCov">          0 : parse_portno (const char *str, unsigned short *r_port)</span>
+<span class="lineNum">     187 </span>            : {
+<span class="lineNum">     188 </span>            :   unsigned int value;
+<span class="lineNum">     189 </span>            : 
+<span class="lineNum">     190 </span><span class="lineNoCov">          0 :   for (value=0; *str &amp;&amp; (*str &gt;= '0' &amp;&amp; *str &lt;= '9'); str++)</span>
+<span class="lineNum">     191 </span>            :     {
+<span class="lineNum">     192 </span><span class="lineNoCov">          0 :       value = value * 10 + (*str - '0');</span>
+<span class="lineNum">     193 </span><span class="lineNoCov">          0 :       if (value &gt; 65535)</span>
+<span class="lineNum">     194 </span><span class="lineNoCov">          0 :         return 0;</span>
+<span class="lineNum">     195 </span>            :     }
+<span class="lineNum">     196 </span><span class="lineNoCov">          0 :   if (*str || !value)</span>
+<span class="lineNum">     197 </span><span class="lineNoCov">          0 :     return 0;</span>
+<span class="lineNum">     198 </span>            : 
+<span class="lineNum">     199 </span><span class="lineNoCov">          0 :   *r_port = value;</span>
+<span class="lineNum">     200 </span><span class="lineNoCov">          0 :   return 1;</span>
+<span class="lineNum">     201 </span>            : }
+<span class="lineNum">     202 </span>            : 
+<a name="203"><span class="lineNum">     203 </span>            : </a>
+<span class="lineNum">     204 </span>            : static gpgrt_ssize_t
+<span class="lineNum">     205 </span><span class="lineCov">          9 : fun_writer (void *cookie_arg, const void *buffer, size_t size)</span>
+<span class="lineNum">     206 </span>            : {
+<span class="lineNum">     207 </span><span class="lineCov">          9 :   struct fun_cookie_s *cookie = cookie_arg;</span>
+<span class="lineNum">     208 </span>            : 
+<span class="lineNum">     209 </span>            :   /* FIXME: Use only estream with a callback for socket writing.  This
+<span class="lineNum">     210 </span>            :      avoids the ugly mix of fd and estream code.  */
+<span class="lineNum">     211 </span>            : 
+<span class="lineNum">     212 </span>            :   /* Note that we always try to reconnect to the socket but print
+<span class="lineNum">     213 </span>            :      error messages only the first time an error occurred.  If
+<span class="lineNum">     214 </span>            :      RUNNING_DETACHED is set we don't fall back to stderr and even do
+<span class="lineNum">     215 </span>            :      not print any error messages.  This is needed because detached
+<span class="lineNum">     216 </span>            :      processes often close stderr and by writing to file descriptor 2
+<span class="lineNum">     217 </span>            :      we might send the log message to a file not intended for logging
+<span class="lineNum">     218 </span>            :      (e.g. a pipe or network connection). */
+<span class="lineNum">     219 </span><span class="lineCov">          9 :   if (cookie-&gt;want_socket &amp;&amp; cookie-&gt;fd == -1)</span>
+<span class="lineNum">     220 </span>            :     {
+<span class="lineNum">     221 </span>            : #ifdef WITH_IPV6
+<span class="lineNum">     222 </span>            :       struct sockaddr_in6 srvr_addr_in6;
+<span class="lineNum">     223 </span>            : #endif
+<span class="lineNum">     224 </span>            :       struct sockaddr_in srvr_addr_in;
+<span class="lineNum">     225 </span>            : #ifndef HAVE_W32_SYSTEM
+<span class="lineNum">     226 </span>            :       struct sockaddr_un srvr_addr_un;
+<span class="lineNum">     227 </span>            : #endif
+<span class="lineNum">     228 </span><span class="lineNoCov">          0 :       const char *name_for_err = &quot;&quot;;</span>
+<span class="lineNum">     229 </span>            :       size_t addrlen;
+<span class="lineNum">     230 </span><span class="lineNoCov">          0 :       struct sockaddr *srvr_addr = NULL;</span>
+<span class="lineNum">     231 </span><span class="lineNoCov">          0 :       unsigned short port = 0;</span>
+<span class="lineNum">     232 </span><span class="lineNoCov">          0 :       int af = AF_LOCAL;</span>
+<span class="lineNum">     233 </span><span class="lineNoCov">          0 :       int pf = PF_LOCAL;</span>
+<span class="lineNum">     234 </span><span class="lineNoCov">          0 :       const char *name = cookie-&gt;name;</span>
+<span class="lineNum">     235 </span>            : 
+<span class="lineNum">     236 </span>            :       /* Not yet open or meanwhile closed due to an error. */
+<span class="lineNum">     237 </span><span class="lineNoCov">          0 :       cookie-&gt;is_socket = 0;</span>
+<span class="lineNum">     238 </span>            : 
+<span class="lineNum">     239 </span>            :       /* Check whether this is a TCP socket or a local socket.  */
+<span class="lineNum">     240 </span><span class="lineNoCov">          0 :       if (!strncmp (name, &quot;tcp://&quot;, 6) &amp;&amp; name[6])</span>
+<span class="lineNum">     241 </span>            :         {
+<span class="lineNum">     242 </span><span class="lineNoCov">          0 :           name += 6;</span>
+<span class="lineNum">     243 </span><span class="lineNoCov">          0 :           af = AF_INET;</span>
+<span class="lineNum">     244 </span><span class="lineNoCov">          0 :           pf = PF_INET;</span>
+<span class="lineNum">     245 </span>            :         }
+<span class="lineNum">     246 </span>            : #ifndef HAVE_W32_SYSTEM
+<span class="lineNum">     247 </span><span class="lineNoCov">          0 :       else if (!strncmp (name, &quot;socket://&quot;, 9))</span>
+<span class="lineNum">     248 </span><span class="lineNoCov">          0 :         name += 9;</span>
+<span class="lineNum">     249 </span>            : #endif
+<span class="lineNum">     250 </span>            : 
+<span class="lineNum">     251 </span><span class="lineNoCov">          0 :       if (af == AF_LOCAL)</span>
+<span class="lineNum">     252 </span>            :         {
+<span class="lineNum">     253 </span><span class="lineNoCov">          0 :           addrlen = 0;</span>
+<span class="lineNum">     254 </span>            : #ifndef HAVE_W32_SYSTEM
+<span class="lineNum">     255 </span><span class="lineNoCov">          0 :           memset (&amp;srvr_addr, 0, sizeof srvr_addr);</span>
+<span class="lineNum">     256 </span><span class="lineNoCov">          0 :           srvr_addr_un.sun_family = af;</span>
+<span class="lineNum">     257 </span><span class="lineNoCov">          0 :           if (!*name &amp;&amp; (name = socket_dir_cb ()) &amp;&amp; *name)</span>
+<span class="lineNum">     258 </span>            :             {
+<span class="lineNum">     259 </span><span class="lineNoCov">          0 :               if (strlen (name) + 7 &lt; sizeof (srvr_addr_un.sun_path)-1)</span>
+<span class="lineNum">     260 </span>            :                 {
+<span class="lineNum">     261 </span><span class="lineNoCov">          0 :                   strncpy (srvr_addr_un.sun_path,</span>
+<span class="lineNum">     262 </span>            :                            name, sizeof (srvr_addr_un.sun_path)-1);
+<span class="lineNum">     263 </span><span class="lineNoCov">          0 :                   strcat (srvr_addr_un.sun_path, &quot;/S.log&quot;);</span>
+<span class="lineNum">     264 </span><span class="lineNoCov">          0 :                   srvr_addr_un.sun_path[sizeof (srvr_addr_un.sun_path)-1] = 0;</span>
+<span class="lineNum">     265 </span><span class="lineNoCov">          0 :                   srvr_addr = (struct sockaddr *)&amp;srvr_addr_un;</span>
+<span class="lineNum">     266 </span><span class="lineNoCov">          0 :                   addrlen = SUN_LEN (&amp;srvr_addr_un);</span>
+<span class="lineNum">     267 </span><span class="lineNoCov">          0 :                   name_for_err = srvr_addr_un.sun_path;</span>
+<span class="lineNum">     268 </span>            :                 }
+<span class="lineNum">     269 </span>            :             }
+<span class="lineNum">     270 </span>            :           else
+<span class="lineNum">     271 </span>            :             {
+<span class="lineNum">     272 </span><span class="lineNoCov">          0 :               if (*name &amp;&amp; strlen (name) &lt; sizeof (srvr_addr_un.sun_path)-1)</span>
+<span class="lineNum">     273 </span>            :                 {
+<span class="lineNum">     274 </span><span class="lineNoCov">          0 :                   strncpy (srvr_addr_un.sun_path,</span>
+<span class="lineNum">     275 </span>            :                            name, sizeof (srvr_addr_un.sun_path)-1);
+<span class="lineNum">     276 </span><span class="lineNoCov">          0 :                   srvr_addr_un.sun_path[sizeof (srvr_addr_un.sun_path)-1] = 0;</span>
+<span class="lineNum">     277 </span><span class="lineNoCov">          0 :                   srvr_addr = (struct sockaddr *)&amp;srvr_addr_un;</span>
+<span class="lineNum">     278 </span><span class="lineNoCov">          0 :                   addrlen = SUN_LEN (&amp;srvr_addr_un);</span>
+<span class="lineNum">     279 </span>            :                 }
+<span class="lineNum">     280 </span>            :             }
+<span class="lineNum">     281 </span>            : #endif /*!HAVE_W32SYSTEM*/
+<span class="lineNum">     282 </span>            :         }
+<span class="lineNum">     283 </span>            :       else
+<span class="lineNum">     284 </span>            :         {
+<span class="lineNum">     285 </span>            :           char *addrstr, *p;
+<span class="lineNum">     286 </span>            : #ifdef HAVE_INET_PTON
+<span class="lineNum">     287 </span><span class="lineNoCov">          0 :           void *addrbuf = NULL;</span>
+<span class="lineNum">     288 </span>            : #endif /*HAVE_INET_PTON*/
+<span class="lineNum">     289 </span>            : 
+<span class="lineNum">     290 </span><span class="lineNoCov">          0 :           addrstr = xtrymalloc (strlen (name) + 1);</span>
+<span class="lineNum">     291 </span><span class="lineNoCov">          0 :           if (!addrstr)</span>
+<span class="lineNum">     292 </span><span class="lineNoCov">          0 :             addrlen = 0; /* This indicates an error.  */</span>
+<span class="lineNum">     293 </span><span class="lineNoCov">          0 :           else if (*name == '[')</span>
+<span class="lineNum">     294 </span>            :             {
+<span class="lineNum">     295 </span>            :               /* Check for IPv6 literal address.  */
+<span class="lineNum">     296 </span><span class="lineNoCov">          0 :               strcpy (addrstr, name+1);</span>
+<span class="lineNum">     297 </span><span class="lineNoCov">          0 :               p = strchr (addrstr, ']');</span>
+<span class="lineNum">     298 </span><span class="lineNoCov">          0 :               if (!p || p[1] != ':' || !parse_portno (p+2, &amp;port))</span>
+<span class="lineNum">     299 </span>            :                 {
+<span class="lineNum">     300 </span><span class="lineNoCov">          0 :                   gpg_err_set_errno (EINVAL);</span>
+<span class="lineNum">     301 </span><span class="lineNoCov">          0 :                   addrlen = 0;</span>
+<span class="lineNum">     302 </span>            :                 }
+<span class="lineNum">     303 </span>            :               else
+<span class="lineNum">     304 </span>            :                 {
+<span class="lineNum">     305 </span><span class="lineNoCov">          0 :                   *p = 0;</span>
+<span class="lineNum">     306 </span>            : #ifdef WITH_IPV6
+<span class="lineNum">     307 </span><span class="lineNoCov">          0 :                   af = AF_INET6;</span>
+<span class="lineNum">     308 </span><span class="lineNoCov">          0 :                   pf = PF_INET6;</span>
+<span class="lineNum">     309 </span><span class="lineNoCov">          0 :                   memset (&amp;srvr_addr_in6, 0, sizeof srvr_addr_in6);</span>
+<span class="lineNum">     310 </span><span class="lineNoCov">          0 :                   srvr_addr_in6.sin6_family = af;</span>
+<span class="lineNum">     311 </span><span class="lineNoCov">          0 :                   srvr_addr_in6.sin6_port = htons (port);</span>
+<span class="lineNum">     312 </span>            : #ifdef HAVE_INET_PTON
+<span class="lineNum">     313 </span><span class="lineNoCov">          0 :                   addrbuf = &amp;srvr_addr_in6.sin6_addr;</span>
+<span class="lineNum">     314 </span>            : #endif /*HAVE_INET_PTON*/
+<span class="lineNum">     315 </span><span class="lineNoCov">          0 :                   srvr_addr = (struct sockaddr *)&amp;srvr_addr_in6;</span>
+<span class="lineNum">     316 </span><span class="lineNoCov">          0 :                   addrlen = sizeof srvr_addr_in6;</span>
+<span class="lineNum">     317 </span>            : #else
+<span class="lineNum">     318 </span>            :                   gpg_err_set_errno (EAFNOSUPPORT);
+<span class="lineNum">     319 </span>            :                   addrlen = 0;
+<span class="lineNum">     320 </span>            : #endif
+<span class="lineNum">     321 </span>            :                 }
+<span class="lineNum">     322 </span>            :             }
+<span class="lineNum">     323 </span>            :           else
+<span class="lineNum">     324 </span>            :             {
+<span class="lineNum">     325 </span>            :               /* Check for IPv4 literal address.  */
+<span class="lineNum">     326 </span><span class="lineNoCov">          0 :               strcpy (addrstr, name);</span>
+<span class="lineNum">     327 </span><span class="lineNoCov">          0 :               p = strchr (addrstr, ':');</span>
+<span class="lineNum">     328 </span><span class="lineNoCov">          0 :               if (!p || !parse_portno (p+1, &amp;port))</span>
+<span class="lineNum">     329 </span>            :                 {
+<span class="lineNum">     330 </span><span class="lineNoCov">          0 :                   gpg_err_set_errno (EINVAL);</span>
+<span class="lineNum">     331 </span><span class="lineNoCov">          0 :                   addrlen = 0;</span>
+<span class="lineNum">     332 </span>            :                 }
+<span class="lineNum">     333 </span>            :               else
+<span class="lineNum">     334 </span>            :                 {
+<span class="lineNum">     335 </span><span class="lineNoCov">          0 :                   *p = 0;</span>
+<span class="lineNum">     336 </span><span class="lineNoCov">          0 :                   memset (&amp;srvr_addr_in, 0, sizeof srvr_addr_in);</span>
+<span class="lineNum">     337 </span><span class="lineNoCov">          0 :                   srvr_addr_in.sin_family = af;</span>
+<span class="lineNum">     338 </span><span class="lineNoCov">          0 :                   srvr_addr_in.sin_port = htons (port);</span>
+<span class="lineNum">     339 </span>            : #ifdef HAVE_INET_PTON
+<span class="lineNum">     340 </span><span class="lineNoCov">          0 :                   addrbuf = &amp;srvr_addr_in.sin_addr;</span>
+<span class="lineNum">     341 </span>            : #endif /*HAVE_INET_PTON*/
+<span class="lineNum">     342 </span><span class="lineNoCov">          0 :                   srvr_addr = (struct sockaddr *)&amp;srvr_addr_in;</span>
+<span class="lineNum">     343 </span><span class="lineNoCov">          0 :                   addrlen = sizeof srvr_addr_in;</span>
+<span class="lineNum">     344 </span>            :                 }
+<span class="lineNum">     345 </span>            :             }
+<span class="lineNum">     346 </span>            : 
+<span class="lineNum">     347 </span><span class="lineNoCov">          0 :           if (addrlen)</span>
+<span class="lineNum">     348 </span>            :             {
+<span class="lineNum">     349 </span>            : #ifdef HAVE_INET_PTON
+<span class="lineNum">     350 </span><span class="lineNoCov">          0 :               if (inet_pton (af, addrstr, addrbuf) != 1)</span>
+<span class="lineNum">     351 </span><span class="lineNoCov">          0 :                 addrlen = 0;</span>
+<span class="lineNum">     352 </span>            : #else /*!HAVE_INET_PTON*/
+<span class="lineNum">     353 </span>            :               /* We need to use the old function.  If we are here v6
+<span class="lineNum">     354 </span>            :                  support isn't enabled anyway and thus we can do fine
+<span class="lineNum">     355 </span>            :                  without.  Note that Windows has a compatible inet_pton
+<span class="lineNum">     356 </span>            :                  function named inetPton, but only since Vista.  */
+<span class="lineNum">     357 </span>            :               srvr_addr_in.sin_addr.s_addr = inet_addr (addrstr);
+<span class="lineNum">     358 </span>            :               if (srvr_addr_in.sin_addr.s_addr == INADDR_NONE)
+<span class="lineNum">     359 </span>            :                 addrlen = 0;
+<span class="lineNum">     360 </span>            : #endif /*!HAVE_INET_PTON*/
+<span class="lineNum">     361 </span>            :             }
+<span class="lineNum">     362 </span>            : 
+<span class="lineNum">     363 </span><span class="lineNoCov">          0 :           xfree (addrstr);</span>
+<span class="lineNum">     364 </span>            :         }
+<span class="lineNum">     365 </span>            : 
+<span class="lineNum">     366 </span><span class="lineNoCov">          0 :       cookie-&gt;fd = addrlen? socket (pf, SOCK_STREAM, 0) : -1;</span>
+<span class="lineNum">     367 </span><span class="lineNoCov">          0 :       if (cookie-&gt;fd == -1)</span>
+<span class="lineNum">     368 </span>            :         {
+<span class="lineNum">     369 </span><span class="lineNoCov">          0 :           if (!cookie-&gt;quiet &amp;&amp; !running_detached</span>
+<span class="lineNum">     370 </span><span class="lineNoCov">          0 :               &amp;&amp; isatty (es_fileno (es_stderr)))</span>
+<span class="lineNum">     371 </span><span class="lineNoCov">          0 :             es_fprintf (es_stderr, &quot;failed to create socket for logging: %s\n&quot;,</span>
+<span class="lineNum">     372 </span><span class="lineNoCov">          0 :                         strerror(errno));</span>
+<span class="lineNum">     373 </span>            :         }
+<span class="lineNum">     374 </span>            :       else
+<span class="lineNum">     375 </span>            :         {
+<span class="lineNum">     376 </span><span class="lineNoCov">          0 :           if (connect (cookie-&gt;fd, srvr_addr, addrlen) == -1)</span>
+<span class="lineNum">     377 </span>            :             {
+<span class="lineNum">     378 </span><span class="lineNoCov">          0 :               if (!cookie-&gt;quiet &amp;&amp; !running_detached</span>
+<span class="lineNum">     379 </span><span class="lineNoCov">          0 :                   &amp;&amp; isatty (es_fileno (es_stderr)))</span>
+<span class="lineNum">     380 </span><span class="lineNoCov">          0 :                 es_fprintf (es_stderr, &quot;can't connect to '%s%s': %s\n&quot;,</span>
+<span class="lineNum">     381 </span><span class="lineNoCov">          0 :                             cookie-&gt;name, name_for_err, strerror(errno));</span>
+<span class="lineNum">     382 </span><span class="lineNoCov">          0 :               sock_close (cookie-&gt;fd);</span>
+<span class="lineNum">     383 </span><span class="lineNoCov">          0 :               cookie-&gt;fd = -1;</span>
+<span class="lineNum">     384 </span>            :             }
+<span class="lineNum">     385 </span>            :         }
+<span class="lineNum">     386 </span>            : 
+<span class="lineNum">     387 </span><span class="lineNoCov">          0 :       if (cookie-&gt;fd == -1)</span>
+<span class="lineNum">     388 </span>            :         {
+<span class="lineNum">     389 </span><span class="lineNoCov">          0 :           if (!running_detached)</span>
+<span class="lineNum">     390 </span>            :             {
+<span class="lineNum">     391 </span>            :               /* Due to all the problems with apps not running
+<span class="lineNum">     392 </span>            :                  detached but being called with stderr closed or used
+<span class="lineNum">     393 </span>            :                  for a different purposes, it does not make sense to
+<span class="lineNum">     394 </span>            :                  switch to stderr.  We therefore disable it. */
+<span class="lineNum">     395 </span><span class="lineNoCov">          0 :               if (!cookie-&gt;quiet)</span>
+<span class="lineNum">     396 </span>            :                 {
+<span class="lineNum">     397 </span>            :                   /* fputs (&quot;switching logging to stderr\n&quot;, stderr);*/
+<span class="lineNum">     398 </span><span class="lineNoCov">          0 :                   cookie-&gt;quiet = 1;</span>
+<span class="lineNum">     399 </span>            :                 }
+<span class="lineNum">     400 </span><span class="lineNoCov">          0 :               cookie-&gt;fd = -1; /*fileno (stderr);*/</span>
+<span class="lineNum">     401 </span>            :             }
+<span class="lineNum">     402 </span>            :         }
+<span class="lineNum">     403 </span>            :       else /* Connection has been established. */
+<span class="lineNum">     404 </span>            :         {
+<span class="lineNum">     405 </span><span class="lineNoCov">          0 :           cookie-&gt;quiet = 0;</span>
+<span class="lineNum">     406 </span><span class="lineNoCov">          0 :           cookie-&gt;is_socket = 1;</span>
+<span class="lineNum">     407 </span>            :         }
+<span class="lineNum">     408 </span>            :     }
+<span class="lineNum">     409 </span>            : 
+<span class="lineNum">     410 </span><span class="lineCov">          9 :   log_socket = cookie-&gt;fd;</span>
+<span class="lineNum">     411 </span><span class="lineCov">          9 :   if (cookie-&gt;fd != -1)</span>
+<span class="lineNum">     412 </span>            :     {
+<span class="lineNum">     413 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">     414 </span>            :       if (cookie-&gt;use_writefile)
+<span class="lineNum">     415 </span>            :         {
+<span class="lineNum">     416 </span>            :           DWORD nwritten;
+<span class="lineNum">     417 </span>            : 
+<span class="lineNum">     418 </span>            :           WriteFile ((HANDLE)cookie-&gt;fd, buffer, size, &amp;nwritten, NULL);
+<span class="lineNum">     419 </span>            :           return (gpgrt_ssize_t)size; /* Okay.  */
+<span class="lineNum">     420 </span>            :         }
+<span class="lineNum">     421 </span>            : #endif
+<span class="lineNum">     422 </span><span class="lineCov">          9 :       if (!writen (cookie-&gt;fd, buffer, size, cookie-&gt;is_socket))</span>
+<span class="lineNum">     423 </span><span class="lineCov">          9 :         return (gpgrt_ssize_t)size; /* Okay. */</span>
+<span class="lineNum">     424 </span>            :     }
+<span class="lineNum">     425 </span>            : 
+<span class="lineNum">     426 </span><span class="lineNoCov">          0 :   if (!running_detached &amp;&amp; cookie-&gt;fd != -1</span>
+<span class="lineNum">     427 </span><span class="lineNoCov">          0 :       &amp;&amp; isatty (es_fileno (es_stderr)))</span>
+<span class="lineNum">     428 </span>            :     {
+<span class="lineNum">     429 </span><span class="lineNoCov">          0 :       if (*cookie-&gt;name)</span>
+<span class="lineNum">     430 </span><span class="lineNoCov">          0 :         es_fprintf (es_stderr, &quot;error writing to '%s': %s\n&quot;,</span>
+<span class="lineNum">     431 </span><span class="lineNoCov">          0 :                     cookie-&gt;name, strerror(errno));</span>
+<span class="lineNum">     432 </span>            :       else
+<span class="lineNum">     433 </span><span class="lineNoCov">          0 :         es_fprintf (es_stderr, &quot;error writing to file descriptor %d: %s\n&quot;,</span>
+<span class="lineNum">     434 </span><span class="lineNoCov">          0 :                     cookie-&gt;fd, strerror(errno));</span>
+<span class="lineNum">     435 </span>            :     }
+<span class="lineNum">     436 </span><span class="lineNoCov">          0 :   if (cookie-&gt;is_socket &amp;&amp; cookie-&gt;fd != -1)</span>
+<span class="lineNum">     437 </span>            :     {
+<span class="lineNum">     438 </span><span class="lineNoCov">          0 :       sock_close (cookie-&gt;fd);</span>
+<span class="lineNum">     439 </span><span class="lineNoCov">          0 :       cookie-&gt;fd = -1;</span>
+<span class="lineNum">     440 </span><span class="lineNoCov">          0 :       log_socket = -1;</span>
+<span class="lineNum">     441 </span>            :     }
+<span class="lineNum">     442 </span>            : 
+<span class="lineNum">     443 </span><span class="lineNoCov">          0 :   return (gpgrt_ssize_t)size;</span>
+<span class="lineNum">     444 </span>            : }
+<span class="lineNum">     445 </span>            : 
+<a name="446"><span class="lineNum">     446 </span>            : </a>
+<span class="lineNum">     447 </span>            : static int
+<span class="lineNum">     448 </span><span class="lineNoCov">          0 : fun_closer (void *cookie_arg)</span>
+<span class="lineNum">     449 </span>            : {
+<span class="lineNum">     450 </span><span class="lineNoCov">          0 :   struct fun_cookie_s *cookie = cookie_arg;</span>
+<span class="lineNum">     451 </span>            : 
+<span class="lineNum">     452 </span><span class="lineNoCov">          0 :   if (cookie-&gt;fd != -1 &amp;&amp; cookie-&gt;fd != 2)</span>
+<span class="lineNum">     453 </span><span class="lineNoCov">          0 :     sock_close (cookie-&gt;fd);</span>
+<span class="lineNum">     454 </span><span class="lineNoCov">          0 :   xfree (cookie);</span>
+<span class="lineNum">     455 </span><span class="lineNoCov">          0 :   log_socket = -1;</span>
+<span class="lineNum">     456 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     457 </span>            : }
+<span class="lineNum">     458 </span>            : 
+<span class="lineNum">     459 </span>            : 
+<span class="lineNum">     460 </span>            : /* Common function to either set the logging to a file or a file
+<a name="461"><span class="lineNum">     461 </span>            :    descriptor. */</a>
+<span class="lineNum">     462 </span>            : static void
+<span class="lineNum">     463 </span><span class="lineCov">          1 : set_file_fd (const char *name, int fd)</span>
+<span class="lineNum">     464 </span>            : {
+<span class="lineNum">     465 </span>            :   estream_t fp;
+<span class="lineNum">     466 </span>            :   int want_socket;
+<span class="lineNum">     467 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">     468 </span>            :   int use_writefile = 0;
+<span class="lineNum">     469 </span>            : #endif
+<span class="lineNum">     470 </span>            :   struct fun_cookie_s *cookie;
+<span class="lineNum">     471 </span>            : 
+<span class="lineNum">     472 </span>            :   /* Close an open log stream.  */
+<span class="lineNum">     473 </span><span class="lineCov">          1 :   if (logstream)</span>
+<span class="lineNum">     474 </span>            :     {
+<span class="lineNum">     475 </span><span class="lineNoCov">          0 :       es_fclose (logstream);</span>
+<span class="lineNum">     476 </span><span class="lineNoCov">          0 :       logstream = NULL;</span>
+<span class="lineNum">     477 </span>            :     }
+<span class="lineNum">     478 </span>            : 
+<span class="lineNum">     479 </span>            :   /* Figure out what kind of logging we want.  */
+<span class="lineNum">     480 </span><span class="lineCov">          1 :   if (name &amp;&amp; !strcmp (name, &quot;-&quot;))</span>
+<span class="lineNum">     481 </span>            :     {
+<span class="lineNum">     482 </span><span class="lineCov">          1 :       name = NULL;</span>
+<span class="lineNum">     483 </span><span class="lineCov">          1 :       fd = es_fileno (es_stderr);</span>
+<span class="lineNum">     484 </span>            :     }
+<span class="lineNum">     485 </span>            : 
+<span class="lineNum">     486 </span><span class="lineCov">          1 :   want_socket = 0;</span>
+<span class="lineNum">     487 </span><span class="lineCov">          1 :   if (name &amp;&amp; !strncmp (name, &quot;tcp://&quot;, 6) &amp;&amp; name[6])</span>
+<span class="lineNum">     488 </span><span class="lineNoCov">          0 :     want_socket = 1;</span>
+<span class="lineNum">     489 </span>            : #ifndef HAVE_W32_SYSTEM
+<span class="lineNum">     490 </span><span class="lineCov">          1 :   else if (name &amp;&amp; !strncmp (name, &quot;socket://&quot;, 9))</span>
+<span class="lineNum">     491 </span><span class="lineNoCov">          0 :     want_socket = 2;</span>
+<span class="lineNum">     492 </span>            : #endif /*HAVE_W32_SYSTEM*/
+<span class="lineNum">     493 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">     494 </span>            :   else if (name &amp;&amp; !strcmp (name, &quot;GPG2:&quot;))
+<span class="lineNum">     495 </span>            :     {
+<span class="lineNum">     496 </span>            :       HANDLE hd;
+<span class="lineNum">     497 </span>            : 
+<span class="lineNum">     498 </span>            :       ActivateDevice (L&quot;Drivers\\&quot;GNUPG_NAME&quot;_Log&quot;, 0);
+<span class="lineNum">     499 </span>            :       /* Ignore a filename and write the debug output to the GPG2:
+<span class="lineNum">     500 </span>            :          device.  */
+<span class="lineNum">     501 </span>            :       hd = CreateFile (L&quot;GPG2:&quot;, GENERIC_WRITE,
+<span class="lineNum">     502 </span>            :                        FILE_SHARE_READ | FILE_SHARE_WRITE,
+<span class="lineNum">     503 </span>            :                        NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+<span class="lineNum">     504 </span>            :       fd = (hd == INVALID_HANDLE_VALUE)? -1 : (int)hd;
+<span class="lineNum">     505 </span>            :       name = NULL;
+<span class="lineNum">     506 </span>            :       force_prefixes = 1;
+<span class="lineNum">     507 </span>            :       use_writefile = 1;
+<span class="lineNum">     508 </span>            :     }
+<span class="lineNum">     509 </span>            : #endif /*HAVE_W32CE_SYSTEM*/
+<span class="lineNum">     510 </span>            : 
+<span class="lineNum">     511 </span>            :   /* Setup a new stream.  */
+<span class="lineNum">     512 </span>            : 
+<span class="lineNum">     513 </span>            :   /* The xmalloc below is justified because we can expect that this
+<span class="lineNum">     514 </span>            :      function is called only during initialization and there is no
+<span class="lineNum">     515 </span>            :      easy way out of this error condition.  */
+<span class="lineNum">     516 </span><span class="lineCov">          1 :   cookie = xmalloc (sizeof *cookie + (name? strlen (name):0));</span>
+<span class="lineNum">     517 </span><span class="lineCov">          1 :   strcpy (cookie-&gt;name, name? name:&quot;&quot;);</span>
+<span class="lineNum">     518 </span><span class="lineCov">          1 :   cookie-&gt;quiet = 0;</span>
+<span class="lineNum">     519 </span><span class="lineCov">          1 :   cookie-&gt;is_socket = 0;</span>
+<span class="lineNum">     520 </span><span class="lineCov">          1 :   cookie-&gt;want_socket = want_socket;</span>
+<span class="lineNum">     521 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">     522 </span>            :   cookie-&gt;use_writefile = use_writefile;
+<span class="lineNum">     523 </span>            : #endif
+<span class="lineNum">     524 </span><span class="lineCov">          1 :   if (!name)</span>
+<span class="lineNum">     525 </span><span class="lineCov">          1 :     cookie-&gt;fd = fd;</span>
+<span class="lineNum">     526 </span><span class="lineNoCov">          0 :   else if (want_socket)</span>
+<span class="lineNum">     527 </span><span class="lineNoCov">          0 :     cookie-&gt;fd = -1;</span>
+<span class="lineNum">     528 </span>            :   else
+<span class="lineNum">     529 </span>            :     {
+<span class="lineNum">     530 </span>            :       do
+<span class="lineNum">     531 </span><span class="lineNoCov">          0 :         cookie-&gt;fd = open (name, O_WRONLY|O_APPEND|O_CREAT,</span>
+<span class="lineNum">     532 </span>            :                            (S_IRUSR|S_IRGRP|S_IROTH|S_IWUSR|S_IWGRP|S_IWOTH));
+<span class="lineNum">     533 </span><span class="lineNoCov">          0 :       while (cookie-&gt;fd == -1 &amp;&amp; errno == EINTR);</span>
+<span class="lineNum">     534 </span>            :     }
+<span class="lineNum">     535 </span><span class="lineCov">          1 :   log_socket = cookie-&gt;fd;</span>
+<span class="lineNum">     536 </span>            : 
+<span class="lineNum">     537 </span>            :   {
+<span class="lineNum">     538 </span><span class="lineCov">          1 :     es_cookie_io_functions_t io = { NULL };</span>
+<span class="lineNum">     539 </span><span class="lineCov">          1 :     io.func_write = fun_writer;</span>
+<span class="lineNum">     540 </span><span class="lineCov">          1 :     io.func_close = fun_closer;</span>
+<span class="lineNum">     541 </span>            : 
+<span class="lineNum">     542 </span><span class="lineCov">          1 :     fp = es_fopencookie (cookie, &quot;w&quot;, io);</span>
+<span class="lineNum">     543 </span>            :   }
+<span class="lineNum">     544 </span>            : 
+<span class="lineNum">     545 </span>            :   /* On error default to a stderr based estream.  */
+<span class="lineNum">     546 </span><span class="lineCov">          1 :   if (!fp)</span>
+<span class="lineNum">     547 </span><span class="lineNoCov">          0 :     fp = es_stderr;</span>
+<span class="lineNum">     548 </span>            : 
+<span class="lineNum">     549 </span><span class="lineCov">          1 :   es_setvbuf (fp, NULL, _IOLBF, 0);</span>
+<span class="lineNum">     550 </span>            : 
+<span class="lineNum">     551 </span><span class="lineCov">          1 :   logstream = fp;</span>
+<span class="lineNum">     552 </span>            : 
+<span class="lineNum">     553 </span>            :   /* We always need to print the prefix and the pid for socket mode,
+<span class="lineNum">     554 </span>            :      so that the server reading the socket can do something
+<span class="lineNum">     555 </span>            :      meaningful. */
+<span class="lineNum">     556 </span><span class="lineCov">          1 :   force_prefixes = want_socket;</span>
+<span class="lineNum">     557 </span>            : 
+<span class="lineNum">     558 </span><span class="lineCov">          1 :   missing_lf = 0;</span>
+<span class="lineNum">     559 </span><span class="lineCov">          1 : }</span>
+<span class="lineNum">     560 </span>            : 
+<span class="lineNum">     561 </span>            : 
+<span class="lineNum">     562 </span>            : /* Set the file to write log to.  The special names NULL and &quot;-&quot; may
+<span class="lineNum">     563 </span>            :    be used to select stderr and names formatted like
+<span class="lineNum">     564 </span>            :    &quot;socket:///home/foo/mylogs&quot; may be used to write the logging to the
+<span class="lineNum">     565 </span>            :    socket &quot;/home/foo/mylogs&quot;.  If the connection to the socket fails
+<span class="lineNum">     566 </span>            :    or a write error is detected, the function writes to stderr and
+<span class="lineNum">     567 </span>            :    tries the next time again to connect the socket.
+<a name="568"><span class="lineNum">     568 </span>            :   */</a>
+<span class="lineNum">     569 </span>            : void
+<span class="lineNum">     570 </span><span class="lineCov">          1 : log_set_file (const char *name)</span>
+<span class="lineNum">     571 </span>            : {
+<span class="lineNum">     572 </span><span class="lineCov">          1 :   set_file_fd (name? name: &quot;-&quot;, -1);</span>
+<span class="lineNum">     573 </span><span class="lineCov">          1 : }</span>
+<a name="574"><span class="lineNum">     574 </span>            : </a>
+<span class="lineNum">     575 </span>            : void
+<span class="lineNum">     576 </span><span class="lineNoCov">          0 : log_set_fd (int fd)</span>
+<span class="lineNum">     577 </span>            : {
+<span class="lineNum">     578 </span><span class="lineNoCov">          0 :   if (! gnupg_fd_valid (fd))</span>
+<span class="lineNum">     579 </span><span class="lineNoCov">          0 :     log_fatal (&quot;logger-fd is invalid: %s\n&quot;, strerror (errno));</span>
+<span class="lineNum">     580 </span>            : 
+<span class="lineNum">     581 </span><span class="lineNoCov">          0 :   set_file_fd (NULL, fd);</span>
+<span class="lineNum">     582 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     583 </span>            : 
+<span class="lineNum">     584 </span>            : 
+<span class="lineNum">     585 </span>            : /* Set a function to retrieve the directory name of a socket if
+<a name="586"><span class="lineNum">     586 </span>            :  * only &quot;socket://&quot; has been given to log_set_file.  */</a>
+<span class="lineNum">     587 </span>            : void
+<span class="lineNum">     588 </span><span class="lineCov">          1 : log_set_socket_dir_cb (const char *(*fnc)(void))</span>
+<span class="lineNum">     589 </span>            : {
+<span class="lineNum">     590 </span><span class="lineCov">          1 :   socket_dir_cb = fnc;</span>
+<span class="lineNum">     591 </span><span class="lineCov">          1 : }</span>
+<span class="lineNum">     592 </span>            : 
+<a name="593"><span class="lineNum">     593 </span>            : </a>
+<span class="lineNum">     594 </span>            : void
+<span class="lineNum">     595 </span><span class="lineNoCov">          0 : log_set_pid_suffix_cb (int (*cb)(unsigned long *r_value))</span>
+<span class="lineNum">     596 </span>            : {
+<span class="lineNum">     597 </span><span class="lineNoCov">          0 :   get_pid_suffix_cb = cb;</span>
+<span class="lineNum">     598 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     599 </span>            : 
+<a name="600"><span class="lineNum">     600 </span>            : </a>
+<span class="lineNum">     601 </span>            : void
+<span class="lineNum">     602 </span><span class="lineCov">          1 : log_set_prefix (const char *text, unsigned int flags)</span>
+<span class="lineNum">     603 </span>            : {
+<span class="lineNum">     604 </span><span class="lineCov">          1 :   if (text)</span>
+<span class="lineNum">     605 </span>            :     {
+<span class="lineNum">     606 </span><span class="lineCov">          1 :       strncpy (prefix_buffer, text, sizeof (prefix_buffer)-1);</span>
+<span class="lineNum">     607 </span><span class="lineCov">          1 :       prefix_buffer[sizeof (prefix_buffer)-1] = 0;</span>
+<span class="lineNum">     608 </span>            :     }
+<span class="lineNum">     609 </span>            : 
+<span class="lineNum">     610 </span><span class="lineCov">          1 :   with_prefix = (flags &amp; GPGRT_LOG_WITH_PREFIX);</span>
+<span class="lineNum">     611 </span><span class="lineCov">          1 :   with_time = (flags &amp; GPGRT_LOG_WITH_TIME);</span>
+<span class="lineNum">     612 </span><span class="lineCov">          1 :   with_pid  = (flags &amp; GPGRT_LOG_WITH_PID);</span>
+<span class="lineNum">     613 </span><span class="lineCov">          1 :   running_detached = (flags &amp; GPGRT_LOG_RUN_DETACHED);</span>
+<span class="lineNum">     614 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     615 </span>            :   no_registry = (flags &amp; GPGRT_LOG_NO_REGISTRY);
+<span class="lineNum">     616 </span>            : #endif
+<span class="lineNum">     617 </span><span class="lineCov">          1 : }</span>
+<span class="lineNum">     618 </span>            : 
+<a name="619"><span class="lineNum">     619 </span>            : </a>
+<span class="lineNum">     620 </span>            : const char *
+<span class="lineNum">     621 </span><span class="lineNoCov">          0 : log_get_prefix (unsigned int *flags)</span>
+<span class="lineNum">     622 </span>            : {
+<span class="lineNum">     623 </span><span class="lineNoCov">          0 :   if (flags)</span>
+<span class="lineNum">     624 </span>            :     {
+<span class="lineNum">     625 </span><span class="lineNoCov">          0 :       *flags = 0;</span>
+<span class="lineNum">     626 </span><span class="lineNoCov">          0 :       if (with_prefix)</span>
+<span class="lineNum">     627 </span><span class="lineNoCov">          0 :         *flags |= GPGRT_LOG_WITH_PREFIX;</span>
+<span class="lineNum">     628 </span><span class="lineNoCov">          0 :       if (with_time)</span>
+<span class="lineNum">     629 </span><span class="lineNoCov">          0 :         *flags |= GPGRT_LOG_WITH_TIME;</span>
+<span class="lineNum">     630 </span><span class="lineNoCov">          0 :       if (with_pid)</span>
+<span class="lineNum">     631 </span><span class="lineNoCov">          0 :         *flags |= GPGRT_LOG_WITH_PID;</span>
+<span class="lineNum">     632 </span><span class="lineNoCov">          0 :       if (running_detached)</span>
+<span class="lineNum">     633 </span><span class="lineNoCov">          0 :         *flags |= GPGRT_LOG_RUN_DETACHED;</span>
+<span class="lineNum">     634 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     635 </span>            :       if (no_registry)
+<span class="lineNum">     636 </span>            :         *flags |= GPGRT_LOG_NO_REGISTRY;
+<span class="lineNum">     637 </span>            : #endif
+<span class="lineNum">     638 </span>            :     }
+<span class="lineNum">     639 </span><span class="lineNoCov">          0 :   return prefix_buffer;</span>
+<span class="lineNum">     640 </span>            : }
+<span class="lineNum">     641 </span>            : 
+<span class="lineNum">     642 </span>            : /* This function returns true if the file descriptor FD is in use for
+<span class="lineNum">     643 </span>            :    logging.  This is preferable over a test using log_get_fd in that
+<a name="644"><span class="lineNum">     644 </span>            :    it allows the logging code to use more then one file descriptor.  */</a>
+<span class="lineNum">     645 </span>            : int
+<span class="lineNum">     646 </span><span class="lineNoCov">          0 : log_test_fd (int fd)</span>
+<span class="lineNum">     647 </span>            : {
+<span class="lineNum">     648 </span><span class="lineNoCov">          0 :   if (logstream)</span>
+<span class="lineNum">     649 </span>            :     {
+<span class="lineNum">     650 </span><span class="lineNoCov">          0 :       int tmp = es_fileno (logstream);</span>
+<span class="lineNum">     651 </span><span class="lineNoCov">          0 :       if ( tmp != -1 &amp;&amp; tmp == fd)</span>
+<span class="lineNum">     652 </span><span class="lineNoCov">          0 :         return 1;</span>
+<span class="lineNum">     653 </span>            :     }
+<span class="lineNum">     654 </span><span class="lineNoCov">          0 :   if (log_socket != -1 &amp;&amp; log_socket == fd)</span>
+<span class="lineNum">     655 </span><span class="lineNoCov">          0 :     return 1;</span>
+<span class="lineNum">     656 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     657 </span>            : }
+<a name="658"><span class="lineNum">     658 </span>            : </a>
+<span class="lineNum">     659 </span>            : int
+<span class="lineNum">     660 </span><span class="lineNoCov">          0 : log_get_fd ()</span>
+<span class="lineNum">     661 </span>            : {
+<span class="lineNum">     662 </span><span class="lineNoCov">          0 :   return logstream? es_fileno(logstream) : -1;</span>
+<span class="lineNum">     663 </span>            : }
+<a name="664"><span class="lineNum">     664 </span>            : </a>
+<span class="lineNum">     665 </span>            : estream_t
+<span class="lineNum">     666 </span><span class="lineNoCov">          0 : log_get_stream ()</span>
+<span class="lineNum">     667 </span>            : {
+<span class="lineNum">     668 </span><span class="lineNoCov">          0 :   if (!logstream)</span>
+<span class="lineNum">     669 </span>            :     {
+<span class="lineNum">     670 </span><span class="lineNoCov">          0 :       log_set_file (NULL); /* Make sure a log stream has been set.  */</span>
+<span class="lineNum">     671 </span><span class="lineNoCov">          0 :       assert (logstream);</span>
+<span class="lineNum">     672 </span>            :     }
+<span class="lineNum">     673 </span><span class="lineNoCov">          0 :   return logstream;</span>
+<span class="lineNum">     674 </span>            : }
+<span class="lineNum">     675 </span>            : 
+<a name="676"><span class="lineNum">     676 </span>            : </a>
+<span class="lineNum">     677 </span>            : static void
+<span class="lineNum">     678 </span><span class="lineCov">          4 : print_prefix (int level, int leading_backspace)</span>
+<span class="lineNum">     679 </span>            : {
+<span class="lineNum">     680 </span><span class="lineCov">          4 :   if (level != GPGRT_LOG_CONT)</span>
+<span class="lineNum">     681 </span>            :     { /* Note this does not work for multiple line logging as we would
+<span class="lineNum">     682 </span>            :        * need to print to a buffer first */
+<span class="lineNum">     683 </span><span class="lineCov">          3 :       if (with_time &amp;&amp; !force_prefixes)</span>
+<span class="lineNum">     684 </span>            :         {
+<span class="lineNum">     685 </span>            :           struct tm *tp;
+<span class="lineNum">     686 </span><span class="lineNoCov">          0 :           time_t atime = time (NULL);</span>
+<span class="lineNum">     687 </span>            : 
+<span class="lineNum">     688 </span><span class="lineNoCov">          0 :           tp = localtime (&amp;atime);</span>
+<span class="lineNum">     689 </span><span class="lineNoCov">          0 :           es_fprintf_unlocked (logstream, &quot;%04d-%02d-%02d %02d:%02d:%02d &quot;,</span>
+<span class="lineNum">     690 </span><span class="lineNoCov">          0 :                                1900+tp-&gt;tm_year, tp-&gt;tm_mon+1, tp-&gt;tm_mday,</span>
+<span class="lineNum">     691 </span>            :                                tp-&gt;tm_hour, tp-&gt;tm_min, tp-&gt;tm_sec );
+<span class="lineNum">     692 </span>            :         }
+<span class="lineNum">     693 </span><span class="lineCov">          3 :       if (with_prefix || force_prefixes)</span>
+<span class="lineNum">     694 </span><span class="lineCov">          3 :         es_fputs_unlocked (prefix_buffer, logstream);</span>
+<span class="lineNum">     695 </span><span class="lineCov">          3 :       if (with_pid || force_prefixes)</span>
+<span class="lineNum">     696 </span>            :         {
+<span class="lineNum">     697 </span>            :           unsigned long pidsuf;
+<span class="lineNum">     698 </span>            :           int pidfmt;
+<span class="lineNum">     699 </span>            : 
+<span class="lineNum">     700 </span><span class="lineNoCov">          0 :           if (get_pid_suffix_cb &amp;&amp; (pidfmt=get_pid_suffix_cb (&amp;pidsuf)))</span>
+<span class="lineNum">     701 </span><span class="lineNoCov">          0 :             es_fprintf_unlocked (logstream, pidfmt == 1? &quot;[%u.%lu]&quot;:&quot;[%u.%lx]&quot;,</span>
+<span class="lineNum">     702 </span><span class="lineNoCov">          0 :                                  (unsigned int)getpid (), pidsuf);</span>
+<span class="lineNum">     703 </span>            :           else
+<span class="lineNum">     704 </span><span class="lineNoCov">          0 :             es_fprintf_unlocked (logstream, &quot;[%u]&quot;, (unsigned int)getpid ());</span>
+<span class="lineNum">     705 </span>            :         }
+<span class="lineNum">     706 </span><span class="lineCov">          3 :       if ((!with_time &amp;&amp; (with_prefix || with_pid)) || force_prefixes)</span>
+<span class="lineNum">     707 </span><span class="lineCov">          3 :         es_putc_unlocked (':', logstream);</span>
+<span class="lineNum">     708 </span>            :       /* A leading backspace suppresses the extra space so that we can
+<span class="lineNum">     709 </span>            :          correctly output, programname, filename and linenumber. */
+<span class="lineNum">     710 </span><span class="lineCov">          3 :       if (!leading_backspace</span>
+<span class="lineNum">     711 </span><span class="lineCov">          3 :           &amp;&amp; (with_time || with_prefix || with_pid || force_prefixes))</span>
+<span class="lineNum">     712 </span><span class="lineCov">          3 :         es_putc_unlocked (' ', logstream);</span>
+<span class="lineNum">     713 </span>            :     }
+<span class="lineNum">     714 </span>            : 
+<span class="lineNum">     715 </span><span class="lineCov">          4 :   switch (level)</span>
+<span class="lineNum">     716 </span>            :     {
+<span class="lineNum">     717 </span><span class="lineNoCov">          0 :     case GPGRT_LOG_BEGIN: break;</span>
+<span class="lineNum">     718 </span><span class="lineCov">          1 :     case GPGRT_LOG_CONT: break;</span>
+<span class="lineNum">     719 </span><span class="lineCov">          3 :     case GPGRT_LOG_INFO: break;</span>
+<span class="lineNum">     720 </span><span class="lineNoCov">          0 :     case GPGRT_LOG_WARN: break;</span>
+<span class="lineNum">     721 </span><span class="lineNoCov">          0 :     case GPGRT_LOG_ERROR: break;</span>
+<span class="lineNum">     722 </span><span class="lineNoCov">          0 :     case GPGRT_LOG_FATAL: es_fputs_unlocked (&quot;Fatal: &quot;,logstream ); break;</span>
+<span class="lineNum">     723 </span><span class="lineNoCov">          0 :     case GPGRT_LOG_BUG:   es_fputs_unlocked (&quot;Ohhhh jeeee: &quot;, logstream); break;</span>
+<span class="lineNum">     724 </span><span class="lineNoCov">          0 :     case GPGRT_LOG_DEBUG: es_fputs_unlocked (&quot;DBG: &quot;, logstream ); break;</span>
+<span class="lineNum">     725 </span>            :     default:
+<span class="lineNum">     726 </span><span class="lineNoCov">          0 :       es_fprintf_unlocked (logstream,&quot;[Unknown log level %d]: &quot;, level);</span>
+<span class="lineNum">     727 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     728 </span>            :     }
+<span class="lineNum">     729 </span><span class="lineCov">          4 : }</span>
+<span class="lineNum">     730 </span>            : 
+<a name="731"><span class="lineNum">     731 </span>            : </a>
+<span class="lineNum">     732 </span>            : static void
+<span class="lineNum">     733 </span><span class="lineCov">          4 : do_logv (int level, int ignore_arg_ptr, const char *extrastring,</span>
+<span class="lineNum">     734 </span>            :          const char *prefmt, const char *fmt, va_list arg_ptr)
+<span class="lineNum">     735 </span>            : {
+<span class="lineNum">     736 </span><span class="lineCov">          4 :   int leading_backspace = (fmt &amp;&amp; *fmt == '\b');</span>
+<span class="lineNum">     737 </span>            : 
+<span class="lineNum">     738 </span><span class="lineCov">          4 :   if (!logstream)</span>
+<span class="lineNum">     739 </span>            :     {
+<span class="lineNum">     740 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     741 </span>            :       char *tmp;
+<span class="lineNum">     742 </span>            : 
+<span class="lineNum">     743 </span>            :       tmp = (no_registry
+<span class="lineNum">     744 </span>            :              ? NULL
+<span class="lineNum">     745 </span>            :              : read_w32_registry_string (NULL, GNUPG_REGISTRY_DIR,
+<span class="lineNum">     746 </span>            :                                          &quot;DefaultLogFile&quot;));
+<span class="lineNum">     747 </span>            :       log_set_file (tmp &amp;&amp; *tmp? tmp : NULL);
+<span class="lineNum">     748 </span>            :       xfree (tmp);
+<span class="lineNum">     749 </span>            : #else
+<span class="lineNum">     750 </span><span class="lineCov">          1 :       log_set_file (NULL); /* Make sure a log stream has been set.  */</span>
+<span class="lineNum">     751 </span>            : #endif
+<span class="lineNum">     752 </span><span class="lineCov">          1 :       assert (logstream);</span>
+<span class="lineNum">     753 </span>            :     }
+<span class="lineNum">     754 </span>            : 
+<span class="lineNum">     755 </span><span class="lineCov">          4 :   es_flockfile (logstream);</span>
+<span class="lineNum">     756 </span><span class="lineCov">          4 :   if (missing_lf &amp;&amp; level != GPGRT_LOG_CONT)</span>
+<span class="lineNum">     757 </span><span class="lineNoCov">          0 :     es_putc_unlocked ('\n', logstream );</span>
+<span class="lineNum">     758 </span><span class="lineCov">          4 :   missing_lf = 0;</span>
+<span class="lineNum">     759 </span>            : 
+<span class="lineNum">     760 </span><span class="lineCov">          4 :   print_prefix (level, leading_backspace);</span>
+<span class="lineNum">     761 </span><span class="lineCov">          4 :   if (leading_backspace)</span>
+<span class="lineNum">     762 </span><span class="lineNoCov">          0 :     fmt++;</span>
+<span class="lineNum">     763 </span>            : 
+<span class="lineNum">     764 </span><span class="lineCov">          4 :   if (fmt)</span>
+<span class="lineNum">     765 </span>            :     {
+<span class="lineNum">     766 </span><span class="lineCov">          4 :       if (prefmt)</span>
+<span class="lineNum">     767 </span><span class="lineNoCov">          0 :         es_fputs_unlocked (prefmt, logstream);</span>
+<span class="lineNum">     768 </span>            : 
+<span class="lineNum">     769 </span><span class="lineCov">          4 :       if (ignore_arg_ptr)</span>
+<span class="lineNum">     770 </span>            :         { /* This is used by log_string and comes with the extra
+<span class="lineNum">     771 </span>            :            * feature that after a LF the next line is indent at the
+<span class="lineNum">     772 </span>            :            * length of the prefix.  Note that we do not yet include
+<span class="lineNum">     773 </span>            :            * the length of the timestamp and pid in the indent
+<span class="lineNum">     774 </span>            :            * computation.  */
+<span class="lineNum">     775 </span>            :           const char *p, *pend;
+<span class="lineNum">     776 </span>            : 
+<span class="lineNum">     777 </span><span class="lineNoCov">          0 :           for (p = fmt; (pend = strchr (p, '\n')); p = pend+1)</span>
+<span class="lineNum">     778 </span><span class="lineNoCov">          0 :             es_fprintf_unlocked (logstream, &quot;%*s%.*s&quot;,</span>
+<span class="lineNum">     779 </span>            :                                  (int)((p != fmt
+<span class="lineNum">     780 </span><span class="lineNoCov">          0 :                                         &amp;&amp; (with_prefix || force_prefixes))</span>
+<span class="lineNum">     781 </span><span class="lineNoCov">          0 :                                        ?strlen (prefix_buffer)+2:0), &quot;&quot;,</span>
+<span class="lineNum">     782 </span><span class="lineNoCov">          0 :                                  (int)(pend - p)+1, p);</span>
+<span class="lineNum">     783 </span><span class="lineNoCov">          0 :           es_fputs_unlocked (p, logstream);</span>
+<span class="lineNum">     784 </span>            :         }
+<span class="lineNum">     785 </span>            :       else
+<span class="lineNum">     786 </span><span class="lineCov">          4 :         es_vfprintf_unlocked (logstream, fmt, arg_ptr);</span>
+<span class="lineNum">     787 </span><span class="lineCov">          4 :       if (*fmt &amp;&amp; fmt[strlen(fmt)-1] != '\n')</span>
+<span class="lineNum">     788 </span><span class="lineCov">          1 :         missing_lf = 1;</span>
+<span class="lineNum">     789 </span>            :     }
+<span class="lineNum">     790 </span>            : 
+<span class="lineNum">     791 </span>            :   /* If we have an EXTRASTRING print it now while we still hold the
+<span class="lineNum">     792 </span>            :    * lock on the logstream.  */
+<span class="lineNum">     793 </span><span class="lineCov">          4 :   if (extrastring)</span>
+<span class="lineNum">     794 </span>            :     {
+<span class="lineNum">     795 </span>            :       int c;
+<span class="lineNum">     796 </span>            : 
+<span class="lineNum">     797 </span><span class="lineNoCov">          0 :       if (missing_lf)</span>
+<span class="lineNum">     798 </span>            :         {
+<span class="lineNum">     799 </span><span class="lineNoCov">          0 :           es_putc_unlocked ('\n', logstream);</span>
+<span class="lineNum">     800 </span><span class="lineNoCov">          0 :           missing_lf = 0;</span>
+<span class="lineNum">     801 </span>            :         }
+<span class="lineNum">     802 </span><span class="lineNoCov">          0 :       print_prefix (level, leading_backspace);</span>
+<span class="lineNum">     803 </span><span class="lineNoCov">          0 :       es_fputs_unlocked (&quot;&gt;&gt; &quot;, logstream);</span>
+<span class="lineNum">     804 </span><span class="lineNoCov">          0 :       missing_lf = 1;</span>
+<span class="lineNum">     805 </span><span class="lineNoCov">          0 :       while ((c = *extrastring++))</span>
+<span class="lineNum">     806 </span>            :         {
+<span class="lineNum">     807 </span><span class="lineNoCov">          0 :           missing_lf = 1;</span>
+<span class="lineNum">     808 </span><span class="lineNoCov">          0 :           if (c == '\\')</span>
+<span class="lineNum">     809 </span><span class="lineNoCov">          0 :             es_fputs_unlocked (&quot;\\\\&quot;, logstream);</span>
+<span class="lineNum">     810 </span><span class="lineNoCov">          0 :           else if (c == '\r')</span>
+<span class="lineNum">     811 </span><span class="lineNoCov">          0 :             es_fputs_unlocked (&quot;\\r&quot;, logstream);</span>
+<span class="lineNum">     812 </span><span class="lineNoCov">          0 :           else if (c == '\n')</span>
+<span class="lineNum">     813 </span>            :             {
+<span class="lineNum">     814 </span><span class="lineNoCov">          0 :               es_fputs_unlocked (&quot;\\n\n&quot;, logstream);</span>
+<span class="lineNum">     815 </span><span class="lineNoCov">          0 :               if (*extrastring)</span>
+<span class="lineNum">     816 </span>            :                 {
+<span class="lineNum">     817 </span><span class="lineNoCov">          0 :                   print_prefix (level, leading_backspace);</span>
+<span class="lineNum">     818 </span><span class="lineNoCov">          0 :                   es_fputs_unlocked (&quot;&gt;&gt; &quot;, logstream);</span>
+<span class="lineNum">     819 </span>            :                 }
+<span class="lineNum">     820 </span>            :               else
+<span class="lineNum">     821 </span><span class="lineNoCov">          0 :                 missing_lf = 0;</span>
+<span class="lineNum">     822 </span>            :             }
+<span class="lineNum">     823 </span>            :           else
+<span class="lineNum">     824 </span><span class="lineNoCov">          0 :             es_putc_unlocked (c, logstream);</span>
+<span class="lineNum">     825 </span>            :         }
+<span class="lineNum">     826 </span><span class="lineNoCov">          0 :       if (missing_lf)</span>
+<span class="lineNum">     827 </span>            :         {
+<span class="lineNum">     828 </span><span class="lineNoCov">          0 :           es_putc_unlocked ('\n', logstream);</span>
+<span class="lineNum">     829 </span><span class="lineNoCov">          0 :           missing_lf = 0;</span>
+<span class="lineNum">     830 </span>            :         }
+<span class="lineNum">     831 </span>            :     }
+<span class="lineNum">     832 </span>            : 
+<span class="lineNum">     833 </span><span class="lineCov">          4 :   if (level == GPGRT_LOG_FATAL)</span>
+<span class="lineNum">     834 </span>            :     {
+<span class="lineNum">     835 </span><span class="lineNoCov">          0 :       if (missing_lf)</span>
+<span class="lineNum">     836 </span><span class="lineNoCov">          0 :         es_putc_unlocked ('\n', logstream);</span>
+<span class="lineNum">     837 </span><span class="lineNoCov">          0 :       es_funlockfile (logstream);</span>
+<span class="lineNum">     838 </span><span class="lineNoCov">          0 :       exit (2);</span>
+<span class="lineNum">     839 </span>            :     }
+<span class="lineNum">     840 </span><span class="lineCov">          4 :   else if (level == GPGRT_LOG_BUG)</span>
+<span class="lineNum">     841 </span>            :     {
+<span class="lineNum">     842 </span><span class="lineNoCov">          0 :       if (missing_lf)</span>
+<span class="lineNum">     843 </span><span class="lineNoCov">          0 :         es_putc_unlocked ('\n', logstream );</span>
+<span class="lineNum">     844 </span><span class="lineNoCov">          0 :       es_funlockfile (logstream);</span>
+<span class="lineNum">     845 </span>            :       /* Using backtrace requires a configure test and to pass
+<span class="lineNum">     846 </span>            :        * -rdynamic to gcc.  Thus we do not enable it now.  */
+<span class="lineNum">     847 </span>            :       /* { */
+<span class="lineNum">     848 </span>            :       /*   void *btbuf[20]; */
+<span class="lineNum">     849 </span>            :       /*   int btidx, btlen; */
+<span class="lineNum">     850 </span>            :       /*   char **btstr; */
+<span class="lineNum">     851 </span>            : 
+<span class="lineNum">     852 </span>            :       /*   btlen = backtrace (btbuf, DIM (btbuf)); */
+<span class="lineNum">     853 </span>            :       /*   btstr = backtrace_symbols (btbuf, btlen); */
+<span class="lineNum">     854 </span>            :       /*   if (btstr) */
+<span class="lineNum">     855 </span>            :       /*     for (btidx=0; btidx &lt; btlen; btidx++) */
+<span class="lineNum">     856 </span>            :       /*       log_debug (&quot;[%d] %s\n&quot;, btidx, btstr[btidx]); */
+<span class="lineNum">     857 </span>            :       /* } */
+<span class="lineNum">     858 </span><span class="lineNoCov">          0 :       abort ();</span>
+<span class="lineNum">     859 </span>            :     }
+<span class="lineNum">     860 </span>            :   else
+<span class="lineNum">     861 </span><span class="lineCov">          4 :     es_funlockfile (logstream);</span>
+<span class="lineNum">     862 </span><span class="lineCov">          4 : }</span>
+<span class="lineNum">     863 </span>            : 
+<a name="864"><span class="lineNum">     864 </span>            : </a>
+<span class="lineNum">     865 </span>            : void
+<span class="lineNum">     866 </span><span class="lineNoCov">          0 : log_log (int level, const char *fmt, ...)</span>
+<span class="lineNum">     867 </span>            : {
+<span class="lineNum">     868 </span>            :   va_list arg_ptr ;
+<span class="lineNum">     869 </span>            : 
+<span class="lineNum">     870 </span><span class="lineNoCov">          0 :   va_start (arg_ptr, fmt) ;</span>
+<span class="lineNum">     871 </span><span class="lineNoCov">          0 :   do_logv (level, 0, NULL, NULL, fmt, arg_ptr);</span>
+<span class="lineNum">     872 </span><span class="lineNoCov">          0 :   va_end (arg_ptr);</span>
+<span class="lineNum">     873 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     874 </span>            : 
+<a name="875"><span class="lineNum">     875 </span>            : </a>
+<span class="lineNum">     876 </span>            : void
+<span class="lineNum">     877 </span><span class="lineNoCov">          0 : log_logv (int level, const char *fmt, va_list arg_ptr)</span>
+<span class="lineNum">     878 </span>            : {
+<span class="lineNum">     879 </span><span class="lineNoCov">          0 :   do_logv (level, 0, NULL, NULL, fmt, arg_ptr);</span>
+<span class="lineNum">     880 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     881 </span>            : 
+<span class="lineNum">     882 </span>            : 
+<span class="lineNum">     883 </span>            : /* Same as log_logv but PREFIX is printed immediately before FMT.
+<span class="lineNum">     884 </span>            :  * Note that PREFIX is an additional string and independent of the
+<a name="885"><span class="lineNum">     885 </span>            :  * prefix set by log_set_prefix.  */</a>
+<span class="lineNum">     886 </span>            : void
+<span class="lineNum">     887 </span><span class="lineNoCov">          0 : log_logv_with_prefix (int level, const char *prefix,</span>
+<span class="lineNum">     888 </span>            :                       const char *fmt, va_list arg_ptr)
+<span class="lineNum">     889 </span>            : {
+<span class="lineNum">     890 </span><span class="lineNoCov">          0 :   do_logv (level, 0, NULL, prefix, fmt, arg_ptr);</span>
+<span class="lineNum">     891 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     892 </span>            : 
+<a name="893"><span class="lineNum">     893 </span>            : </a>
+<span class="lineNum">     894 </span>            : static void
+<span class="lineNum">     895 </span><span class="lineNoCov">          0 : do_log_ignore_arg (int level, const char *str, ...)</span>
+<span class="lineNum">     896 </span>            : {
+<span class="lineNum">     897 </span>            :   va_list arg_ptr;
+<span class="lineNum">     898 </span><span class="lineNoCov">          0 :   va_start (arg_ptr, str);</span>
+<span class="lineNum">     899 </span><span class="lineNoCov">          0 :   do_logv (level, 1, NULL, NULL, str, arg_ptr);</span>
+<span class="lineNum">     900 </span><span class="lineNoCov">          0 :   va_end (arg_ptr);</span>
+<span class="lineNum">     901 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     902 </span>            : 
+<span class="lineNum">     903 </span>            : 
+<span class="lineNum">     904 </span>            : /* Log STRING at LEVEL but indent from the second line on by the
+<a name="905"><span class="lineNum">     905 </span>            :  * length of the prefix.  */</a>
+<span class="lineNum">     906 </span>            : void
+<span class="lineNum">     907 </span><span class="lineNoCov">          0 : log_string (int level, const char *string)</span>
+<span class="lineNum">     908 </span>            : {
+<span class="lineNum">     909 </span>            :   /* We need a dummy arg_ptr, but there is no portable way to create
+<span class="lineNum">     910 </span>            :    * one.  So we call the do_logv function through a variadic wrapper. */
+<span class="lineNum">     911 </span><span class="lineNoCov">          0 :   do_log_ignore_arg (level, string);</span>
+<span class="lineNum">     912 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     913 </span>            : 
+<a name="914"><span class="lineNum">     914 </span>            : </a>
+<span class="lineNum">     915 </span>            : void
+<span class="lineNum">     916 </span><span class="lineCov">          3 : log_info (const char *fmt, ...)</span>
+<span class="lineNum">     917 </span>            : {
+<span class="lineNum">     918 </span>            :   va_list arg_ptr ;
+<span class="lineNum">     919 </span>            : 
+<span class="lineNum">     920 </span><span class="lineCov">          3 :   va_start (arg_ptr, fmt);</span>
+<span class="lineNum">     921 </span><span class="lineCov">          3 :   do_logv (GPGRT_LOG_INFO, 0, NULL, NULL, fmt, arg_ptr);</span>
+<span class="lineNum">     922 </span><span class="lineCov">          3 :   va_end (arg_ptr);</span>
+<span class="lineNum">     923 </span><span class="lineCov">          3 : }</span>
+<span class="lineNum">     924 </span>            : 
+<a name="925"><span class="lineNum">     925 </span>            : </a>
+<span class="lineNum">     926 </span>            : void
+<span class="lineNum">     927 </span><span class="lineNoCov">          0 : log_error (const char *fmt, ...)</span>
+<span class="lineNum">     928 </span>            : {
+<span class="lineNum">     929 </span>            :   va_list arg_ptr ;
+<span class="lineNum">     930 </span>            : 
+<span class="lineNum">     931 </span><span class="lineNoCov">          0 :   va_start (arg_ptr, fmt);</span>
+<span class="lineNum">     932 </span><span class="lineNoCov">          0 :   do_logv (GPGRT_LOG_ERROR, 0, NULL, NULL, fmt, arg_ptr);</span>
+<span class="lineNum">     933 </span><span class="lineNoCov">          0 :   va_end (arg_ptr);</span>
+<span class="lineNum">     934 </span>            :   /* Protect against counter overflow.  */
+<span class="lineNum">     935 </span><span class="lineNoCov">          0 :   if (errorcount &lt; 30000)</span>
+<span class="lineNum">     936 </span><span class="lineNoCov">          0 :     errorcount++;</span>
+<span class="lineNum">     937 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     938 </span>            : 
+<a name="939"><span class="lineNum">     939 </span>            : </a>
+<span class="lineNum">     940 </span>            : void
+<span class="lineNum">     941 </span><span class="lineNoCov">          0 : log_fatal (const char *fmt, ...)</span>
+<span class="lineNum">     942 </span>            : {
+<span class="lineNum">     943 </span>            :   va_list arg_ptr ;
+<span class="lineNum">     944 </span>            : 
+<span class="lineNum">     945 </span><span class="lineNoCov">          0 :   va_start (arg_ptr, fmt);</span>
+<span class="lineNum">     946 </span><span class="lineNoCov">          0 :   do_logv (GPGRT_LOG_FATAL, 0, NULL, NULL, fmt, arg_ptr);</span>
+<span class="lineNum">     947 </span><span class="lineNoCov">          0 :   va_end (arg_ptr);</span>
+<span class="lineNum">     948 </span><span class="lineNoCov">          0 :   abort (); /* Never called; just to make the compiler happy.  */</span>
+<span class="lineNum">     949 </span>            : }
+<span class="lineNum">     950 </span>            : 
+<a name="951"><span class="lineNum">     951 </span>            : </a>
+<span class="lineNum">     952 </span>            : void
+<span class="lineNum">     953 </span><span class="lineNoCov">          0 : log_bug (const char *fmt, ...)</span>
+<span class="lineNum">     954 </span>            : {
+<span class="lineNum">     955 </span>            :   va_list arg_ptr ;
+<span class="lineNum">     956 </span>            : 
+<span class="lineNum">     957 </span><span class="lineNoCov">          0 :   va_start (arg_ptr, fmt);</span>
+<span class="lineNum">     958 </span><span class="lineNoCov">          0 :   do_logv (GPGRT_LOG_BUG, 0, NULL, NULL, fmt, arg_ptr);</span>
+<span class="lineNum">     959 </span><span class="lineNoCov">          0 :   va_end (arg_ptr);</span>
+<span class="lineNum">     960 </span><span class="lineNoCov">          0 :   abort (); /* Never called; just to make the compiler happy.  */</span>
+<span class="lineNum">     961 </span>            : }
+<span class="lineNum">     962 </span>            : 
+<a name="963"><span class="lineNum">     963 </span>            : </a>
+<span class="lineNum">     964 </span>            : void
+<span class="lineNum">     965 </span><span class="lineNoCov">          0 : log_debug (const char *fmt, ...)</span>
+<span class="lineNum">     966 </span>            : {
+<span class="lineNum">     967 </span>            :   va_list arg_ptr ;
+<span class="lineNum">     968 </span>            : 
+<span class="lineNum">     969 </span><span class="lineNoCov">          0 :   va_start (arg_ptr, fmt);</span>
+<span class="lineNum">     970 </span><span class="lineNoCov">          0 :   do_logv (GPGRT_LOG_DEBUG, 0, NULL, NULL, fmt, arg_ptr);</span>
+<span class="lineNum">     971 </span><span class="lineNoCov">          0 :   va_end (arg_ptr);</span>
+<span class="lineNum">     972 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     973 </span>            : 
+<span class="lineNum">     974 </span>            : 
+<span class="lineNum">     975 </span>            : /* The same as log_debug but at the end of the output STRING is
+<span class="lineNum">     976 </span>            :  * printed with LFs expanded to include the prefix and a final --end--
+<a name="977"><span class="lineNum">     977 </span>            :  * marker.  */</a>
+<span class="lineNum">     978 </span>            : void
+<span class="lineNum">     979 </span><span class="lineNoCov">          0 : log_debug_with_string (const char *string, const char *fmt, ...)</span>
+<span class="lineNum">     980 </span>            : {
+<span class="lineNum">     981 </span>            :   va_list arg_ptr ;
+<span class="lineNum">     982 </span>            : 
+<span class="lineNum">     983 </span><span class="lineNoCov">          0 :   va_start (arg_ptr, fmt);</span>
+<span class="lineNum">     984 </span><span class="lineNoCov">          0 :   do_logv (GPGRT_LOG_DEBUG, 0, string, NULL, fmt, arg_ptr);</span>
+<span class="lineNum">     985 </span><span class="lineNoCov">          0 :   va_end (arg_ptr);</span>
+<span class="lineNum">     986 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     987 </span>            : 
+<a name="988"><span class="lineNum">     988 </span>            : </a>
+<span class="lineNum">     989 </span>            : void
+<span class="lineNum">     990 </span><span class="lineCov">          1 : log_printf (const char *fmt, ...)</span>
+<span class="lineNum">     991 </span>            : {
+<span class="lineNum">     992 </span>            :   va_list arg_ptr;
+<span class="lineNum">     993 </span>            : 
+<span class="lineNum">     994 </span><span class="lineCov">          1 :   va_start (arg_ptr, fmt);</span>
+<span class="lineNum">     995 </span><span class="lineCov">          1 :   do_logv (fmt ? GPGRT_LOG_CONT : GPGRT_LOG_BEGIN, 0, NULL, NULL, fmt, arg_ptr);</span>
+<span class="lineNum">     996 </span><span class="lineCov">          1 :   va_end (arg_ptr);</span>
+<span class="lineNum">     997 </span><span class="lineCov">          1 : }</span>
+<span class="lineNum">     998 </span>            : 
+<span class="lineNum">     999 </span>            : 
+<span class="lineNum">    1000 </span>            : /* Flush the log - this is useful to make sure that the trailing
+<a name="1001"><span class="lineNum">    1001 </span>            :    linefeed has been printed.  */</a>
+<span class="lineNum">    1002 </span>            : void
+<span class="lineNum">    1003 </span><span class="lineNoCov">          0 : log_flush (void)</span>
+<span class="lineNum">    1004 </span>            : {
+<span class="lineNum">    1005 </span><span class="lineNoCov">          0 :   do_log_ignore_arg (GPGRT_LOG_CONT, NULL);</span>
+<span class="lineNum">    1006 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">    1007 </span>            : 
+<span class="lineNum">    1008 </span>            : 
+<span class="lineNum">    1009 </span>            : /* Print a hexdump of BUFFER.  With TEXT of NULL print just the raw
+<span class="lineNum">    1010 </span>            :    dump, with TEXT just an empty string, print a trailing linefeed,
+<a name="1011"><span class="lineNum">    1011 </span>            :    otherwise print an entire debug line. */</a>
+<span class="lineNum">    1012 </span>            : void
+<span class="lineNum">    1013 </span><span class="lineNoCov">          0 : log_printhex (const char *text, const void *buffer, size_t length)</span>
+<span class="lineNum">    1014 </span>            : {
+<span class="lineNum">    1015 </span><span class="lineNoCov">          0 :   if (text &amp;&amp; *text)</span>
+<span class="lineNum">    1016 </span><span class="lineNoCov">          0 :     log_debug (&quot;%s &quot;, text);</span>
+<span class="lineNum">    1017 </span><span class="lineNoCov">          0 :   if (length)</span>
+<span class="lineNum">    1018 </span>            :     {
+<span class="lineNum">    1019 </span><span class="lineNoCov">          0 :       const unsigned char *p = buffer;</span>
+<span class="lineNum">    1020 </span><span class="lineNoCov">          0 :       log_printf (&quot;%02X&quot;, *p);</span>
+<span class="lineNum">    1021 </span><span class="lineNoCov">          0 :       for (length--, p++; length--; p++)</span>
+<span class="lineNum">    1022 </span><span class="lineNoCov">          0 :         log_printf (&quot; %02X&quot;, *p);</span>
+<span class="lineNum">    1023 </span>            :     }
+<span class="lineNum">    1024 </span><span class="lineNoCov">          0 :   if (text)</span>
+<span class="lineNum">    1025 </span><span class="lineNoCov">          0 :     log_printf (&quot;\n&quot;);</span>
+<span class="lineNum">    1026 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">    1027 </span>            : 
+<span class="lineNum">    1028 </span>            : 
+<span class="lineNum">    1029 </span>            : /*
+<span class="lineNum">    1030 </span>            : void
+<span class="lineNum">    1031 </span>            : log_printcanon () {}
+<span class="lineNum">    1032 </span>            : is found in sexputils.c
+<span class="lineNum">    1033 </span>            : */
+<span class="lineNum">    1034 </span>            : 
+<span class="lineNum">    1035 </span>            : /*
+<span class="lineNum">    1036 </span>            : void
+<span class="lineNum">    1037 </span>            : log_printsexp () {}
+<span class="lineNum">    1038 </span>            : is found in sexputils.c
+<span class="lineNum">    1039 </span>            : */
+<span class="lineNum">    1040 </span>            : 
+<a name="1041"><span class="lineNum">    1041 </span>            : </a>
+<span class="lineNum">    1042 </span>            : void
+<span class="lineNum">    1043 </span><span class="lineNoCov">          0 : log_clock (const char *string)</span>
+<span class="lineNum">    1044 </span>            : {
+<span class="lineNum">    1045 </span>            : #if 0
+<span class="lineNum">    1046 </span>            :   static unsigned long long initial;
+<span class="lineNum">    1047 </span>            :   struct timespec tv;
+<span class="lineNum">    1048 </span>            :   unsigned long long now;
+<span class="lineNum">    1049 </span>            : 
+<span class="lineNum">    1050 </span>            :   if (clock_gettime (CLOCK_REALTIME, &amp;tv))
+<span class="lineNum">    1051 </span>            :     {
+<span class="lineNum">    1052 </span>            :       log_debug (&quot;error getting the realtime clock value\n&quot;);
+<span class="lineNum">    1053 </span>            :       return;
+<span class="lineNum">    1054 </span>            :     }
+<span class="lineNum">    1055 </span>            :   now = tv.tv_sec * 1000000000ull;
+<span class="lineNum">    1056 </span>            :   now += tv.tv_nsec;
+<span class="lineNum">    1057 </span>            : 
+<span class="lineNum">    1058 </span>            :   if (!initial)
+<span class="lineNum">    1059 </span>            :     initial = now;
+<span class="lineNum">    1060 </span>            : 
+<span class="lineNum">    1061 </span>            :   log_debug (&quot;[%6llu] %s&quot;, (now - initial)/1000, string);
+<span class="lineNum">    1062 </span>            : #else
+<span class="lineNum">    1063 </span>            :   /* You need to link with -ltr to enable the above code.  */
+<span class="lineNum">    1064 </span><span class="lineNoCov">          0 :   log_debug (&quot;[not enabled in the source] %s&quot;, string);</span>
+<span class="lineNum">    1065 </span>            : #endif
+<span class="lineNum">    1066 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">    1067 </span>            : 
+<span class="lineNum">    1068 </span>            : 
+<a name="1069"><span class="lineNum">    1069 </span>            : #ifdef GPGRT_HAVE_MACRO_FUNCTION</a>
+<span class="lineNum">    1070 </span>            : void
+<span class="lineNum">    1071 </span><span class="lineNoCov">          0 : bug_at( const char *file, int line, const char *func )</span>
+<span class="lineNum">    1072 </span>            : {
+<span class="lineNum">    1073 </span><span class="lineNoCov">          0 :   log_log (GPGRT_LOG_BUG, &quot;... this is a bug (%s:%d:%s)\n&quot;, file, line, func);</span>
+<span class="lineNum">    1074 </span><span class="lineNoCov">          0 :   abort (); /* Never called; just to make the compiler happy.  */</span>
+<span class="lineNum">    1075 </span>            : }
+<span class="lineNum">    1076 </span>            : #else /*!GPGRT_HAVE_MACRO_FUNCTION*/
+<span class="lineNum">    1077 </span>            : void
+<span class="lineNum">    1078 </span>            : bug_at( const char *file, int line )
+<span class="lineNum">    1079 </span>            : {
+<span class="lineNum">    1080 </span>            :   log_log (GPGRT_LOG_BUG, &quot;you found a bug ... (%s:%d)\n&quot;, file, line);
+<span class="lineNum">    1081 </span>            :   abort (); /* Never called; just to make the compiler happy.  */
+<span class="lineNum">    1082 </span>            : }
+<span class="lineNum">    1083 </span>            : #endif /*!GPGRT_HAVE_MACRO_FUNCTION*/
+<span class="lineNum">    1084 </span>            : 
+<span class="lineNum">    1085 </span>            : 
+<a name="1086"><span class="lineNum">    1086 </span>            : #ifdef GPGRT_HAVE_MACRO_FUNCTION</a>
+<span class="lineNum">    1087 </span>            : void
+<span class="lineNum">    1088 </span><span class="lineNoCov">          0 : _log_assert (const char *expr, const char *file, int line, const char *func)</span>
+<span class="lineNum">    1089 </span>            : {
+<span class="lineNum">    1090 </span><span class="lineNoCov">          0 :   log_log (GPGRT_LOG_BUG, &quot;Assertion \&quot;%s\&quot; in %s failed (%s:%d)\n&quot;,</span>
+<span class="lineNum">    1091 </span>            :            expr, func, file, line);
+<span class="lineNum">    1092 </span><span class="lineNoCov">          0 :   abort (); /* Never called; just to make the compiler happy.  */</span>
+<span class="lineNum">    1093 </span>            : }
+<span class="lineNum">    1094 </span>            : #else /*!GPGRT_HAVE_MACRO_FUNCTION*/
+<span class="lineNum">    1095 </span>            : void
+<span class="lineNum">    1096 </span>            : _log_assert (const char *expr, const char *file, int line)
+<span class="lineNum">    1097 </span>            : {
+<span class="lineNum">    1098 </span>            :   log_log (GPGRT_LOG_BUG, &quot;Assertion \&quot;%s\&quot; failed (%s:%d)\n&quot;,
+<span class="lineNum">    1099 </span>            :            expr, file, line);
+<span class="lineNum">    1100 </span>            :   abort (); /* Never called; just to make the compiler happy.  */
+<span class="lineNum">    1101 </span>            : }
+<span class="lineNum">    1102 </span>            : #endif /*!GPGRT_HAVE_MACRO_FUNCTION*/
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

@@ -1,0 +1,1133 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - kbx/keybox-blob.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">kbx</a> - keybox-blob.c<span style="font-size: 80%;"> (source / <a href="keybox-blob.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">244</td>
+            <td class="headerCovTableEntry">422</td>
+            <td class="headerCovTableEntryLo">57.8 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 12:47:41</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">17</td>
+            <td class="headerCovTableEntry">27</td>
+            <td class="headerCovTableEntryLo">63.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* keybox-blob.c - KBX Blob handling</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 2000, 2001, 2002, 2003, 2008 Free Software Foundation, Inc.
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       7 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">       8 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">       9 </span>            :  * (at your option) any later version.
+<span class="lineNum">      10 </span>            :  *
+<span class="lineNum">      11 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      12 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      13 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      14 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      15 </span>            :  *
+<span class="lineNum">      16 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      17 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      18 </span>            :  */
+<span class="lineNum">      19 </span>            : 
+<span class="lineNum">      20 </span>            : /*
+<span class="lineNum">      21 </span>            : * The keybox data format
+<span class="lineNum">      22 </span>            : 
+<span class="lineNum">      23 </span>            :    The KeyBox uses an augmented OpenPGP/X.509 key format.  This makes
+<span class="lineNum">      24 </span>            :    random access to a keyblock/certificate easier and also gives the
+<span class="lineNum">      25 </span>            :    opportunity to store additional information (e.g. the fingerprint)
+<span class="lineNum">      26 </span>            :    along with the key.  All integers are stored in network byte order,
+<span class="lineNum">      27 </span>            :    offsets are counted from the beginning of the Blob.
+<span class="lineNum">      28 </span>            : 
+<span class="lineNum">      29 </span>            : ** Overview of blob types
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span>            :    | Byte 4 | Blob type    |
+<span class="lineNum">      32 </span>            :    |--------+--------------|
+<span class="lineNum">      33 </span>            :    |      0 | Empty blob   |
+<span class="lineNum">      34 </span>            :    |      1 | First blob   |
+<span class="lineNum">      35 </span>            :    |      2 | OpenPGP blob |
+<span class="lineNum">      36 </span>            :    |      3 | X.509 blob   |
+<span class="lineNum">      37 </span>            : 
+<span class="lineNum">      38 </span>            : ** The First blob
+<span class="lineNum">      39 </span>            : 
+<span class="lineNum">      40 </span>            :    The first blob of a plain KBX file has a special format:
+<span class="lineNum">      41 </span>            : 
+<span class="lineNum">      42 </span>            :    - u32  Length of this blob
+<span class="lineNum">      43 </span>            :    - byte Blob type (1)
+<span class="lineNum">      44 </span>            :    - byte Version number (1)
+<span class="lineNum">      45 </span>            :    - u16  Header flags
+<span class="lineNum">      46 </span>            :           bit 0 - RFU
+<span class="lineNum">      47 </span>            :           bit 1 - Is being or has been used for OpenPGP blobs
+<span class="lineNum">      48 </span>            :    - b4   Magic 'KBXf'
+<span class="lineNum">      49 </span>            :    - u32  RFU
+<span class="lineNum">      50 </span>            :    - u32  file_created_at
+<span class="lineNum">      51 </span>            :    - u32  last_maintenance_run
+<span class="lineNum">      52 </span>            :    - u32  RFU
+<span class="lineNum">      53 </span>            :    - u32  RFU
+<span class="lineNum">      54 </span>            : 
+<span class="lineNum">      55 </span>            : ** The OpenPGP and X.509 blobs
+<span class="lineNum">      56 </span>            : 
+<span class="lineNum">      57 </span>            :    The OpenPGP and X.509 blobs are very similar, things which are
+<span class="lineNum">      58 </span>            :    X.509 specific are noted like [X.509: xxx]
+<span class="lineNum">      59 </span>            : 
+<span class="lineNum">      60 </span>            :    - u32  Length of this blob (including these 4 bytes)
+<span class="lineNum">      61 </span>            :    - byte Blob type
+<span class="lineNum">      62 </span>            :            2 = OpenPGP
+<span class="lineNum">      63 </span>            :            3 = X509
+<span class="lineNum">      64 </span>            :    - byte Version number of this blob type
+<span class="lineNum">      65 </span>            :            1 = The only defined value
+<span class="lineNum">      66 </span>            :    - u16  Blob flags
+<span class="lineNum">      67 </span>            :           bit 0 = contains secret key material (not used)
+<span class="lineNum">      68 </span>            :           bit 1 = ephemeral blob (e.g. used while querying external resources)
+<span class="lineNum">      69 </span>            :    - u32  Offset to the OpenPGP keyblock or the X.509 DER encoded
+<span class="lineNum">      70 </span>            :           certificate
+<span class="lineNum">      71 </span>            :    - u32  The length of the keyblock or certificate
+<span class="lineNum">      72 </span>            :    - u16  [NKEYS] Number of keys (at least 1!) [X509: always 1]
+<span class="lineNum">      73 </span>            :    - u16  Size of the key information structure (at least 28).
+<span class="lineNum">      74 </span>            :    - NKEYS times:
+<span class="lineNum">      75 </span>            :       - b20  The fingerprint of the key.
+<span class="lineNum">      76 </span>            :              Fingerprints are always 20 bytes, MD5 left padded with zeroes.
+<span class="lineNum">      77 </span>            :       - u32  Offset to the n-th key's keyID (a keyID is always 8 byte)
+<span class="lineNum">      78 </span>            :              or 0 if not known which is the case only for X.509.
+<span class="lineNum">      79 </span>            :       - u16  Key flags
+<span class="lineNum">      80 </span>            :              bit 0 = qualified signature (not yet implemented}
+<span class="lineNum">      81 </span>            :       - u16  RFU
+<span class="lineNum">      82 </span>            :       - bN   Optional filler up to the specified length of this
+<span class="lineNum">      83 </span>            :              structure.
+<span class="lineNum">      84 </span>            :    - u16  Size of the serial number (may be zero)
+<span class="lineNum">      85 </span>            :       -  bN  The serial number. N as giiven above.
+<span class="lineNum">      86 </span>            :    - u16  Number of user IDs
+<span class="lineNum">      87 </span>            :    - u16  [NUIDS] Size of user ID information structure
+<span class="lineNum">      88 </span>            :    - NUIDS times:
+<span class="lineNum">      89 </span>            : 
+<span class="lineNum">      90 </span>            :       For X509, the first user ID is the Issuer, the second the
+<span class="lineNum">      91 </span>            :       Subject and the others are subjectAltNames.  For OpenPGP we only
+<span class="lineNum">      92 </span>            :       store the information from UserID packets here.
+<span class="lineNum">      93 </span>            : 
+<span class="lineNum">      94 </span>            :       - u32  Blob offset to the n-th user ID
+<span class="lineNum">      95 </span>            :       - u32  Length of this user ID.
+<span class="lineNum">      96 </span>            :       - u16  User ID flags.
+<span class="lineNum">      97 </span>            :              (not yet used)
+<span class="lineNum">      98 </span>            :       - byte Validity
+<span class="lineNum">      99 </span>            :       - byte RFU
+<span class="lineNum">     100 </span>            : 
+<span class="lineNum">     101 </span>            :    - u16  [NSIGS] Number of signatures
+<span class="lineNum">     102 </span>            :    - u16  Size of signature information (4)
+<span class="lineNum">     103 </span>            :    - NSIGS times:
+<span class="lineNum">     104 </span>            :       - u32  Expiration time of signature with some special values.
+<span class="lineNum">     105 </span>            :              Since version 2.1.20 these special valuesare not anymore
+<span class="lineNum">     106 </span>            :              used for OpenPGP:
+<span class="lineNum">     107 </span>            :              - 0x00000000 = not checked
+<span class="lineNum">     108 </span>            :              - 0x00000001 = missing key
+<span class="lineNum">     109 </span>            :              - 0x00000002 = bad signature
+<span class="lineNum">     110 </span>            :              - 0x10000000 = valid and expires at some date in 1978.
+<span class="lineNum">     111 </span>            :              - 0xffffffff = valid and does not expire
+<span class="lineNum">     112 </span>            :    - u8 Assigned ownertrust [X509: not used]
+<span class="lineNum">     113 </span>            :    - u8 All_Validity
+<span class="lineNum">     114 </span>            :         OpenPGP: See ../g10/trustdb/TRUST_* [not yet used]
+<span class="lineNum">     115 </span>            :         X509: Bit 4 set := key has been revoked.
+<span class="lineNum">     116 </span>            :                            Note that this value matches TRUST_FLAG_REVOKED
+<span class="lineNum">     117 </span>            :    - u16  RFU
+<span class="lineNum">     118 </span>            :    - u32  Recheck_after
+<span class="lineNum">     119 </span>            :    - u32  Latest timestamp in the keyblock (useful for KS syncronsiation?)
+<span class="lineNum">     120 </span>            :    - u32  Blob created at
+<span class="lineNum">     121 </span>            :    - u32  [NRES] Size of reserved space (not including this field)
+<span class="lineNum">     122 </span>            :    - bN   Reserved space of size NRES for future use.
+<span class="lineNum">     123 </span>            :    - bN   Arbitrary space for example used to store data which is not
+<span class="lineNum">     124 </span>            :           part of the keyblock or certificate.  For example the v3 key
+<span class="lineNum">     125 </span>            :           IDs go here.
+<span class="lineNum">     126 </span>            :    - bN   Space for the keyblock or certificate.
+<span class="lineNum">     127 </span>            :    - bN   RFU.  This is the remaining space after keyblock and before
+<span class="lineNum">     128 </span>            :           the checksum.  It is not covered by the checksum.
+<span class="lineNum">     129 </span>            :    - b20  SHA-1 checksum (useful for KS syncronisation?)
+<span class="lineNum">     130 </span>            :           Note, that KBX versions before GnuPG 2.1 used an MD5
+<span class="lineNum">     131 </span>            :           checksum.  However it was only created but never checked.
+<span class="lineNum">     132 </span>            :           Thus we do not expect problems if we switch to SHA-1.  If
+<span class="lineNum">     133 </span>            :           the checksum fails and the first 4 bytes are zero, we can
+<span class="lineNum">     134 </span>            :           try again with MD5.  SHA-1 has the advantage that it is
+<span class="lineNum">     135 </span>            :           faster on CPUs with dedicated SHA-1 support.
+<span class="lineNum">     136 </span>            : 
+<span class="lineNum">     137 </span>            : 
+<span class="lineNum">     138 </span>            : */
+<span class="lineNum">     139 </span>            : 
+<span class="lineNum">     140 </span>            : 
+<span class="lineNum">     141 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">     142 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">     143 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">     144 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">     145 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">     146 </span>            : #include &lt;assert.h&gt;
+<span class="lineNum">     147 </span>            : #include &lt;time.h&gt;
+<span class="lineNum">     148 </span>            : 
+<span class="lineNum">     149 </span>            : #include &quot;keybox-defs.h&quot;
+<span class="lineNum">     150 </span>            : #include &lt;gcrypt.h&gt;
+<span class="lineNum">     151 </span>            : 
+<span class="lineNum">     152 </span>            : #ifdef KEYBOX_WITH_X509
+<span class="lineNum">     153 </span>            : #include &lt;ksba.h&gt;
+<span class="lineNum">     154 </span>            : #endif
+<span class="lineNum">     155 </span>            : 
+<span class="lineNum">     156 </span>            : 
+<span class="lineNum">     157 </span>            : #include &quot;../common/gettime.h&quot;
+<span class="lineNum">     158 </span>            : 
+<span class="lineNum">     159 </span>            : 
+<span class="lineNum">     160 </span>            : /* special values of the signature status */
+<span class="lineNum">     161 </span>            : #define SF_NONE(a)  ( !(a) )
+<span class="lineNum">     162 </span>            : #define SF_NOKEY(a) ((a) &amp; (1&lt;&lt;0))
+<span class="lineNum">     163 </span>            : #define SF_BAD(a)   ((a) &amp; (1&lt;&lt;1))
+<span class="lineNum">     164 </span>            : #define SF_VALID(a) ((a) &amp; (1&lt;&lt;29))
+<span class="lineNum">     165 </span>            : 
+<span class="lineNum">     166 </span>            : 
+<span class="lineNum">     167 </span>            : struct membuf {
+<span class="lineNum">     168 </span>            :   size_t len;
+<span class="lineNum">     169 </span>            :   size_t size;
+<span class="lineNum">     170 </span>            :   char *buf;
+<span class="lineNum">     171 </span>            :   int out_of_core;
+<span class="lineNum">     172 </span>            : };
+<span class="lineNum">     173 </span>            : 
+<span class="lineNum">     174 </span>            : 
+<span class="lineNum">     175 </span>            : /*  #if MAX_FINGERPRINT_LEN &lt; 20 */
+<span class="lineNum">     176 </span>            : /*    #error fingerprints are 20 bytes */
+<span class="lineNum">     177 </span>            : /*  #endif */
+<span class="lineNum">     178 </span>            : 
+<span class="lineNum">     179 </span>            : struct keyboxblob_key {
+<span class="lineNum">     180 </span>            :   char   fpr[20];
+<span class="lineNum">     181 </span>            :   u32    off_kid;
+<span class="lineNum">     182 </span>            :   ulong  off_kid_addr;
+<span class="lineNum">     183 </span>            :   u16    flags;
+<span class="lineNum">     184 </span>            : };
+<span class="lineNum">     185 </span>            : struct keyboxblob_uid {
+<span class="lineNum">     186 </span>            :   u32    off;
+<span class="lineNum">     187 </span>            :   ulong  off_addr;
+<span class="lineNum">     188 </span>            :   char   *name;     /* used only with x509 */
+<span class="lineNum">     189 </span>            :   u32    len;
+<span class="lineNum">     190 </span>            :   u16    flags;
+<span class="lineNum">     191 </span>            :   byte   validity;
+<span class="lineNum">     192 </span>            : };
+<span class="lineNum">     193 </span>            : 
+<span class="lineNum">     194 </span>            : struct keyid_list {
+<span class="lineNum">     195 </span>            :     struct keyid_list *next;
+<span class="lineNum">     196 </span>            :     int seqno;
+<span class="lineNum">     197 </span>            :     byte kid[8];
+<span class="lineNum">     198 </span>            : };
+<span class="lineNum">     199 </span>            : 
+<span class="lineNum">     200 </span>            : struct fixup_list {
+<span class="lineNum">     201 </span>            :     struct fixup_list *next;
+<span class="lineNum">     202 </span>            :     u32 off;
+<span class="lineNum">     203 </span>            :     u32 val;
+<span class="lineNum">     204 </span>            : };
+<span class="lineNum">     205 </span>            : 
+<span class="lineNum">     206 </span>            : 
+<span class="lineNum">     207 </span>            : struct keyboxblob {
+<span class="lineNum">     208 </span>            :   byte *blob;
+<span class="lineNum">     209 </span>            :   size_t bloblen;
+<span class="lineNum">     210 </span>            :   off_t fileoffset;
+<span class="lineNum">     211 </span>            : 
+<span class="lineNum">     212 </span>            :   /* stuff used only by keybox_create_blob */
+<span class="lineNum">     213 </span>            :   unsigned char *serialbuf;
+<span class="lineNum">     214 </span>            :   const unsigned char *serial;
+<span class="lineNum">     215 </span>            :   size_t seriallen;
+<span class="lineNum">     216 </span>            :   int nkeys;
+<span class="lineNum">     217 </span>            :   struct keyboxblob_key *keys;
+<span class="lineNum">     218 </span>            :   int nuids;
+<span class="lineNum">     219 </span>            :   struct keyboxblob_uid *uids;
+<span class="lineNum">     220 </span>            :   int nsigs;
+<span class="lineNum">     221 </span>            :   u32  *sigs;
+<span class="lineNum">     222 </span>            :   struct fixup_list *fixups;
+<span class="lineNum">     223 </span>            :   int fixup_out_of_core;
+<span class="lineNum">     224 </span>            : 
+<span class="lineNum">     225 </span>            :   struct keyid_list *temp_kids;
+<span class="lineNum">     226 </span>            :   struct membuf bufbuf; /* temporary store for the blob */
+<span class="lineNum">     227 </span>            :   struct membuf *buf;
+<span class="lineNum">     228 </span>            : };
+<span class="lineNum">     229 </span>            : 
+<span class="lineNum">     230 </span>            : 
+<span class="lineNum">     231 </span>            : 
+<span class="lineNum">     232 </span>            : /* A simple implementation of a dynamic buffer.  Use init_membuf() to
+<span class="lineNum">     233 </span>            :    create a buffer, put_membuf to append bytes and get_membuf to
+<span class="lineNum">     234 </span>            :    release and return the buffer.  Allocation errors are detected but
+<span class="lineNum">     235 </span>            :    only returned at the final get_membuf(), this helps not to clutter
+<span class="lineNum">     236 </span>            :    the code with out of core checks.  */
+<a name="237"><span class="lineNum">     237 </span>            : </a>
+<span class="lineNum">     238 </span>            : static void
+<span class="lineNum">     239 </span><span class="lineCov">          3 : init_membuf (struct membuf *mb, int initiallen)</span>
+<span class="lineNum">     240 </span>            : {
+<span class="lineNum">     241 </span><span class="lineCov">          3 :   mb-&gt;len = 0;</span>
+<span class="lineNum">     242 </span><span class="lineCov">          3 :   mb-&gt;size = initiallen;</span>
+<span class="lineNum">     243 </span><span class="lineCov">          3 :   mb-&gt;out_of_core = 0;</span>
+<span class="lineNum">     244 </span><span class="lineCov">          3 :   mb-&gt;buf = xtrymalloc (initiallen);</span>
+<span class="lineNum">     245 </span><span class="lineCov">          3 :   if (!mb-&gt;buf)</span>
+<span class="lineNum">     246 </span><span class="lineNoCov">          0 :       mb-&gt;out_of_core = 1;</span>
+<span class="lineNum">     247 </span><span class="lineCov">          3 : }</span>
+<a name="248"><span class="lineNum">     248 </span>            : </a>
+<span class="lineNum">     249 </span>            : static void
+<span class="lineNum">     250 </span><span class="lineCov">        132 : put_membuf (struct membuf *mb, const void *buf, size_t len)</span>
+<span class="lineNum">     251 </span>            : {
+<span class="lineNum">     252 </span><span class="lineCov">        132 :   if (mb-&gt;out_of_core)</span>
+<span class="lineNum">     253 </span><span class="lineNoCov">          0 :     return;</span>
+<span class="lineNum">     254 </span>            : 
+<span class="lineNum">     255 </span><span class="lineCov">        132 :   if (mb-&gt;len + len &gt;= mb-&gt;size)</span>
+<span class="lineNum">     256 </span>            :     {
+<span class="lineNum">     257 </span>            :       char *p;
+<span class="lineNum">     258 </span>            : 
+<span class="lineNum">     259 </span><span class="lineCov">          3 :       mb-&gt;size += len + 1024;</span>
+<span class="lineNum">     260 </span><span class="lineCov">          3 :       p = xtryrealloc (mb-&gt;buf, mb-&gt;size);</span>
+<span class="lineNum">     261 </span><span class="lineCov">          3 :       if (!p)</span>
+<span class="lineNum">     262 </span>            :         {
+<span class="lineNum">     263 </span><span class="lineNoCov">          0 :           mb-&gt;out_of_core = 1;</span>
+<span class="lineNum">     264 </span><span class="lineNoCov">          0 :           return;</span>
+<span class="lineNum">     265 </span>            :         }
+<span class="lineNum">     266 </span><span class="lineCov">          3 :       mb-&gt;buf = p;</span>
+<span class="lineNum">     267 </span>            :     }
+<span class="lineNum">     268 </span><span class="lineCov">        132 :   if (buf)</span>
+<span class="lineNum">     269 </span><span class="lineCov">        129 :     memcpy (mb-&gt;buf + mb-&gt;len, buf, len);</span>
+<span class="lineNum">     270 </span>            :   else
+<span class="lineNum">     271 </span><span class="lineCov">          3 :     memset (mb-&gt;buf + mb-&gt;len, 0, len);</span>
+<span class="lineNum">     272 </span><span class="lineCov">        132 :   mb-&gt;len += len;</span>
+<span class="lineNum">     273 </span>            : }
+<a name="274"><span class="lineNum">     274 </span>            : </a>
+<span class="lineNum">     275 </span>            : static void *
+<span class="lineNum">     276 </span><span class="lineCov">          6 : get_membuf (struct membuf *mb, size_t *len)</span>
+<span class="lineNum">     277 </span>            : {
+<span class="lineNum">     278 </span>            :   char *p;
+<span class="lineNum">     279 </span>            : 
+<span class="lineNum">     280 </span><span class="lineCov">          6 :   if (mb-&gt;out_of_core)</span>
+<span class="lineNum">     281 </span>            :     {
+<span class="lineNum">     282 </span><span class="lineCov">          3 :       xfree (mb-&gt;buf);</span>
+<span class="lineNum">     283 </span><span class="lineCov">          3 :       mb-&gt;buf = NULL;</span>
+<span class="lineNum">     284 </span><span class="lineCov">          3 :       return NULL;</span>
+<span class="lineNum">     285 </span>            :     }
+<span class="lineNum">     286 </span>            : 
+<span class="lineNum">     287 </span><span class="lineCov">          3 :   p = mb-&gt;buf;</span>
+<span class="lineNum">     288 </span><span class="lineCov">          3 :   *len = mb-&gt;len;</span>
+<span class="lineNum">     289 </span><span class="lineCov">          3 :   mb-&gt;buf = NULL;</span>
+<span class="lineNum">     290 </span><span class="lineCov">          3 :   mb-&gt;out_of_core = 1; /* don't allow a reuse */</span>
+<span class="lineNum">     291 </span><span class="lineCov">          3 :   return p;</span>
+<span class="lineNum">     292 </span>            : }
+<span class="lineNum">     293 </span>            : 
+<a name="294"><span class="lineNum">     294 </span>            : </a>
+<span class="lineNum">     295 </span>            : static void
+<span class="lineNum">     296 </span><span class="lineCov">         28 : put8 (struct membuf *mb, byte a )</span>
+<span class="lineNum">     297 </span>            : {
+<span class="lineNum">     298 </span><span class="lineCov">         28 :   put_membuf (mb, &amp;a, 1);</span>
+<span class="lineNum">     299 </span><span class="lineCov">         28 : }</span>
+<a name="300"><span class="lineNum">     300 </span>            : </a>
+<span class="lineNum">     301 </span>            : static void
+<span class="lineNum">     302 </span><span class="lineCov">         41 : put16 (struct membuf *mb, u16 a )</span>
+<span class="lineNum">     303 </span>            : {
+<span class="lineNum">     304 </span>            :   unsigned char tmp[2];
+<span class="lineNum">     305 </span><span class="lineCov">         41 :   tmp[0] = a&gt;&gt;8;</span>
+<span class="lineNum">     306 </span><span class="lineCov">         41 :   tmp[1] = a;</span>
+<span class="lineNum">     307 </span><span class="lineCov">         41 :   put_membuf (mb, tmp, 2);</span>
+<span class="lineNum">     308 </span><span class="lineCov">         41 : }</span>
+<a name="309"><span class="lineNum">     309 </span>            : </a>
+<span class="lineNum">     310 </span>            : static void
+<span class="lineNum">     311 </span><span class="lineCov">         43 : put32 (struct membuf *mb, u32 a )</span>
+<span class="lineNum">     312 </span>            : {
+<span class="lineNum">     313 </span>            :   unsigned char tmp[4];
+<span class="lineNum">     314 </span><span class="lineCov">         43 :   tmp[0] = a&gt;&gt;24;</span>
+<span class="lineNum">     315 </span><span class="lineCov">         43 :   tmp[1] = a&gt;&gt;16;</span>
+<span class="lineNum">     316 </span><span class="lineCov">         43 :   tmp[2] = a&gt;&gt;8;</span>
+<span class="lineNum">     317 </span><span class="lineCov">         43 :   tmp[3] = a;</span>
+<span class="lineNum">     318 </span><span class="lineCov">         43 :   put_membuf (mb, tmp, 4);</span>
+<span class="lineNum">     319 </span><span class="lineCov">         43 : }</span>
+<span class="lineNum">     320 </span>            : 
+<span class="lineNum">     321 </span>            : 
+<span class="lineNum">     322 </span>            : 
+<a name="323"><span class="lineNum">     323 </span>            : /* Store a value in the fixup list */</a>
+<span class="lineNum">     324 </span>            : static void
+<span class="lineNum">     325 </span><span class="lineCov">         17 : add_fixup (KEYBOXBLOB blob, u32 off, u32 val)</span>
+<span class="lineNum">     326 </span>            : {
+<span class="lineNum">     327 </span>            :   struct fixup_list *fl;
+<span class="lineNum">     328 </span>            : 
+<span class="lineNum">     329 </span><span class="lineCov">         17 :   if (blob-&gt;fixup_out_of_core)</span>
+<span class="lineNum">     330 </span><span class="lineNoCov">          0 :     return;</span>
+<span class="lineNum">     331 </span>            : 
+<span class="lineNum">     332 </span><span class="lineCov">         17 :   fl = xtrycalloc(1, sizeof *fl);</span>
+<span class="lineNum">     333 </span><span class="lineCov">         17 :   if (!fl)</span>
+<span class="lineNum">     334 </span><span class="lineNoCov">          0 :     blob-&gt;fixup_out_of_core = 1;</span>
+<span class="lineNum">     335 </span>            :   else
+<span class="lineNum">     336 </span>            :     {
+<span class="lineNum">     337 </span><span class="lineCov">         17 :       fl-&gt;off = off;</span>
+<span class="lineNum">     338 </span><span class="lineCov">         17 :       fl-&gt;val = val;</span>
+<span class="lineNum">     339 </span><span class="lineCov">         17 :       fl-&gt;next = blob-&gt;fixups;</span>
+<span class="lineNum">     340 </span><span class="lineCov">         17 :       blob-&gt;fixups = fl;</span>
+<span class="lineNum">     341 </span>            :     }
+<span class="lineNum">     342 </span>            : }
+<span class="lineNum">     343 </span>            : 
+<span class="lineNum">     344 </span>            : 
+<span class="lineNum">     345 </span>            : 
+<span class="lineNum">     346 </span>            : /*
+<span class="lineNum">     347 </span>            :   OpenPGP specific stuff
+<span class="lineNum">     348 </span>            : */
+<span class="lineNum">     349 </span>            : 
+<span class="lineNum">     350 </span>            : 
+<span class="lineNum">     351 </span>            : /* We must store the keyid at some place because we can't calculate
+<span class="lineNum">     352 </span>            :    the offset yet. This is only used for v3 keyIDs.  Function returns
+<span class="lineNum">     353 </span>            :    an index value for later fixup or -1 for out of core.  The value
+<a name="354"><span class="lineNum">     354 </span>            :    must be a non-zero value. */</a>
+<span class="lineNum">     355 </span>            : static int
+<span class="lineNum">     356 </span><span class="lineNoCov">          0 : pgp_temp_store_kid (KEYBOXBLOB blob, struct _keybox_openpgp_key_info *kinfo)</span>
+<span class="lineNum">     357 </span>            : {
+<span class="lineNum">     358 </span>            :   struct keyid_list *k, *r;
+<span class="lineNum">     359 </span>            : 
+<span class="lineNum">     360 </span><span class="lineNoCov">          0 :   k = xtrymalloc (sizeof *k);</span>
+<span class="lineNum">     361 </span><span class="lineNoCov">          0 :   if (!k)</span>
+<span class="lineNum">     362 </span><span class="lineNoCov">          0 :     return -1;</span>
+<span class="lineNum">     363 </span><span class="lineNoCov">          0 :   memcpy (k-&gt;kid, kinfo-&gt;keyid, 8);</span>
+<span class="lineNum">     364 </span><span class="lineNoCov">          0 :   k-&gt;seqno = 0;</span>
+<span class="lineNum">     365 </span><span class="lineNoCov">          0 :   k-&gt;next = blob-&gt;temp_kids;</span>
+<span class="lineNum">     366 </span><span class="lineNoCov">          0 :   blob-&gt;temp_kids = k;</span>
+<span class="lineNum">     367 </span><span class="lineNoCov">          0 :   for (r=k; r; r = r-&gt;next)</span>
+<span class="lineNum">     368 </span><span class="lineNoCov">          0 :     k-&gt;seqno++;</span>
+<span class="lineNum">     369 </span>            : 
+<span class="lineNum">     370 </span><span class="lineNoCov">          0 :   return k-&gt;seqno;</span>
+<span class="lineNum">     371 </span>            : }
+<span class="lineNum">     372 </span>            : 
+<span class="lineNum">     373 </span>            : 
+<a name="374"><span class="lineNum">     374 </span>            : /* Helper for pgp_create_key_part.  */</a>
+<span class="lineNum">     375 </span>            : static gpg_error_t
+<span class="lineNum">     376 </span><span class="lineNoCov">          0 : pgp_create_key_part_single (KEYBOXBLOB blob, int n,</span>
+<span class="lineNum">     377 </span>            :                             struct _keybox_openpgp_key_info *kinfo)
+<span class="lineNum">     378 </span>            : {
+<span class="lineNum">     379 </span>            :   size_t fprlen;
+<span class="lineNum">     380 </span>            :   int off;
+<span class="lineNum">     381 </span>            : 
+<span class="lineNum">     382 </span><span class="lineNoCov">          0 :   fprlen = kinfo-&gt;fprlen;</span>
+<span class="lineNum">     383 </span><span class="lineNoCov">          0 :   if (fprlen &gt; 20)</span>
+<span class="lineNum">     384 </span><span class="lineNoCov">          0 :     fprlen = 20;</span>
+<span class="lineNum">     385 </span><span class="lineNoCov">          0 :   memcpy (blob-&gt;keys[n].fpr, kinfo-&gt;fpr, fprlen);</span>
+<span class="lineNum">     386 </span><span class="lineNoCov">          0 :   if (fprlen != 20) /* v3 fpr - shift right and fill with zeroes. */</span>
+<span class="lineNum">     387 </span>            :     {
+<span class="lineNum">     388 </span><span class="lineNoCov">          0 :       memmove (blob-&gt;keys[n].fpr + 20 - fprlen, blob-&gt;keys[n].fpr, fprlen);</span>
+<span class="lineNum">     389 </span><span class="lineNoCov">          0 :       memset (blob-&gt;keys[n].fpr, 0, 20 - fprlen);</span>
+<span class="lineNum">     390 </span><span class="lineNoCov">          0 :       off = pgp_temp_store_kid (blob, kinfo);</span>
+<span class="lineNum">     391 </span><span class="lineNoCov">          0 :       if (off == -1)</span>
+<span class="lineNum">     392 </span><span class="lineNoCov">          0 :         return gpg_error_from_syserror ();</span>
+<span class="lineNum">     393 </span><span class="lineNoCov">          0 :       blob-&gt;keys[n].off_kid = off;</span>
+<span class="lineNum">     394 </span>            :     }
+<span class="lineNum">     395 </span>            :   else
+<span class="lineNum">     396 </span><span class="lineNoCov">          0 :     blob-&gt;keys[n].off_kid = 0; /* Will be fixed up later */</span>
+<span class="lineNum">     397 </span><span class="lineNoCov">          0 :   blob-&gt;keys[n].flags = 0;</span>
+<span class="lineNum">     398 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     399 </span>            : }
+<span class="lineNum">     400 </span>            : 
+<a name="401"><span class="lineNum">     401 </span>            : </a>
+<span class="lineNum">     402 </span>            : static gpg_error_t
+<span class="lineNum">     403 </span><span class="lineNoCov">          0 : pgp_create_key_part (KEYBOXBLOB blob, keybox_openpgp_info_t info)</span>
+<span class="lineNum">     404 </span>            : {
+<span class="lineNum">     405 </span>            :   gpg_error_t err;
+<span class="lineNum">     406 </span><span class="lineNoCov">          0 :   int n = 0;</span>
+<span class="lineNum">     407 </span>            :   struct _keybox_openpgp_key_info *kinfo;
+<span class="lineNum">     408 </span>            : 
+<span class="lineNum">     409 </span><span class="lineNoCov">          0 :   err = pgp_create_key_part_single (blob, n++, &amp;info-&gt;primary);</span>
+<span class="lineNum">     410 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     411 </span><span class="lineNoCov">          0 :     return err;</span>
+<span class="lineNum">     412 </span><span class="lineNoCov">          0 :   if (info-&gt;nsubkeys)</span>
+<span class="lineNum">     413 </span><span class="lineNoCov">          0 :     for (kinfo = &amp;info-&gt;subkeys; kinfo; kinfo = kinfo-&gt;next)</span>
+<span class="lineNum">     414 </span><span class="lineNoCov">          0 :       if ((err=pgp_create_key_part_single (blob, n++, kinfo)))</span>
+<span class="lineNum">     415 </span><span class="lineNoCov">          0 :         return err;</span>
+<span class="lineNum">     416 </span>            : 
+<span class="lineNum">     417 </span><span class="lineNoCov">          0 :   assert (n == blob-&gt;nkeys);</span>
+<span class="lineNum">     418 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     419 </span>            : }
+<span class="lineNum">     420 </span>            : 
+<a name="421"><span class="lineNum">     421 </span>            : </a>
+<span class="lineNum">     422 </span>            : static void
+<span class="lineNum">     423 </span><span class="lineNoCov">          0 : pgp_create_uid_part (KEYBOXBLOB blob, keybox_openpgp_info_t info)</span>
+<span class="lineNum">     424 </span>            : {
+<span class="lineNum">     425 </span><span class="lineNoCov">          0 :   int n = 0;</span>
+<span class="lineNum">     426 </span>            :   struct _keybox_openpgp_uid_info *u;
+<span class="lineNum">     427 </span>            : 
+<span class="lineNum">     428 </span><span class="lineNoCov">          0 :   if (info-&gt;nuids)</span>
+<span class="lineNum">     429 </span>            :     {
+<span class="lineNum">     430 </span><span class="lineNoCov">          0 :       for (u = &amp;info-&gt;uids; u; u = u-&gt;next)</span>
+<span class="lineNum">     431 </span>            :         {
+<span class="lineNum">     432 </span><span class="lineNoCov">          0 :           blob-&gt;uids[n].off = u-&gt;off;</span>
+<span class="lineNum">     433 </span><span class="lineNoCov">          0 :           blob-&gt;uids[n].len = u-&gt;len;</span>
+<span class="lineNum">     434 </span><span class="lineNoCov">          0 :           blob-&gt;uids[n].flags = 0;</span>
+<span class="lineNum">     435 </span><span class="lineNoCov">          0 :           blob-&gt;uids[n].validity = 0;</span>
+<span class="lineNum">     436 </span><span class="lineNoCov">          0 :           n++;</span>
+<span class="lineNum">     437 </span>            :         }
+<span class="lineNum">     438 </span>            :     }
+<span class="lineNum">     439 </span>            : 
+<span class="lineNum">     440 </span><span class="lineNoCov">          0 :   assert (n == blob-&gt;nuids);</span>
+<span class="lineNum">     441 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     442 </span>            : 
+<a name="443"><span class="lineNum">     443 </span>            : </a>
+<span class="lineNum">     444 </span>            : static void
+<span class="lineNum">     445 </span><span class="lineNoCov">          0 : pgp_create_sig_part (KEYBOXBLOB blob, u32 *sigstatus)</span>
+<span class="lineNum">     446 </span>            : {
+<span class="lineNum">     447 </span>            :   int n;
+<span class="lineNum">     448 </span>            : 
+<span class="lineNum">     449 </span><span class="lineNoCov">          0 :   for (n=0; n &lt; blob-&gt;nsigs; n++)</span>
+<span class="lineNum">     450 </span>            :     {
+<span class="lineNum">     451 </span><span class="lineNoCov">          0 :       blob-&gt;sigs[n] = sigstatus? sigstatus[n+1] : 0;</span>
+<span class="lineNum">     452 </span>            :     }
+<span class="lineNum">     453 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     454 </span>            : 
+<a name="455"><span class="lineNum">     455 </span>            : </a>
+<span class="lineNum">     456 </span>            : static int
+<span class="lineNum">     457 </span><span class="lineNoCov">          0 : pgp_create_blob_keyblock (KEYBOXBLOB blob,</span>
+<span class="lineNum">     458 </span>            :                           const unsigned char *image, size_t imagelen)
+<span class="lineNum">     459 </span>            : {
+<span class="lineNum">     460 </span><span class="lineNoCov">          0 :   struct membuf *a = blob-&gt;buf;</span>
+<span class="lineNum">     461 </span>            :   int n;
+<span class="lineNum">     462 </span><span class="lineNoCov">          0 :   u32 kbstart = a-&gt;len;</span>
+<span class="lineNum">     463 </span>            : 
+<span class="lineNum">     464 </span><span class="lineNoCov">          0 :   add_fixup (blob, 8, kbstart);</span>
+<span class="lineNum">     465 </span>            : 
+<span class="lineNum">     466 </span><span class="lineNoCov">          0 :   for (n = 0; n &lt; blob-&gt;nuids; n++)</span>
+<span class="lineNum">     467 </span><span class="lineNoCov">          0 :     add_fixup (blob, blob-&gt;uids[n].off_addr, kbstart + blob-&gt;uids[n].off);</span>
+<span class="lineNum">     468 </span>            : 
+<span class="lineNum">     469 </span><span class="lineNoCov">          0 :   put_membuf (a, image, imagelen);</span>
+<span class="lineNum">     470 </span>            : 
+<span class="lineNum">     471 </span><span class="lineNoCov">          0 :   add_fixup (blob, 12, a-&gt;len - kbstart);</span>
+<span class="lineNum">     472 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     473 </span>            : }
+<span class="lineNum">     474 </span>            : 
+<span class="lineNum">     475 </span>            : 
+<span class="lineNum">     476 </span>            : 
+<span class="lineNum">     477 </span>            : #ifdef KEYBOX_WITH_X509
+<span class="lineNum">     478 </span>            : /*
+<span class="lineNum">     479 </span>            :    X.509 specific stuff
+<span class="lineNum">     480 </span>            :  */
+<span class="lineNum">     481 </span>            : 
+<a name="482"><span class="lineNum">     482 </span>            : /* Write the raw certificate out */</a>
+<span class="lineNum">     483 </span>            : static int
+<span class="lineNum">     484 </span><span class="lineCov">          3 : x509_create_blob_cert (KEYBOXBLOB blob, ksba_cert_t cert)</span>
+<span class="lineNum">     485 </span>            : {
+<span class="lineNum">     486 </span><span class="lineCov">          3 :   struct membuf *a = blob-&gt;buf;</span>
+<span class="lineNum">     487 </span>            :   const unsigned char *image;
+<span class="lineNum">     488 </span>            :   size_t length;
+<span class="lineNum">     489 </span><span class="lineCov">          3 :   u32 kbstart = a-&gt;len;</span>
+<span class="lineNum">     490 </span>            : 
+<span class="lineNum">     491 </span>            :   /* Store our offset for later fixup */
+<span class="lineNum">     492 </span><span class="lineCov">          3 :   add_fixup (blob, 8, kbstart);</span>
+<span class="lineNum">     493 </span>            : 
+<span class="lineNum">     494 </span><span class="lineCov">          3 :   image = ksba_cert_get_image (cert, &amp;length);</span>
+<span class="lineNum">     495 </span><span class="lineCov">          3 :   if (!image)</span>
+<span class="lineNum">     496 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_GENERAL);</span>
+<span class="lineNum">     497 </span><span class="lineCov">          3 :   put_membuf (a, image, length);</span>
+<span class="lineNum">     498 </span>            : 
+<span class="lineNum">     499 </span><span class="lineCov">          3 :   add_fixup (blob, 12, a-&gt;len - kbstart);</span>
+<span class="lineNum">     500 </span><span class="lineCov">          3 :   return 0;</span>
+<span class="lineNum">     501 </span>            : }
+<span class="lineNum">     502 </span>            : 
+<span class="lineNum">     503 </span>            : #endif /*KEYBOX_WITH_X509*/
+<span class="lineNum">     504 </span>            : 
+<a name="505"><span class="lineNum">     505 </span>            : /* Write a stored keyID out to the buffer */</a>
+<span class="lineNum">     506 </span>            : static void
+<span class="lineNum">     507 </span><span class="lineNoCov">          0 : write_stored_kid (KEYBOXBLOB blob, int seqno)</span>
+<span class="lineNum">     508 </span>            : {
+<span class="lineNum">     509 </span>            :   struct keyid_list *r;
+<span class="lineNum">     510 </span>            : 
+<span class="lineNum">     511 </span><span class="lineNoCov">          0 :   for ( r = blob-&gt;temp_kids; r; r = r-&gt;next )</span>
+<span class="lineNum">     512 </span>            :     {
+<span class="lineNum">     513 </span><span class="lineNoCov">          0 :       if (r-&gt;seqno == seqno )</span>
+<span class="lineNum">     514 </span>            :         {
+<span class="lineNum">     515 </span><span class="lineNoCov">          0 :           put_membuf (blob-&gt;buf, r-&gt;kid, 8);</span>
+<span class="lineNum">     516 </span><span class="lineNoCov">          0 :           return;</span>
+<span class="lineNum">     517 </span>            :         }
+<span class="lineNum">     518 </span>            :     }
+<span class="lineNum">     519 </span><span class="lineNoCov">          0 :   never_reached ();</span>
+<span class="lineNum">     520 </span>            : }
+<span class="lineNum">     521 </span>            : 
+<a name="522"><span class="lineNum">     522 </span>            : /* Release a list of key IDs */</a>
+<span class="lineNum">     523 </span>            : static void
+<span class="lineNum">     524 </span><span class="lineCov">          3 : release_kid_list (struct keyid_list *kl)</span>
+<span class="lineNum">     525 </span>            : {
+<span class="lineNum">     526 </span>            :   struct keyid_list *r, *r2;
+<span class="lineNum">     527 </span>            : 
+<span class="lineNum">     528 </span><span class="lineCov">          3 :   for ( r = kl; r; r = r2 )</span>
+<span class="lineNum">     529 </span>            :     {
+<span class="lineNum">     530 </span><span class="lineNoCov">          0 :       r2 = r-&gt;next;</span>
+<span class="lineNum">     531 </span><span class="lineNoCov">          0 :       xfree (r);</span>
+<span class="lineNum">     532 </span>            :     }
+<span class="lineNum">     533 </span><span class="lineCov">          3 : }</span>
+<span class="lineNum">     534 </span>            : 
+<span class="lineNum">     535 </span>            : 
+<a name="536"><span class="lineNum">     536 </span>            : </a>
+<span class="lineNum">     537 </span>            : static int
+<span class="lineNum">     538 </span><span class="lineCov">          3 : create_blob_header (KEYBOXBLOB blob, int blobtype, int as_ephemeral)</span>
+<span class="lineNum">     539 </span>            : {
+<span class="lineNum">     540 </span><span class="lineCov">          3 :   struct membuf *a = blob-&gt;buf;</span>
+<span class="lineNum">     541 </span>            :   int i;
+<span class="lineNum">     542 </span>            : 
+<span class="lineNum">     543 </span><span class="lineCov">          3 :   put32 ( a, 0 ); /* blob length, needs fixup */</span>
+<span class="lineNum">     544 </span><span class="lineCov">          3 :   put8 ( a, blobtype);</span>
+<span class="lineNum">     545 </span><span class="lineCov">          3 :   put8 ( a, 1 );  /* blob type version */</span>
+<span class="lineNum">     546 </span><span class="lineCov">          3 :   put16 ( a, as_ephemeral? 2:0 ); /* blob flags */</span>
+<span class="lineNum">     547 </span>            : 
+<span class="lineNum">     548 </span><span class="lineCov">          3 :   put32 ( a, 0 ); /* offset to the raw data, needs fixup */</span>
+<span class="lineNum">     549 </span><span class="lineCov">          3 :   put32 ( a, 0 ); /* length of the raw data, needs fixup */</span>
+<span class="lineNum">     550 </span>            : 
+<span class="lineNum">     551 </span><span class="lineCov">          3 :   put16 ( a, blob-&gt;nkeys );</span>
+<span class="lineNum">     552 </span><span class="lineCov">          3 :   put16 ( a, 20 + 4 + 2 + 2 );  /* size of key info */</span>
+<span class="lineNum">     553 </span><span class="lineCov">          6 :   for ( i=0; i &lt; blob-&gt;nkeys; i++ )</span>
+<span class="lineNum">     554 </span>            :     {
+<span class="lineNum">     555 </span><span class="lineCov">          3 :       put_membuf (a, blob-&gt;keys[i].fpr, 20);</span>
+<span class="lineNum">     556 </span><span class="lineCov">          3 :       blob-&gt;keys[i].off_kid_addr = a-&gt;len;</span>
+<span class="lineNum">     557 </span><span class="lineCov">          3 :       put32 ( a, 0 ); /* offset to keyid, fixed up later */</span>
+<span class="lineNum">     558 </span><span class="lineCov">          3 :       put16 ( a, blob-&gt;keys[i].flags );</span>
+<span class="lineNum">     559 </span><span class="lineCov">          3 :       put16 ( a, 0 ); /* reserved */</span>
+<span class="lineNum">     560 </span>            :     }
+<span class="lineNum">     561 </span>            : 
+<span class="lineNum">     562 </span><span class="lineCov">          3 :   put16 (a, blob-&gt;seriallen); /*fixme: check that it fits into 16 bits*/</span>
+<span class="lineNum">     563 </span><span class="lineCov">          3 :   if (blob-&gt;serial)</span>
+<span class="lineNum">     564 </span><span class="lineCov">          3 :     put_membuf (a, blob-&gt;serial, blob-&gt;seriallen);</span>
+<span class="lineNum">     565 </span>            : 
+<span class="lineNum">     566 </span><span class="lineCov">          3 :   put16 ( a, blob-&gt;nuids );</span>
+<span class="lineNum">     567 </span><span class="lineCov">          3 :   put16 ( a, 4 + 4 + 2 + 1 + 1 );  /* size of uid info */</span>
+<span class="lineNum">     568 </span><span class="lineCov">         11 :   for (i=0; i &lt; blob-&gt;nuids; i++)</span>
+<span class="lineNum">     569 </span>            :     {
+<span class="lineNum">     570 </span><span class="lineCov">          8 :       blob-&gt;uids[i].off_addr = a-&gt;len;</span>
+<span class="lineNum">     571 </span><span class="lineCov">          8 :       put32 ( a, 0 ); /* offset to userid, fixed up later */</span>
+<span class="lineNum">     572 </span><span class="lineCov">          8 :       put32 ( a, blob-&gt;uids[i].len );</span>
+<span class="lineNum">     573 </span><span class="lineCov">          8 :       put16 ( a, blob-&gt;uids[i].flags );</span>
+<span class="lineNum">     574 </span><span class="lineCov">          8 :       put8  ( a, 0 ); /* validity */</span>
+<span class="lineNum">     575 </span><span class="lineCov">          8 :       put8  ( a, 0 ); /* reserved */</span>
+<span class="lineNum">     576 </span>            :     }
+<span class="lineNum">     577 </span>            : 
+<span class="lineNum">     578 </span><span class="lineCov">          3 :   put16 ( a, blob-&gt;nsigs );</span>
+<span class="lineNum">     579 </span><span class="lineCov">          3 :   put16 ( a, 4 );  /* size of sig info */</span>
+<span class="lineNum">     580 </span><span class="lineCov">          6 :   for (i=0; i &lt; blob-&gt;nsigs; i++)</span>
+<span class="lineNum">     581 </span>            :     {
+<span class="lineNum">     582 </span><span class="lineCov">          3 :       put32 ( a, blob-&gt;sigs[i]);</span>
+<span class="lineNum">     583 </span>            :     }
+<span class="lineNum">     584 </span>            : 
+<span class="lineNum">     585 </span><span class="lineCov">          3 :   put8 ( a, 0 );  /* assigned ownertrust */</span>
+<span class="lineNum">     586 </span><span class="lineCov">          3 :   put8 ( a, 0 );  /* validity of all user IDs */</span>
+<span class="lineNum">     587 </span><span class="lineCov">          3 :   put16 ( a, 0 );  /* reserved */</span>
+<span class="lineNum">     588 </span><span class="lineCov">          3 :   put32 ( a, 0 );  /* time of next recheck */</span>
+<span class="lineNum">     589 </span><span class="lineCov">          3 :   put32 ( a, 0 );  /* newest timestamp (none) */</span>
+<span class="lineNum">     590 </span><span class="lineCov">          3 :   put32 ( a, make_timestamp() );  /* creation time */</span>
+<span class="lineNum">     591 </span><span class="lineCov">          3 :   put32 ( a, 0 );  /* size of reserved space */</span>
+<span class="lineNum">     592 </span>            :   /* reserved space (which is currently of size 0) */
+<span class="lineNum">     593 </span>            : 
+<span class="lineNum">     594 </span>            :   /* space where we write keyIDs and other stuff so that the
+<span class="lineNum">     595 </span>            :      pointers can actually point to somewhere */
+<span class="lineNum">     596 </span><span class="lineCov">          3 :   if (blobtype == KEYBOX_BLOBTYPE_PGP)</span>
+<span class="lineNum">     597 </span>            :     {
+<span class="lineNum">     598 </span>            :       /* We need to store the keyids for all pgp v3 keys because those key
+<span class="lineNum">     599 </span>            :          IDs are not part of the fingerprint.  While we are doing that, we
+<span class="lineNum">     600 </span>            :          fixup all the keyID offsets */
+<span class="lineNum">     601 </span><span class="lineNoCov">          0 :       for (i=0; i &lt; blob-&gt;nkeys; i++ )</span>
+<span class="lineNum">     602 </span>            :         {
+<span class="lineNum">     603 </span><span class="lineNoCov">          0 :           if (blob-&gt;keys[i].off_kid)</span>
+<span class="lineNum">     604 </span>            :             { /* this is a v3 one */
+<span class="lineNum">     605 </span><span class="lineNoCov">          0 :               add_fixup (blob, blob-&gt;keys[i].off_kid_addr, a-&gt;len);</span>
+<span class="lineNum">     606 </span><span class="lineNoCov">          0 :               write_stored_kid (blob, blob-&gt;keys[i].off_kid);</span>
+<span class="lineNum">     607 </span>            :             }
+<span class="lineNum">     608 </span>            :           else
+<span class="lineNum">     609 </span>            :             { /* the better v4 key IDs - just store an offset 8 bytes back */
+<span class="lineNum">     610 </span><span class="lineNoCov">          0 :               add_fixup (blob, blob-&gt;keys[i].off_kid_addr,</span>
+<span class="lineNum">     611 </span><span class="lineNoCov">          0 :                          blob-&gt;keys[i].off_kid_addr - 8);</span>
+<span class="lineNum">     612 </span>            :             }
+<span class="lineNum">     613 </span>            :         }
+<span class="lineNum">     614 </span>            :     }
+<span class="lineNum">     615 </span>            : 
+<span class="lineNum">     616 </span><span class="lineCov">          3 :   if (blobtype == KEYBOX_BLOBTYPE_X509)</span>
+<span class="lineNum">     617 </span>            :     {
+<span class="lineNum">     618 </span>            :       /* We don't want to point to ASN.1 encoded UserIDs (DNs) but to
+<span class="lineNum">     619 </span>            :          the utf-8 string represenation of them */
+<span class="lineNum">     620 </span><span class="lineCov">         11 :       for (i=0; i &lt; blob-&gt;nuids; i++ )</span>
+<span class="lineNum">     621 </span>            :         {
+<span class="lineNum">     622 </span><span class="lineCov">          8 :           if (blob-&gt;uids[i].name)</span>
+<span class="lineNum">     623 </span>            :             { /* this is a v3 one */
+<span class="lineNum">     624 </span><span class="lineCov">          8 :               add_fixup (blob, blob-&gt;uids[i].off_addr, a-&gt;len);</span>
+<span class="lineNum">     625 </span><span class="lineCov">          8 :               put_membuf (blob-&gt;buf, blob-&gt;uids[i].name, blob-&gt;uids[i].len);</span>
+<span class="lineNum">     626 </span>            :             }
+<span class="lineNum">     627 </span>            :         }
+<span class="lineNum">     628 </span>            :     }
+<span class="lineNum">     629 </span>            : 
+<span class="lineNum">     630 </span><span class="lineCov">          3 :     return 0;</span>
+<span class="lineNum">     631 </span>            : }
+<span class="lineNum">     632 </span>            : 
+<span class="lineNum">     633 </span>            : 
+<a name="634"><span class="lineNum">     634 </span>            : </a>
+<span class="lineNum">     635 </span>            : static int
+<span class="lineNum">     636 </span><span class="lineCov">          3 : create_blob_trailer (KEYBOXBLOB blob)</span>
+<span class="lineNum">     637 </span>            : {
+<span class="lineNum">     638 </span>            :   (void)blob;
+<span class="lineNum">     639 </span><span class="lineCov">          3 :   return 0;</span>
+<span class="lineNum">     640 </span>            : }
+<span class="lineNum">     641 </span>            : 
+<a name="642"><span class="lineNum">     642 </span>            : </a>
+<span class="lineNum">     643 </span>            : static int
+<span class="lineNum">     644 </span><span class="lineCov">          3 : create_blob_finish (KEYBOXBLOB blob)</span>
+<span class="lineNum">     645 </span>            : {
+<span class="lineNum">     646 </span><span class="lineCov">          3 :   struct membuf *a = blob-&gt;buf;</span>
+<span class="lineNum">     647 </span>            :   unsigned char *p;
+<span class="lineNum">     648 </span>            :   unsigned char *pp;
+<span class="lineNum">     649 </span>            :   size_t n;
+<span class="lineNum">     650 </span>            : 
+<span class="lineNum">     651 </span>            :   /* Write a placeholder for the checksum */
+<span class="lineNum">     652 </span><span class="lineCov">          3 :   put_membuf (a, NULL, 20);</span>
+<span class="lineNum">     653 </span>            : 
+<span class="lineNum">     654 </span>            :   /* get the memory area */
+<span class="lineNum">     655 </span><span class="lineCov">          3 :   n = 0; /* (Just to avoid compiler warning.) */</span>
+<span class="lineNum">     656 </span><span class="lineCov">          3 :   p = get_membuf (a, &amp;n);</span>
+<span class="lineNum">     657 </span><span class="lineCov">          3 :   if (!p)</span>
+<span class="lineNum">     658 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_ENOMEM);</span>
+<span class="lineNum">     659 </span><span class="lineCov">          3 :   assert (n &gt;= 20);</span>
+<span class="lineNum">     660 </span>            : 
+<span class="lineNum">     661 </span>            :   /* fixup the length */
+<span class="lineNum">     662 </span><span class="lineCov">          3 :   add_fixup (blob, 0, n);</span>
+<span class="lineNum">     663 </span>            : 
+<span class="lineNum">     664 </span>            :   /* do the fixups */
+<span class="lineNum">     665 </span><span class="lineCov">          3 :   if (blob-&gt;fixup_out_of_core)</span>
+<span class="lineNum">     666 </span>            :     {
+<span class="lineNum">     667 </span><span class="lineNoCov">          0 :       xfree (p);</span>
+<span class="lineNum">     668 </span><span class="lineNoCov">          0 :       return gpg_error (GPG_ERR_ENOMEM);</span>
+<span class="lineNum">     669 </span>            :     }
+<span class="lineNum">     670 </span>            : 
+<span class="lineNum">     671 </span>            :   {
+<span class="lineNum">     672 </span>            :     struct fixup_list *fl, *next;
+<span class="lineNum">     673 </span><span class="lineCov">         20 :     for (fl = blob-&gt;fixups; fl; fl = next)</span>
+<span class="lineNum">     674 </span>            :       {
+<span class="lineNum">     675 </span><span class="lineCov">         17 :         assert (fl-&gt;off+4 &lt;= n);</span>
+<span class="lineNum">     676 </span><span class="lineCov">         17 :         p[fl-&gt;off+0] = fl-&gt;val &gt;&gt; 24;</span>
+<span class="lineNum">     677 </span><span class="lineCov">         17 :         p[fl-&gt;off+1] = fl-&gt;val &gt;&gt; 16;</span>
+<span class="lineNum">     678 </span><span class="lineCov">         17 :         p[fl-&gt;off+2] = fl-&gt;val &gt;&gt;  8;</span>
+<span class="lineNum">     679 </span><span class="lineCov">         17 :         p[fl-&gt;off+3] = fl-&gt;val;</span>
+<span class="lineNum">     680 </span><span class="lineCov">         17 :         next = fl-&gt;next;</span>
+<span class="lineNum">     681 </span><span class="lineCov">         17 :         xfree (fl);</span>
+<span class="lineNum">     682 </span>            :       }
+<span class="lineNum">     683 </span><span class="lineCov">          3 :     blob-&gt;fixups = NULL;</span>
+<span class="lineNum">     684 </span>            :   }
+<span class="lineNum">     685 </span>            : 
+<span class="lineNum">     686 </span>            :   /* Compute and store the SHA-1 checksum. */
+<span class="lineNum">     687 </span><span class="lineCov">          3 :   gcry_md_hash_buffer (GCRY_MD_SHA1, p + n - 20, p, n - 20);</span>
+<span class="lineNum">     688 </span>            : 
+<span class="lineNum">     689 </span><span class="lineCov">          3 :   pp = xtrymalloc (n);</span>
+<span class="lineNum">     690 </span><span class="lineCov">          3 :   if ( !pp )</span>
+<span class="lineNum">     691 </span>            :     {
+<span class="lineNum">     692 </span><span class="lineNoCov">          0 :       xfree (p);</span>
+<span class="lineNum">     693 </span><span class="lineNoCov">          0 :       return gpg_error_from_syserror ();</span>
+<span class="lineNum">     694 </span>            :     }
+<span class="lineNum">     695 </span><span class="lineCov">          3 :   memcpy (pp , p, n);</span>
+<span class="lineNum">     696 </span><span class="lineCov">          3 :   xfree (p);</span>
+<span class="lineNum">     697 </span><span class="lineCov">          3 :   blob-&gt;blob = pp;</span>
+<span class="lineNum">     698 </span><span class="lineCov">          3 :   blob-&gt;bloblen = n;</span>
+<span class="lineNum">     699 </span>            : 
+<span class="lineNum">     700 </span><span class="lineCov">          3 :   return 0;</span>
+<span class="lineNum">     701 </span>            : }
+<span class="lineNum">     702 </span>            : 
+<span class="lineNum">     703 </span>            : 
+<a name="704"><span class="lineNum">     704 </span>            : </a>
+<span class="lineNum">     705 </span>            : gpg_error_t
+<span class="lineNum">     706 </span><span class="lineNoCov">          0 : _keybox_create_openpgp_blob (KEYBOXBLOB *r_blob,</span>
+<span class="lineNum">     707 </span>            :                              keybox_openpgp_info_t info,
+<span class="lineNum">     708 </span>            :                              const unsigned char *image,
+<span class="lineNum">     709 </span>            :                              size_t imagelen,
+<span class="lineNum">     710 </span>            :                              int as_ephemeral)
+<span class="lineNum">     711 </span>            : {
+<span class="lineNum">     712 </span>            :   gpg_error_t err;
+<span class="lineNum">     713 </span>            :   KEYBOXBLOB blob;
+<span class="lineNum">     714 </span>            : 
+<span class="lineNum">     715 </span><span class="lineNoCov">          0 :   *r_blob = NULL;</span>
+<span class="lineNum">     716 </span>            : 
+<span class="lineNum">     717 </span><span class="lineNoCov">          0 :   blob = xtrycalloc (1, sizeof *blob);</span>
+<span class="lineNum">     718 </span><span class="lineNoCov">          0 :   if (!blob)</span>
+<span class="lineNum">     719 </span><span class="lineNoCov">          0 :     return gpg_error_from_syserror ();</span>
+<span class="lineNum">     720 </span>            : 
+<span class="lineNum">     721 </span><span class="lineNoCov">          0 :   blob-&gt;nkeys = 1 + info-&gt;nsubkeys;</span>
+<span class="lineNum">     722 </span><span class="lineNoCov">          0 :   blob-&gt;keys = xtrycalloc (blob-&gt;nkeys, sizeof *blob-&gt;keys );</span>
+<span class="lineNum">     723 </span><span class="lineNoCov">          0 :   if (!blob-&gt;keys)</span>
+<span class="lineNum">     724 </span>            :     {
+<span class="lineNum">     725 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     726 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     727 </span>            :     }
+<span class="lineNum">     728 </span>            : 
+<span class="lineNum">     729 </span><span class="lineNoCov">          0 :   blob-&gt;nuids = info-&gt;nuids;</span>
+<span class="lineNum">     730 </span><span class="lineNoCov">          0 :   if (blob-&gt;nuids)</span>
+<span class="lineNum">     731 </span>            :     {
+<span class="lineNum">     732 </span><span class="lineNoCov">          0 :       blob-&gt;uids = xtrycalloc (blob-&gt;nuids, sizeof *blob-&gt;uids );</span>
+<span class="lineNum">     733 </span><span class="lineNoCov">          0 :       if (!blob-&gt;uids)</span>
+<span class="lineNum">     734 </span>            :         {
+<span class="lineNum">     735 </span><span class="lineNoCov">          0 :           err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     736 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     737 </span>            :         }
+<span class="lineNum">     738 </span>            :     }
+<span class="lineNum">     739 </span>            : 
+<span class="lineNum">     740 </span><span class="lineNoCov">          0 :   blob-&gt;nsigs = info-&gt;nsigs;</span>
+<span class="lineNum">     741 </span><span class="lineNoCov">          0 :   if (blob-&gt;nsigs)</span>
+<span class="lineNum">     742 </span>            :     {
+<span class="lineNum">     743 </span><span class="lineNoCov">          0 :       blob-&gt;sigs = xtrycalloc (blob-&gt;nsigs, sizeof *blob-&gt;sigs );</span>
+<span class="lineNum">     744 </span><span class="lineNoCov">          0 :       if (!blob-&gt;sigs)</span>
+<span class="lineNum">     745 </span>            :         {
+<span class="lineNum">     746 </span><span class="lineNoCov">          0 :           err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     747 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     748 </span>            :         }
+<span class="lineNum">     749 </span>            :     }
+<span class="lineNum">     750 </span>            : 
+<span class="lineNum">     751 </span><span class="lineNoCov">          0 :   err = pgp_create_key_part (blob, info);</span>
+<span class="lineNum">     752 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     753 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     754 </span><span class="lineNoCov">          0 :   pgp_create_uid_part (blob, info);</span>
+<span class="lineNum">     755 </span><span class="lineNoCov">          0 :   pgp_create_sig_part (blob, NULL);</span>
+<span class="lineNum">     756 </span>            : 
+<span class="lineNum">     757 </span><span class="lineNoCov">          0 :   init_membuf (&amp;blob-&gt;bufbuf, 1024);</span>
+<span class="lineNum">     758 </span><span class="lineNoCov">          0 :   blob-&gt;buf = &amp;blob-&gt;bufbuf;</span>
+<span class="lineNum">     759 </span><span class="lineNoCov">          0 :   err = create_blob_header (blob, KEYBOX_BLOBTYPE_PGP, as_ephemeral);</span>
+<span class="lineNum">     760 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     761 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     762 </span><span class="lineNoCov">          0 :   err = pgp_create_blob_keyblock (blob, image, imagelen);</span>
+<span class="lineNum">     763 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     764 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     765 </span><span class="lineNoCov">          0 :   err = create_blob_trailer (blob);</span>
+<span class="lineNum">     766 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     767 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     768 </span><span class="lineNoCov">          0 :   err = create_blob_finish (blob);</span>
+<span class="lineNum">     769 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     770 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     771 </span>            : 
+<span class="lineNum">     772 </span>            :  leave:
+<span class="lineNum">     773 </span><span class="lineNoCov">          0 :   release_kid_list (blob-&gt;temp_kids);</span>
+<span class="lineNum">     774 </span><span class="lineNoCov">          0 :   blob-&gt;temp_kids = NULL;</span>
+<span class="lineNum">     775 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     776 </span><span class="lineNoCov">          0 :     _keybox_release_blob (blob);</span>
+<span class="lineNum">     777 </span>            :   else
+<span class="lineNum">     778 </span><span class="lineNoCov">          0 :     *r_blob = blob;</span>
+<span class="lineNum">     779 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     780 </span>            : }
+<span class="lineNum">     781 </span>            : 
+<span class="lineNum">     782 </span>            : 
+<span class="lineNum">     783 </span>            : #ifdef KEYBOX_WITH_X509
+<span class="lineNum">     784 </span>            : 
+<span class="lineNum">     785 </span>            : /* Return an allocated string with the email address extracted from a
+<a name="786"><span class="lineNum">     786 </span>            :    DN.  Note hat we use this code also in ../sm/keylist.c.  */</a>
+<span class="lineNum">     787 </span>            : static char *
+<span class="lineNum">     788 </span><span class="lineCov">          3 : x509_email_kludge (const char *name)</span>
+<span class="lineNum">     789 </span>            : {
+<span class="lineNum">     790 </span>            :   const char *p, *string;
+<span class="lineNum">     791 </span>            :   unsigned char *buf;
+<span class="lineNum">     792 </span>            :   int n;
+<span class="lineNum">     793 </span>            : 
+<span class="lineNum">     794 </span><span class="lineCov">          3 :   string = name;</span>
+<span class="lineNum">     795 </span>            :   for (;;)
+<span class="lineNum">     796 </span>            :     {
+<span class="lineNum">     797 </span><span class="lineCov">          3 :       p = strstr (string, &quot;1.2.840.113549.1.9.1=#&quot;);</span>
+<span class="lineNum">     798 </span><span class="lineCov">          3 :       if (!p)</span>
+<span class="lineNum">     799 </span><span class="lineCov">          1 :         return NULL;</span>
+<span class="lineNum">     800 </span><span class="lineCov">          2 :       if (p == name || (p &gt; string+1 &amp;&amp; p[-1] == ',' &amp;&amp; p[-2] != '\\'))</span>
+<span class="lineNum">     801 </span>            :         {
+<span class="lineNum">     802 </span><span class="lineCov">          2 :           name = p + 22;</span>
+<span class="lineNum">     803 </span><span class="lineCov">          2 :           break;</span>
+<span class="lineNum">     804 </span>            :         }
+<span class="lineNum">     805 </span><span class="lineNoCov">          0 :       string = p + 22;</span>
+<span class="lineNum">     806 </span><span class="lineNoCov">          0 :     }</span>
+<span class="lineNum">     807 </span>            : 
+<span class="lineNum">     808 </span>            : 
+<span class="lineNum">     809 </span>            :   /* This looks pretty much like an email address in the subject's DN
+<span class="lineNum">     810 </span>            :      we use this to add an additional user ID entry.  This way,
+<span class="lineNum">     811 </span>            :      OpenSSL generated keys get a nicer and usable listing.  */
+<span class="lineNum">     812 </span><span class="lineCov">          2 :   for (n=0, p=name; hexdigitp (p) &amp;&amp; hexdigitp (p+1); p +=2, n++)</span>
+<span class="lineNum">     813 </span>            :     ;
+<span class="lineNum">     814 </span><span class="lineCov">          2 :   if (!n)</span>
+<span class="lineNum">     815 </span><span class="lineNoCov">          0 :     return NULL;</span>
+<span class="lineNum">     816 </span><span class="lineCov">          2 :   buf = xtrymalloc (n+3);</span>
+<span class="lineNum">     817 </span><span class="lineCov">          2 :   if (!buf)</span>
+<span class="lineNum">     818 </span><span class="lineNoCov">          0 :     return NULL; /* oops, out of core */</span>
+<span class="lineNum">     819 </span><span class="lineCov">          2 :   *buf = '&lt;';</span>
+<span class="lineNum">     820 </span><span class="lineCov">         73 :   for (n=1, p=name; hexdigitp (p); p +=2, n++)</span>
+<span class="lineNum">     821 </span><span class="lineCov">         71 :     buf[n] = xtoi_2 (p);</span>
+<span class="lineNum">     822 </span><span class="lineCov">          2 :   buf[n++] = '&gt;';</span>
+<span class="lineNum">     823 </span><span class="lineCov">          2 :   buf[n] = 0;</span>
+<span class="lineNum">     824 </span><span class="lineCov">          2 :   return (char*)buf;</span>
+<span class="lineNum">     825 </span>            : }
+<span class="lineNum">     826 </span>            : 
+<span class="lineNum">     827 </span>            : 
+<span class="lineNum">     828 </span>            : 
+<span class="lineNum">     829 </span>            : /* Note: We should move calculation of the digest into libksba and
+<a name="830"><span class="lineNum">     830 </span>            :    remove that parameter */</a>
+<span class="lineNum">     831 </span>            : int
+<span class="lineNum">     832 </span><span class="lineCov">          3 : _keybox_create_x509_blob (KEYBOXBLOB *r_blob, ksba_cert_t cert,</span>
+<span class="lineNum">     833 </span>            :                           unsigned char *sha1_digest, int as_ephemeral)
+<span class="lineNum">     834 </span>            : {
+<span class="lineNum">     835 </span><span class="lineCov">          3 :   int i, rc = 0;</span>
+<span class="lineNum">     836 </span>            :   KEYBOXBLOB blob;
+<span class="lineNum">     837 </span>            :   unsigned char *sn;
+<span class="lineNum">     838 </span>            :   char *p;
+<span class="lineNum">     839 </span><span class="lineCov">          3 :   char **names = NULL;</span>
+<span class="lineNum">     840 </span>            :   size_t max_names;
+<span class="lineNum">     841 </span>            : 
+<span class="lineNum">     842 </span><span class="lineCov">          3 :   *r_blob = NULL;</span>
+<span class="lineNum">     843 </span><span class="lineCov">          3 :   blob = xtrycalloc (1, sizeof *blob);</span>
+<span class="lineNum">     844 </span><span class="lineCov">          3 :   if( !blob )</span>
+<span class="lineNum">     845 </span><span class="lineNoCov">          0 :     return gpg_error_from_syserror ();</span>
+<span class="lineNum">     846 </span>            : 
+<span class="lineNum">     847 </span><span class="lineCov">          3 :   sn = ksba_cert_get_serial (cert);</span>
+<span class="lineNum">     848 </span><span class="lineCov">          3 :   if (sn)</span>
+<span class="lineNum">     849 </span>            :     {
+<span class="lineNum">     850 </span>            :       size_t n, len;
+<span class="lineNum">     851 </span><span class="lineCov">          3 :       n = gcry_sexp_canon_len (sn, 0, NULL, NULL);</span>
+<span class="lineNum">     852 </span><span class="lineCov">          3 :       if (n &lt; 2)</span>
+<span class="lineNum">     853 </span>            :         {
+<span class="lineNum">     854 </span><span class="lineNoCov">          0 :           xfree (sn);</span>
+<span class="lineNum">     855 </span><span class="lineNoCov">          0 :           return gpg_error (GPG_ERR_GENERAL);</span>
+<span class="lineNum">     856 </span>            :         }
+<span class="lineNum">     857 </span><span class="lineCov">          3 :       blob-&gt;serialbuf = sn;</span>
+<span class="lineNum">     858 </span><span class="lineCov">          3 :       sn++; n--; /* skip '(' */</span>
+<span class="lineNum">     859 </span><span class="lineCov">          6 :       for (len=0; n &amp;&amp; *sn &amp;&amp; *sn != ':' &amp;&amp; digitp (sn); n--, sn++)</span>
+<span class="lineNum">     860 </span><span class="lineCov">          3 :         len = len*10 + atoi_1 (sn);</span>
+<span class="lineNum">     861 </span><span class="lineCov">          3 :       if (*sn != ':')</span>
+<span class="lineNum">     862 </span>            :         {
+<span class="lineNum">     863 </span><span class="lineNoCov">          0 :           xfree (blob-&gt;serialbuf);</span>
+<span class="lineNum">     864 </span><span class="lineNoCov">          0 :           blob-&gt;serialbuf = NULL;</span>
+<span class="lineNum">     865 </span><span class="lineNoCov">          0 :           return gpg_error (GPG_ERR_GENERAL);</span>
+<span class="lineNum">     866 </span>            :         }
+<span class="lineNum">     867 </span><span class="lineCov">          3 :       sn++;</span>
+<span class="lineNum">     868 </span><span class="lineCov">          3 :       blob-&gt;serial = sn;</span>
+<span class="lineNum">     869 </span><span class="lineCov">          3 :       blob-&gt;seriallen = len;</span>
+<span class="lineNum">     870 </span>            :     }
+<span class="lineNum">     871 </span>            : 
+<span class="lineNum">     872 </span><span class="lineCov">          3 :   blob-&gt;nkeys = 1;</span>
+<span class="lineNum">     873 </span>            : 
+<span class="lineNum">     874 </span>            :   /* create list of names */
+<span class="lineNum">     875 </span><span class="lineCov">          3 :   blob-&gt;nuids = 0;</span>
+<span class="lineNum">     876 </span><span class="lineCov">          3 :   max_names = 100;</span>
+<span class="lineNum">     877 </span><span class="lineCov">          3 :   names = xtrymalloc (max_names * sizeof *names);</span>
+<span class="lineNum">     878 </span><span class="lineCov">          3 :   if (!names)</span>
+<span class="lineNum">     879 </span>            :     {
+<span class="lineNum">     880 </span><span class="lineNoCov">          0 :       rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">     881 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     882 </span>            :     }
+<span class="lineNum">     883 </span>            : 
+<span class="lineNum">     884 </span><span class="lineCov">          3 :   p = ksba_cert_get_issuer (cert, 0);</span>
+<span class="lineNum">     885 </span><span class="lineCov">          3 :   if (!p)</span>
+<span class="lineNum">     886 </span>            :     {
+<span class="lineNum">     887 </span><span class="lineNoCov">          0 :       rc =  gpg_error (GPG_ERR_MISSING_VALUE);</span>
+<span class="lineNum">     888 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     889 </span>            :     }
+<span class="lineNum">     890 </span><span class="lineCov">          3 :   names[blob-&gt;nuids++] = p;</span>
+<span class="lineNum">     891 </span><span class="lineCov">          6 :   for (i=0; (p = ksba_cert_get_subject (cert, i)); i++)</span>
+<span class="lineNum">     892 </span>            :     {
+<span class="lineNum">     893 </span><span class="lineCov">          3 :       if (blob-&gt;nuids &gt;= max_names)</span>
+<span class="lineNum">     894 </span>            :         {
+<span class="lineNum">     895 </span>            :           char **tmp;
+<span class="lineNum">     896 </span>            : 
+<span class="lineNum">     897 </span><span class="lineNoCov">          0 :           max_names += 100;</span>
+<span class="lineNum">     898 </span><span class="lineNoCov">          0 :           tmp = xtryrealloc (names, max_names * sizeof *names);</span>
+<span class="lineNum">     899 </span><span class="lineNoCov">          0 :           if (!tmp)</span>
+<span class="lineNum">     900 </span>            :             {
+<span class="lineNum">     901 </span><span class="lineNoCov">          0 :               rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">     902 </span><span class="lineNoCov">          0 :               goto leave;</span>
+<span class="lineNum">     903 </span>            :             }
+<span class="lineNum">     904 </span><span class="lineNoCov">          0 :           names = tmp;</span>
+<span class="lineNum">     905 </span>            :         }
+<span class="lineNum">     906 </span><span class="lineCov">          3 :       names[blob-&gt;nuids++] = p;</span>
+<span class="lineNum">     907 </span><span class="lineCov">          3 :       if (!i &amp;&amp; (p=x509_email_kludge (p)))</span>
+<span class="lineNum">     908 </span><span class="lineCov">          2 :         names[blob-&gt;nuids++] = p; /* due to !i we don't need to check bounds*/</span>
+<span class="lineNum">     909 </span>            :     }
+<span class="lineNum">     910 </span>            : 
+<span class="lineNum">     911 </span>            :   /* space for signature information */
+<span class="lineNum">     912 </span><span class="lineCov">          3 :   blob-&gt;nsigs = 1;</span>
+<span class="lineNum">     913 </span>            : 
+<span class="lineNum">     914 </span><span class="lineCov">          3 :   blob-&gt;keys = xtrycalloc (blob-&gt;nkeys, sizeof *blob-&gt;keys );</span>
+<span class="lineNum">     915 </span><span class="lineCov">          3 :   blob-&gt;uids = xtrycalloc (blob-&gt;nuids, sizeof *blob-&gt;uids );</span>
+<span class="lineNum">     916 </span><span class="lineCov">          3 :   blob-&gt;sigs = xtrycalloc (blob-&gt;nsigs, sizeof *blob-&gt;sigs );</span>
+<span class="lineNum">     917 </span><span class="lineCov">          3 :   if (!blob-&gt;keys || !blob-&gt;uids || !blob-&gt;sigs)</span>
+<span class="lineNum">     918 </span>            :     {
+<span class="lineNum">     919 </span><span class="lineNoCov">          0 :       rc = gpg_error (GPG_ERR_ENOMEM);</span>
+<span class="lineNum">     920 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     921 </span>            :     }
+<span class="lineNum">     922 </span>            : 
+<span class="lineNum">     923 </span><span class="lineCov">          3 :   memcpy (blob-&gt;keys[0].fpr, sha1_digest, 20);</span>
+<span class="lineNum">     924 </span><span class="lineCov">          3 :   blob-&gt;keys[0].off_kid = 0; /* We don't have keyids */</span>
+<span class="lineNum">     925 </span><span class="lineCov">          3 :   blob-&gt;keys[0].flags = 0;</span>
+<span class="lineNum">     926 </span>            : 
+<span class="lineNum">     927 </span>            :   /* issuer and subject names */
+<span class="lineNum">     928 </span><span class="lineCov">         11 :   for (i=0; i &lt; blob-&gt;nuids; i++)</span>
+<span class="lineNum">     929 </span>            :     {
+<span class="lineNum">     930 </span><span class="lineCov">          8 :       blob-&gt;uids[i].name = names[i];</span>
+<span class="lineNum">     931 </span><span class="lineCov">          8 :       blob-&gt;uids[i].len = strlen(names[i]);</span>
+<span class="lineNum">     932 </span><span class="lineCov">          8 :       names[i] = NULL;</span>
+<span class="lineNum">     933 </span><span class="lineCov">          8 :       blob-&gt;uids[i].flags = 0;</span>
+<span class="lineNum">     934 </span><span class="lineCov">          8 :       blob-&gt;uids[i].validity = 0;</span>
+<span class="lineNum">     935 </span>            :     }
+<span class="lineNum">     936 </span><span class="lineCov">          3 :   xfree (names);</span>
+<span class="lineNum">     937 </span><span class="lineCov">          3 :   names = NULL;</span>
+<span class="lineNum">     938 </span>            : 
+<span class="lineNum">     939 </span>            :   /* signatures */
+<span class="lineNum">     940 </span><span class="lineCov">          3 :   blob-&gt;sigs[0] = 0; /* not yet checked */</span>
+<span class="lineNum">     941 </span>            : 
+<span class="lineNum">     942 </span>            :   /* Create a temporary buffer for further processing */
+<span class="lineNum">     943 </span><span class="lineCov">          3 :   init_membuf (&amp;blob-&gt;bufbuf, 1024);</span>
+<span class="lineNum">     944 </span><span class="lineCov">          3 :   blob-&gt;buf = &amp;blob-&gt;bufbuf;</span>
+<span class="lineNum">     945 </span>            :   /* write out what we already have */
+<span class="lineNum">     946 </span><span class="lineCov">          3 :   rc = create_blob_header (blob, KEYBOX_BLOBTYPE_X509, as_ephemeral);</span>
+<span class="lineNum">     947 </span><span class="lineCov">          3 :   if (rc)</span>
+<span class="lineNum">     948 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     949 </span><span class="lineCov">          3 :   rc = x509_create_blob_cert (blob, cert);</span>
+<span class="lineNum">     950 </span><span class="lineCov">          3 :   if (rc)</span>
+<span class="lineNum">     951 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     952 </span><span class="lineCov">          3 :   rc = create_blob_trailer (blob);</span>
+<span class="lineNum">     953 </span><span class="lineCov">          3 :   if (rc)</span>
+<span class="lineNum">     954 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     955 </span><span class="lineCov">          3 :   rc = create_blob_finish ( blob );</span>
+<span class="lineNum">     956 </span><span class="lineCov">          3 :   if (rc)</span>
+<span class="lineNum">     957 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     958 </span>            : 
+<span class="lineNum">     959 </span>            : 
+<span class="lineNum">     960 </span>            :  leave:
+<span class="lineNum">     961 </span><span class="lineCov">          3 :   release_kid_list (blob-&gt;temp_kids);</span>
+<span class="lineNum">     962 </span><span class="lineCov">          3 :   blob-&gt;temp_kids = NULL;</span>
+<span class="lineNum">     963 </span><span class="lineCov">          3 :   if (names)</span>
+<span class="lineNum">     964 </span>            :     {
+<span class="lineNum">     965 </span><span class="lineNoCov">          0 :       for (i=0; i &lt; blob-&gt;nuids; i++)</span>
+<span class="lineNum">     966 </span><span class="lineNoCov">          0 :         xfree (names[i]);</span>
+<span class="lineNum">     967 </span><span class="lineNoCov">          0 :       xfree (names);</span>
+<span class="lineNum">     968 </span>            :     }
+<span class="lineNum">     969 </span><span class="lineCov">          3 :   if (rc)</span>
+<span class="lineNum">     970 </span>            :     {
+<span class="lineNum">     971 </span><span class="lineNoCov">          0 :       _keybox_release_blob (blob);</span>
+<span class="lineNum">     972 </span><span class="lineNoCov">          0 :       *r_blob = NULL;</span>
+<span class="lineNum">     973 </span>            :     }
+<span class="lineNum">     974 </span>            :   else
+<span class="lineNum">     975 </span>            :     {
+<span class="lineNum">     976 </span><span class="lineCov">          3 :       *r_blob = blob;</span>
+<span class="lineNum">     977 </span>            :     }
+<span class="lineNum">     978 </span><span class="lineCov">          3 :   return rc;</span>
+<span class="lineNum">     979 </span>            : }
+<span class="lineNum">     980 </span>            : #endif /*KEYBOX_WITH_X509*/
+<span class="lineNum">     981 </span>            : 
+<span class="lineNum">     982 </span>            : 
+<a name="983"><span class="lineNum">     983 </span>            : </a>
+<span class="lineNum">     984 </span>            : int
+<span class="lineNum">     985 </span><span class="lineCov">          9 : _keybox_new_blob (KEYBOXBLOB *r_blob,</span>
+<span class="lineNum">     986 </span>            :                   unsigned char *image, size_t imagelen, off_t off)
+<span class="lineNum">     987 </span>            : {
+<span class="lineNum">     988 </span>            :   KEYBOXBLOB blob;
+<span class="lineNum">     989 </span>            : 
+<span class="lineNum">     990 </span><span class="lineCov">          9 :   *r_blob = NULL;</span>
+<span class="lineNum">     991 </span><span class="lineCov">          9 :   blob = xtrycalloc (1, sizeof *blob);</span>
+<span class="lineNum">     992 </span><span class="lineCov">          9 :   if (!blob)</span>
+<span class="lineNum">     993 </span><span class="lineNoCov">          0 :     return gpg_error_from_syserror ();</span>
+<span class="lineNum">     994 </span>            : 
+<span class="lineNum">     995 </span><span class="lineCov">          9 :   blob-&gt;blob = image;</span>
+<span class="lineNum">     996 </span><span class="lineCov">          9 :   blob-&gt;bloblen = imagelen;</span>
+<span class="lineNum">     997 </span><span class="lineCov">          9 :   blob-&gt;fileoffset = off;</span>
+<span class="lineNum">     998 </span><span class="lineCov">          9 :   *r_blob = blob;</span>
+<span class="lineNum">     999 </span><span class="lineCov">          9 :   return 0;</span>
+<span class="lineNum">    1000 </span>            : }
+<span class="lineNum">    1001 </span>            : 
+<a name="1002"><span class="lineNum">    1002 </span>            : </a>
+<span class="lineNum">    1003 </span>            : void
+<span class="lineNum">    1004 </span><span class="lineCov">         42 : _keybox_release_blob (KEYBOXBLOB blob)</span>
+<span class="lineNum">    1005 </span>            : {
+<span class="lineNum">    1006 </span>            :   int i;
+<span class="lineNum">    1007 </span><span class="lineCov">         42 :   if (!blob)</span>
+<span class="lineNum">    1008 </span><span class="lineCov">         30 :     return;</span>
+<span class="lineNum">    1009 </span><span class="lineCov">         12 :   if (blob-&gt;buf)</span>
+<span class="lineNum">    1010 </span>            :     {
+<span class="lineNum">    1011 </span>            :       size_t len;
+<span class="lineNum">    1012 </span><span class="lineCov">          3 :       xfree (get_membuf (blob-&gt;buf, &amp;len));</span>
+<span class="lineNum">    1013 </span>            :     }
+<span class="lineNum">    1014 </span><span class="lineCov">         12 :   xfree (blob-&gt;keys );</span>
+<span class="lineNum">    1015 </span><span class="lineCov">         12 :   xfree (blob-&gt;serialbuf);</span>
+<span class="lineNum">    1016 </span><span class="lineCov">         20 :   for (i=0; i &lt; blob-&gt;nuids; i++)</span>
+<span class="lineNum">    1017 </span><span class="lineCov">          8 :     xfree (blob-&gt;uids[i].name);</span>
+<span class="lineNum">    1018 </span><span class="lineCov">         12 :   xfree (blob-&gt;uids );</span>
+<span class="lineNum">    1019 </span><span class="lineCov">         12 :   xfree (blob-&gt;sigs );</span>
+<span class="lineNum">    1020 </span><span class="lineCov">         12 :   xfree (blob-&gt;blob );</span>
+<span class="lineNum">    1021 </span><span class="lineCov">         12 :   xfree (blob );</span>
+<span class="lineNum">    1022 </span>            : }
+<span class="lineNum">    1023 </span>            : 
+<span class="lineNum">    1024 </span>            : 
+<a name="1025"><span class="lineNum">    1025 </span>            : </a>
+<span class="lineNum">    1026 </span>            : const unsigned char *
+<span class="lineNum">    1027 </span><span class="lineCov">         18 : _keybox_get_blob_image ( KEYBOXBLOB blob, size_t *n )</span>
+<span class="lineNum">    1028 </span>            : {
+<span class="lineNum">    1029 </span><span class="lineCov">         18 :   *n = blob-&gt;bloblen;</span>
+<span class="lineNum">    1030 </span><span class="lineCov">         18 :   return blob-&gt;blob;</span>
+<span class="lineNum">    1031 </span>            : }
+<a name="1032"><span class="lineNum">    1032 </span>            : </a>
+<span class="lineNum">    1033 </span>            : off_t
+<span class="lineNum">    1034 </span><span class="lineNoCov">          0 : _keybox_get_blob_fileoffset (KEYBOXBLOB blob)</span>
+<span class="lineNum">    1035 </span>            : {
+<span class="lineNum">    1036 </span><span class="lineNoCov">          0 :   return blob-&gt;fileoffset;</span>
+<span class="lineNum">    1037 </span>            : }
+<span class="lineNum">    1038 </span>            : 
+<span class="lineNum">    1039 </span>            : 
+<a name="1040"><span class="lineNum">    1040 </span>            : </a>
+<span class="lineNum">    1041 </span>            : void
+<span class="lineNum">    1042 </span><span class="lineNoCov">          0 : _keybox_update_header_blob (KEYBOXBLOB blob, int for_openpgp)</span>
+<span class="lineNum">    1043 </span>            : {
+<span class="lineNum">    1044 </span><span class="lineNoCov">          0 :   if (blob-&gt;bloblen &gt;= 32 &amp;&amp; blob-&gt;blob[4] == KEYBOX_BLOBTYPE_HEADER)</span>
+<span class="lineNum">    1045 </span>            :     {
+<span class="lineNum">    1046 </span><span class="lineNoCov">          0 :       u32 val = make_timestamp ();</span>
+<span class="lineNum">    1047 </span>            : 
+<span class="lineNum">    1048 </span>            :       /* Update the last maintenance run times tamp. */
+<span class="lineNum">    1049 </span><span class="lineNoCov">          0 :       blob-&gt;blob[20]   = (val &gt;&gt; 24);</span>
+<span class="lineNum">    1050 </span><span class="lineNoCov">          0 :       blob-&gt;blob[20+1] = (val &gt;&gt; 16);</span>
+<span class="lineNum">    1051 </span><span class="lineNoCov">          0 :       blob-&gt;blob[20+2] = (val &gt;&gt;  8);</span>
+<span class="lineNum">    1052 </span><span class="lineNoCov">          0 :       blob-&gt;blob[20+3] = (val      );</span>
+<span class="lineNum">    1053 </span>            : 
+<span class="lineNum">    1054 </span><span class="lineNoCov">          0 :       if (for_openpgp)</span>
+<span class="lineNum">    1055 </span><span class="lineNoCov">          0 :         blob-&gt;blob[7] |= 0x02;  /* OpenPGP data may be available.  */</span>
+<span class="lineNum">    1056 </span>            :     }
+<span class="lineNum">    1057 </span><span class="lineNoCov">          0 : }</span>
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

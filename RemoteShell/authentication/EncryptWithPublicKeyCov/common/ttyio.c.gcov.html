@@ -1,0 +1,806 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - common/ttyio.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">common</a> - ttyio.c<span style="font-size: 80%;"> (source / <a href="ttyio.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">200</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 15:09:19</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">19</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* ttyio.c -  tty i/O functions</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 1998,1999,2000,2001,2002,2003,2004,2006,2007,
+<span class="lineNum">       3 </span>            :  *               2009, 2010 Free Software Foundation, Inc.
+<span class="lineNum">       4 </span>            :  *
+<span class="lineNum">       5 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       6 </span>            :  *
+<span class="lineNum">       7 </span>            :  * This file is free software; you can redistribute it and/or modify
+<span class="lineNum">       8 </span>            :  * it under the terms of either
+<span class="lineNum">       9 </span>            :  *
+<span class="lineNum">      10 </span>            :  *   - the GNU Lesser General Public License as published by the Free
+<span class="lineNum">      11 </span>            :  *     Software Foundation; either version 3 of the License, or (at
+<span class="lineNum">      12 </span>            :  *     your option) any later version.
+<span class="lineNum">      13 </span>            :  *
+<span class="lineNum">      14 </span>            :  * or
+<span class="lineNum">      15 </span>            :  *
+<span class="lineNum">      16 </span>            :  *   - the GNU General Public License as published by the Free
+<span class="lineNum">      17 </span>            :  *     Software Foundation; either version 2 of the License, or (at
+<span class="lineNum">      18 </span>            :  *     your option) any later version.
+<span class="lineNum">      19 </span>            :  *
+<span class="lineNum">      20 </span>            :  * or both in parallel, as here.
+<span class="lineNum">      21 </span>            :  *
+<span class="lineNum">      22 </span>            :  * This file is distributed in the hope that it will be useful,
+<span class="lineNum">      23 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      24 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      25 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      26 </span>            :  *
+<span class="lineNum">      27 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      28 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      29 </span>            :  */
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      32 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      33 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      34 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      35 </span>            : #include &lt;stdarg.h&gt;
+<span class="lineNum">      36 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      37 </span>            : 
+<span class="lineNum">      38 </span>            : #if defined(HAVE_W32_SYSTEM) &amp;&amp; !defined(HAVE_W32CE_SYSTEM)
+<span class="lineNum">      39 </span>            : # define USE_W32_CONSOLE 1
+<span class="lineNum">      40 </span>            : #endif
+<span class="lineNum">      41 </span>            : 
+<span class="lineNum">      42 </span>            : #ifdef HAVE_TCGETATTR
+<span class="lineNum">      43 </span>            : #include &lt;termios.h&gt;
+<span class="lineNum">      44 </span>            : #else
+<span class="lineNum">      45 </span>            : #ifdef HAVE_TERMIO_H
+<span class="lineNum">      46 </span>            : /* simulate termios with termio */
+<span class="lineNum">      47 </span>            : #include &lt;termio.h&gt;
+<span class="lineNum">      48 </span>            : #define termios termio
+<span class="lineNum">      49 </span>            : #define tcsetattr ioctl
+<span class="lineNum">      50 </span>            : #define TCSAFLUSH TCSETAF
+<span class="lineNum">      51 </span>            : #define tcgetattr(A,B) ioctl(A,TCGETA,B)
+<span class="lineNum">      52 </span>            : #define HAVE_TCGETATTR
+<span class="lineNum">      53 </span>            : #endif
+<span class="lineNum">      54 </span>            : #endif
+<span class="lineNum">      55 </span>            : #ifdef USE_W32_CONSOLE
+<span class="lineNum">      56 </span>            : # ifdef HAVE_WINSOCK2_H
+<span class="lineNum">      57 </span>            : #  include &lt;winsock2.h&gt;
+<span class="lineNum">      58 </span>            : # endif
+<span class="lineNum">      59 </span>            : # include &lt;windows.h&gt;
+<span class="lineNum">      60 </span>            : # ifdef HAVE_TCGETATTR
+<span class="lineNum">      61 </span>            : #  error mingw32 and termios
+<span class="lineNum">      62 </span>            : # endif
+<span class="lineNum">      63 </span>            : #endif
+<span class="lineNum">      64 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      65 </span>            : #include &lt;ctype.h&gt;
+<span class="lineNum">      66 </span>            : 
+<span class="lineNum">      67 </span>            : #include &quot;util.h&quot;
+<span class="lineNum">      68 </span>            : #include &quot;ttyio.h&quot;
+<span class="lineNum">      69 </span>            : #include &quot;common-defs.h&quot;
+<span class="lineNum">      70 </span>            : 
+<span class="lineNum">      71 </span>            : #define CONTROL_D ('D' - 'A' + 1)
+<span class="lineNum">      72 </span>            : 
+<span class="lineNum">      73 </span>            : 
+<span class="lineNum">      74 </span>            : #ifdef USE_W32_CONSOLE
+<span class="lineNum">      75 </span>            : static struct {
+<span class="lineNum">      76 </span>            :     HANDLE in, out;
+<span class="lineNum">      77 </span>            : } con;
+<span class="lineNum">      78 </span>            : #define DEF_INPMODE  (ENABLE_LINE_INPUT|ENABLE_ECHO_INPUT    \
+<span class="lineNum">      79 </span>            :                                         |ENABLE_PROCESSED_INPUT )
+<span class="lineNum">      80 </span>            : #define HID_INPMODE  (ENABLE_LINE_INPUT|ENABLE_PROCESSED_INPUT )
+<span class="lineNum">      81 </span>            : #define DEF_OUTMODE  (ENABLE_WRAP_AT_EOL_OUTPUT|ENABLE_PROCESSED_OUTPUT)
+<span class="lineNum">      82 </span>            : 
+<span class="lineNum">      83 </span>            : #else /* yeah, we have a real OS */
+<span class="lineNum">      84 </span>            : static FILE *ttyfp = NULL;
+<span class="lineNum">      85 </span>            : #endif
+<span class="lineNum">      86 </span>            : 
+<span class="lineNum">      87 </span>            : static int initialized;
+<span class="lineNum">      88 </span>            : static int last_prompt_len;
+<span class="lineNum">      89 </span>            : static int batchmode;
+<span class="lineNum">      90 </span>            : static int no_terminal;
+<span class="lineNum">      91 </span>            : 
+<span class="lineNum">      92 </span>            : #ifdef HAVE_TCGETATTR
+<span class="lineNum">      93 </span>            :     static struct termios termsave;
+<span class="lineNum">      94 </span>            :     static int restore_termios;
+<span class="lineNum">      95 </span>            : #endif
+<span class="lineNum">      96 </span>            : 
+<span class="lineNum">      97 </span>            : /* Hooks set by gpgrlhelp.c if required. */
+<span class="lineNum">      98 </span>            : static void (*my_rl_set_completer) (rl_completion_func_t *);
+<span class="lineNum">      99 </span>            : static void (*my_rl_inhibit_completion) (int);
+<span class="lineNum">     100 </span>            : static void (*my_rl_cleanup_after_signal) (void);
+<span class="lineNum">     101 </span>            : static void (*my_rl_init_stream) (FILE *);
+<span class="lineNum">     102 </span>            : static char *(*my_rl_readline) (const char*);
+<span class="lineNum">     103 </span>            : static void (*my_rl_add_history) (const char*);
+<span class="lineNum">     104 </span>            : 
+<span class="lineNum">     105 </span>            : 
+<span class="lineNum">     106 </span>            : /* This is a wrapper around ttyname so that we can use it even when
+<span class="lineNum">     107 </span>            :    the standard streams are redirected.  It figures the name out the
+<a name="108"><span class="lineNum">     108 </span>            :    first time and returns it in a statically allocated buffer. */</a>
+<span class="lineNum">     109 </span>            : const char *
+<span class="lineNum">     110 </span><span class="lineNoCov">          0 : tty_get_ttyname (void)</span>
+<span class="lineNum">     111 </span>            : {
+<span class="lineNum">     112 </span>            :   static char *name;
+<span class="lineNum">     113 </span>            : 
+<span class="lineNum">     114 </span>            :   /* On a GNU system ctermid() always return /dev/tty, so this does
+<span class="lineNum">     115 </span>            :      not make much sense - however if it is ever changed we do the
+<span class="lineNum">     116 </span>            :      Right Thing now. */
+<span class="lineNum">     117 </span>            : #ifdef HAVE_CTERMID
+<span class="lineNum">     118 </span>            :   static int got_name;
+<span class="lineNum">     119 </span>            : 
+<span class="lineNum">     120 </span><span class="lineNoCov">          0 :   if (!got_name)</span>
+<span class="lineNum">     121 </span>            :     {
+<span class="lineNum">     122 </span>            :       const char *s;
+<span class="lineNum">     123 </span>            :       /* Note that despite our checks for these macros the function is
+<span class="lineNum">     124 </span>            :          not necessarily thread save.  We mainly do this for
+<span class="lineNum">     125 </span>            :          portability reasons, in case L_ctermid is not defined. */
+<span class="lineNum">     126 </span>            : # if defined(_POSIX_THREAD_SAFE_FUNCTIONS) || defined(_POSIX_TRHEADS)
+<span class="lineNum">     127 </span>            :       char buffer[L_ctermid];
+<span class="lineNum">     128 </span><span class="lineNoCov">          0 :       s = ctermid (buffer);</span>
+<span class="lineNum">     129 </span>            : # else
+<span class="lineNum">     130 </span>            :       s = ctermid (NULL);
+<span class="lineNum">     131 </span>            : # endif
+<span class="lineNum">     132 </span><span class="lineNoCov">          0 :       if (s)</span>
+<span class="lineNum">     133 </span><span class="lineNoCov">          0 :         name = strdup (s);</span>
+<span class="lineNum">     134 </span><span class="lineNoCov">          0 :       got_name = 1;</span>
+<span class="lineNum">     135 </span>            :     }
+<span class="lineNum">     136 </span>            : #endif /*HAVE_CTERMID*/
+<span class="lineNum">     137 </span>            :   /* Assume the standard tty on memory error or when there is no
+<span class="lineNum">     138 </span>            :      ctermid. */
+<span class="lineNum">     139 </span><span class="lineNoCov">          0 :   return name? name : &quot;/dev/tty&quot;;</span>
+<span class="lineNum">     140 </span>            : }
+<span class="lineNum">     141 </span>            : 
+<span class="lineNum">     142 </span>            : 
+<span class="lineNum">     143 </span>            : 
+<a name="144"><span class="lineNum">     144 </span>            : #ifdef HAVE_TCGETATTR</a>
+<span class="lineNum">     145 </span>            : static void
+<span class="lineNum">     146 </span><span class="lineNoCov">          0 : cleanup(void)</span>
+<span class="lineNum">     147 </span>            : {
+<span class="lineNum">     148 </span><span class="lineNoCov">          0 :     if( restore_termios ) {</span>
+<span class="lineNum">     149 </span><span class="lineNoCov">          0 :         restore_termios = 0; /* do it prios in case it is interrupted again */</span>
+<span class="lineNum">     150 </span><span class="lineNoCov">          0 :         if( tcsetattr(fileno(ttyfp), TCSAFLUSH, &amp;termsave) )</span>
+<span class="lineNum">     151 </span><span class="lineNoCov">          0 :             log_error(&quot;tcsetattr() failed: %s\n&quot;, strerror(errno) );</span>
+<span class="lineNum">     152 </span>            :     }
+<span class="lineNum">     153 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     154 </span>            : #endif
+<a name="155"><span class="lineNum">     155 </span>            : </a>
+<span class="lineNum">     156 </span>            : static void
+<span class="lineNum">     157 </span><span class="lineNoCov">          0 : init_ttyfp(void)</span>
+<span class="lineNum">     158 </span>            : {
+<span class="lineNum">     159 </span><span class="lineNoCov">          0 :     if( initialized )</span>
+<span class="lineNum">     160 </span><span class="lineNoCov">          0 :         return;</span>
+<span class="lineNum">     161 </span>            : 
+<span class="lineNum">     162 </span>            : #if defined(USE_W32_CONSOLE)
+<span class="lineNum">     163 </span>            :     {
+<span class="lineNum">     164 </span>            :         SECURITY_ATTRIBUTES sa;
+<span class="lineNum">     165 </span>            : 
+<span class="lineNum">     166 </span>            :         memset(&amp;sa, 0, sizeof(sa));
+<span class="lineNum">     167 </span>            :         sa.nLength = sizeof(sa);
+<span class="lineNum">     168 </span>            :         sa.bInheritHandle = TRUE;
+<span class="lineNum">     169 </span>            :         con.out = CreateFileA( &quot;CONOUT$&quot;, GENERIC_READ|GENERIC_WRITE,
+<span class="lineNum">     170 </span>            :                                FILE_SHARE_READ|FILE_SHARE_WRITE,
+<span class="lineNum">     171 </span>            :                                &amp;sa, OPEN_EXISTING, 0, 0 );
+<span class="lineNum">     172 </span>            :         if( con.out == INVALID_HANDLE_VALUE )
+<span class="lineNum">     173 </span>            :             log_fatal(&quot;open(CONOUT$) failed: rc=%d&quot;, (int)GetLastError() );
+<span class="lineNum">     174 </span>            :         memset(&amp;sa, 0, sizeof(sa));
+<span class="lineNum">     175 </span>            :         sa.nLength = sizeof(sa);
+<span class="lineNum">     176 </span>            :         sa.bInheritHandle = TRUE;
+<span class="lineNum">     177 </span>            :         con.in = CreateFileA( &quot;CONIN$&quot;, GENERIC_READ|GENERIC_WRITE,
+<span class="lineNum">     178 </span>            :                                FILE_SHARE_READ|FILE_SHARE_WRITE,
+<span class="lineNum">     179 </span>            :                                &amp;sa, OPEN_EXISTING, 0, 0 );
+<span class="lineNum">     180 </span>            :         if( con.in == INVALID_HANDLE_VALUE )
+<span class="lineNum">     181 </span>            :             log_fatal(&quot;open(CONIN$) failed: rc=%d&quot;, (int)GetLastError() );
+<span class="lineNum">     182 </span>            :     }
+<span class="lineNum">     183 </span>            :     SetConsoleMode(con.in, DEF_INPMODE );
+<span class="lineNum">     184 </span>            :     SetConsoleMode(con.out, DEF_OUTMODE );
+<span class="lineNum">     185 </span>            : 
+<span class="lineNum">     186 </span>            : #elif defined(__EMX__)
+<span class="lineNum">     187 </span>            :     ttyfp = stdout; /* Fixme: replace by the real functions: see wklib */
+<span class="lineNum">     188 </span>            :     if (my_rl_init_stream)
+<span class="lineNum">     189 </span>            :       my_rl_init_stream (ttyfp);
+<span class="lineNum">     190 </span>            : #elif defined (HAVE_W32CE_SYSTEM)
+<span class="lineNum">     191 </span>            :     ttyfp = stderr;
+<span class="lineNum">     192 </span>            : #else
+<span class="lineNum">     193 </span><span class="lineNoCov">          0 :     ttyfp = batchmode? stderr : fopen (tty_get_ttyname (), &quot;r+&quot;);</span>
+<span class="lineNum">     194 </span><span class="lineNoCov">          0 :     if( !ttyfp ) {</span>
+<span class="lineNum">     195 </span><span class="lineNoCov">          0 :         log_error(&quot;cannot open '%s': %s\n&quot;, tty_get_ttyname (),</span>
+<span class="lineNum">     196 </span><span class="lineNoCov">          0 :                   strerror(errno) );</span>
+<span class="lineNum">     197 </span><span class="lineNoCov">          0 :         exit(2);</span>
+<span class="lineNum">     198 </span>            :     }
+<span class="lineNum">     199 </span><span class="lineNoCov">          0 :     if (my_rl_init_stream)</span>
+<span class="lineNum">     200 </span><span class="lineNoCov">          0 :       my_rl_init_stream (ttyfp);</span>
+<span class="lineNum">     201 </span>            : #endif
+<span class="lineNum">     202 </span>            : 
+<span class="lineNum">     203 </span>            : 
+<span class="lineNum">     204 </span>            : #ifdef HAVE_TCGETATTR
+<span class="lineNum">     205 </span><span class="lineNoCov">          0 :     atexit( cleanup );</span>
+<span class="lineNum">     206 </span>            : #endif
+<span class="lineNum">     207 </span><span class="lineNoCov">          0 :     initialized = 1;</span>
+<span class="lineNum">     208 </span>            : }
+<span class="lineNum">     209 </span>            : 
+<a name="210"><span class="lineNum">     210 </span>            : </a>
+<span class="lineNum">     211 </span>            : int
+<span class="lineNum">     212 </span><span class="lineNoCov">          0 : tty_batchmode( int onoff )</span>
+<span class="lineNum">     213 </span>            : {
+<span class="lineNum">     214 </span><span class="lineNoCov">          0 :     int old = batchmode;</span>
+<span class="lineNum">     215 </span><span class="lineNoCov">          0 :     if( onoff != -1 )</span>
+<span class="lineNum">     216 </span><span class="lineNoCov">          0 :         batchmode = onoff;</span>
+<span class="lineNum">     217 </span><span class="lineNoCov">          0 :     return old;</span>
+<span class="lineNum">     218 </span>            : }
+<a name="219"><span class="lineNum">     219 </span>            : </a>
+<span class="lineNum">     220 </span>            : int
+<span class="lineNum">     221 </span><span class="lineNoCov">          0 : tty_no_terminal(int onoff)</span>
+<span class="lineNum">     222 </span>            : {
+<span class="lineNum">     223 </span><span class="lineNoCov">          0 :     int old = no_terminal;</span>
+<span class="lineNum">     224 </span><span class="lineNoCov">          0 :     no_terminal = onoff ? 1 : 0;</span>
+<span class="lineNum">     225 </span><span class="lineNoCov">          0 :     return old;</span>
+<span class="lineNum">     226 </span>            : }
+<a name="227"><span class="lineNum">     227 </span>            : </a>
+<span class="lineNum">     228 </span>            : void
+<span class="lineNum">     229 </span><span class="lineNoCov">          0 : tty_printf( const char *fmt, ... )</span>
+<span class="lineNum">     230 </span>            : {
+<span class="lineNum">     231 </span>            :     va_list arg_ptr;
+<span class="lineNum">     232 </span>            : 
+<span class="lineNum">     233 </span><span class="lineNoCov">          0 :     if (no_terminal)</span>
+<span class="lineNum">     234 </span><span class="lineNoCov">          0 :         return;</span>
+<span class="lineNum">     235 </span>            : 
+<span class="lineNum">     236 </span><span class="lineNoCov">          0 :     if( !initialized )</span>
+<span class="lineNum">     237 </span><span class="lineNoCov">          0 :         init_ttyfp();</span>
+<span class="lineNum">     238 </span>            : 
+<span class="lineNum">     239 </span><span class="lineNoCov">          0 :     va_start( arg_ptr, fmt ) ;</span>
+<span class="lineNum">     240 </span>            : #ifdef USE_W32_CONSOLE
+<span class="lineNum">     241 </span>            :     {
+<span class="lineNum">     242 </span>            :         char *buf = NULL;
+<span class="lineNum">     243 </span>            :         int n;
+<span class="lineNum">     244 </span>            :         DWORD nwritten;
+<span class="lineNum">     245 </span>            : 
+<span class="lineNum">     246 </span>            :         n = vasprintf(&amp;buf, fmt, arg_ptr);
+<span class="lineNum">     247 </span>            :         if( !buf )
+<span class="lineNum">     248 </span>            :             log_bug(&quot;vasprintf() failed\n&quot;);
+<span class="lineNum">     249 </span>            : 
+<span class="lineNum">     250 </span>            :         if( !WriteConsoleA( con.out, buf, n, &amp;nwritten, NULL ) )
+<span class="lineNum">     251 </span>            :             log_fatal(&quot;WriteConsole failed: rc=%d&quot;, (int)GetLastError() );
+<span class="lineNum">     252 </span>            :         if( n != nwritten )
+<span class="lineNum">     253 </span>            :             log_fatal(&quot;WriteConsole failed: %d != %d\n&quot;, n, (int)nwritten );
+<span class="lineNum">     254 </span>            :         last_prompt_len += n;
+<span class="lineNum">     255 </span>            :         xfree (buf);
+<span class="lineNum">     256 </span>            :     }
+<span class="lineNum">     257 </span>            : #else
+<span class="lineNum">     258 </span><span class="lineNoCov">          0 :     last_prompt_len += vfprintf(ttyfp,fmt,arg_ptr) ;</span>
+<span class="lineNum">     259 </span><span class="lineNoCov">          0 :     fflush(ttyfp);</span>
+<span class="lineNum">     260 </span>            : #endif
+<span class="lineNum">     261 </span><span class="lineNoCov">          0 :     va_end(arg_ptr);</span>
+<span class="lineNum">     262 </span>            : }
+<span class="lineNum">     263 </span>            : 
+<span class="lineNum">     264 </span>            : 
+<span class="lineNum">     265 </span>            : /* Same as tty_printf but if FP is not NULL, behave like a regular
+<a name="266"><span class="lineNum">     266 </span>            :    fprintf. */</a>
+<span class="lineNum">     267 </span>            : void
+<span class="lineNum">     268 </span><span class="lineNoCov">          0 : tty_fprintf (estream_t fp, const char *fmt, ... )</span>
+<span class="lineNum">     269 </span>            : {
+<span class="lineNum">     270 </span>            :   va_list arg_ptr;
+<span class="lineNum">     271 </span>            : 
+<span class="lineNum">     272 </span><span class="lineNoCov">          0 :   if (fp)</span>
+<span class="lineNum">     273 </span>            :     {
+<span class="lineNum">     274 </span><span class="lineNoCov">          0 :       va_start (arg_ptr, fmt) ;</span>
+<span class="lineNum">     275 </span><span class="lineNoCov">          0 :       es_vfprintf (fp, fmt, arg_ptr );</span>
+<span class="lineNum">     276 </span><span class="lineNoCov">          0 :       va_end (arg_ptr);</span>
+<span class="lineNum">     277 </span><span class="lineNoCov">          0 :       return;</span>
+<span class="lineNum">     278 </span>            :     }
+<span class="lineNum">     279 </span>            : 
+<span class="lineNum">     280 </span><span class="lineNoCov">          0 :   if (no_terminal)</span>
+<span class="lineNum">     281 </span><span class="lineNoCov">          0 :     return;</span>
+<span class="lineNum">     282 </span>            : 
+<span class="lineNum">     283 </span><span class="lineNoCov">          0 :   if (!initialized)</span>
+<span class="lineNum">     284 </span><span class="lineNoCov">          0 :     init_ttyfp ();</span>
+<span class="lineNum">     285 </span>            : 
+<span class="lineNum">     286 </span><span class="lineNoCov">          0 :   va_start (arg_ptr, fmt);</span>
+<span class="lineNum">     287 </span>            : #ifdef USE_W32_CONSOLE
+<span class="lineNum">     288 </span>            :   {
+<span class="lineNum">     289 </span>            :     char *buf = NULL;
+<span class="lineNum">     290 </span>            :     int n;
+<span class="lineNum">     291 </span>            :     DWORD nwritten;
+<span class="lineNum">     292 </span>            : 
+<span class="lineNum">     293 </span>            :     n = vasprintf(&amp;buf, fmt, arg_ptr);
+<span class="lineNum">     294 </span>            :     if (!buf)
+<span class="lineNum">     295 </span>            :       log_bug(&quot;vasprintf() failed\n&quot;);
+<span class="lineNum">     296 </span>            : 
+<span class="lineNum">     297 </span>            :     if (!WriteConsoleA( con.out, buf, n, &amp;nwritten, NULL ))
+<span class="lineNum">     298 </span>            :       log_fatal(&quot;WriteConsole failed: rc=%d&quot;, (int)GetLastError() );
+<span class="lineNum">     299 </span>            :     if (n != nwritten)
+<span class="lineNum">     300 </span>            :       log_fatal(&quot;WriteConsole failed: %d != %d\n&quot;, n, (int)nwritten );
+<span class="lineNum">     301 </span>            :     last_prompt_len += n;
+<span class="lineNum">     302 </span>            :     xfree (buf);
+<span class="lineNum">     303 </span>            :   }
+<span class="lineNum">     304 </span>            : #else
+<span class="lineNum">     305 </span><span class="lineNoCov">          0 :   last_prompt_len += vfprintf(ttyfp,fmt,arg_ptr) ;</span>
+<span class="lineNum">     306 </span><span class="lineNoCov">          0 :   fflush(ttyfp);</span>
+<span class="lineNum">     307 </span>            : #endif
+<span class="lineNum">     308 </span><span class="lineNoCov">          0 :   va_end(arg_ptr);</span>
+<span class="lineNum">     309 </span>            : }
+<span class="lineNum">     310 </span>            : 
+<span class="lineNum">     311 </span>            : 
+<span class="lineNum">     312 </span>            : /* Print a string, but filter all control characters out.  If FP is
+<a name="313"><span class="lineNum">     313 </span>            :  * not NULL print to that stream instead to the tty.  */</a>
+<span class="lineNum">     314 </span>            : static void
+<span class="lineNum">     315 </span><span class="lineNoCov">          0 : do_print_string (estream_t fp, const byte *p, size_t n )</span>
+<span class="lineNum">     316 </span>            : {
+<span class="lineNum">     317 </span><span class="lineNoCov">          0 :   if (no_terminal &amp;&amp; !fp)</span>
+<span class="lineNum">     318 </span><span class="lineNoCov">          0 :     return;</span>
+<span class="lineNum">     319 </span>            : 
+<span class="lineNum">     320 </span><span class="lineNoCov">          0 :   if (!initialized &amp;&amp; !fp)</span>
+<span class="lineNum">     321 </span><span class="lineNoCov">          0 :     init_ttyfp();</span>
+<span class="lineNum">     322 </span>            : 
+<span class="lineNum">     323 </span><span class="lineNoCov">          0 :   if (fp)</span>
+<span class="lineNum">     324 </span>            :     {
+<span class="lineNum">     325 </span><span class="lineNoCov">          0 :       print_utf8_buffer (fp, p, n);</span>
+<span class="lineNum">     326 </span><span class="lineNoCov">          0 :       return;</span>
+<span class="lineNum">     327 </span>            :     }
+<span class="lineNum">     328 </span>            : 
+<span class="lineNum">     329 </span>            : #ifdef USE_W32_CONSOLE
+<span class="lineNum">     330 </span>            :   /* Not so effective, change it if you want */
+<span class="lineNum">     331 </span>            :   for (; n; n--, p++)
+<span class="lineNum">     332 </span>            :     {
+<span class="lineNum">     333 </span>            :       if (iscntrl (*p))
+<span class="lineNum">     334 </span>            :         {
+<span class="lineNum">     335 </span>            :           if( *p == '\n' )
+<span class="lineNum">     336 </span>            :             tty_printf (&quot;\\n&quot;);
+<span class="lineNum">     337 </span>            :           else if( !*p )
+<span class="lineNum">     338 </span>            :             tty_printf (&quot;\\0&quot;);
+<span class="lineNum">     339 </span>            :           else
+<span class="lineNum">     340 </span>            :             tty_printf (&quot;\\x%02x&quot;, *p);
+<span class="lineNum">     341 </span>            :         }
+<span class="lineNum">     342 </span>            :       else
+<span class="lineNum">     343 </span>            :         tty_printf (&quot;%c&quot;, *p);
+<span class="lineNum">     344 </span>            :     }
+<span class="lineNum">     345 </span>            : #else
+<span class="lineNum">     346 </span><span class="lineNoCov">          0 :   for (; n; n--, p++)</span>
+<span class="lineNum">     347 </span>            :     {
+<span class="lineNum">     348 </span><span class="lineNoCov">          0 :       if (iscntrl (*p))</span>
+<span class="lineNum">     349 </span>            :         {
+<span class="lineNum">     350 </span><span class="lineNoCov">          0 :           putc ('\\', ttyfp);</span>
+<span class="lineNum">     351 </span><span class="lineNoCov">          0 :           if ( *p == '\n' )</span>
+<span class="lineNum">     352 </span><span class="lineNoCov">          0 :             putc ('n', ttyfp);</span>
+<span class="lineNum">     353 </span><span class="lineNoCov">          0 :           else if ( !*p )</span>
+<span class="lineNum">     354 </span><span class="lineNoCov">          0 :             putc ('0', ttyfp);</span>
+<span class="lineNum">     355 </span>            :           else
+<span class="lineNum">     356 </span><span class="lineNoCov">          0 :             fprintf (ttyfp, &quot;x%02x&quot;, *p );</span>
+<span class="lineNum">     357 </span>            :         }
+<span class="lineNum">     358 </span>            :       else
+<span class="lineNum">     359 </span><span class="lineNoCov">          0 :         putc (*p, ttyfp);</span>
+<span class="lineNum">     360 </span>            :     }
+<span class="lineNum">     361 </span>            : #endif
+<span class="lineNum">     362 </span>            : }
+<span class="lineNum">     363 </span>            : 
+<a name="364"><span class="lineNum">     364 </span>            : </a>
+<span class="lineNum">     365 </span>            : void
+<span class="lineNum">     366 </span><span class="lineNoCov">          0 : tty_print_utf8_string2 (estream_t fp, const byte *p, size_t n, size_t max_n)</span>
+<span class="lineNum">     367 </span>            : {
+<span class="lineNum">     368 </span>            :     size_t i;
+<span class="lineNum">     369 </span>            :     char *buf;
+<span class="lineNum">     370 </span>            : 
+<span class="lineNum">     371 </span><span class="lineNoCov">          0 :     if (no_terminal &amp;&amp; !fp)</span>
+<span class="lineNum">     372 </span><span class="lineNoCov">          0 :         return;</span>
+<span class="lineNum">     373 </span>            : 
+<span class="lineNum">     374 </span>            :     /* we can handle plain ascii simpler, so check for it first */
+<span class="lineNum">     375 </span><span class="lineNoCov">          0 :     for(i=0; i &lt; n; i++ ) {</span>
+<span class="lineNum">     376 </span><span class="lineNoCov">          0 :         if( p[i] &amp; 0x80 )</span>
+<span class="lineNum">     377 </span><span class="lineNoCov">          0 :             break;</span>
+<span class="lineNum">     378 </span>            :     }
+<span class="lineNum">     379 </span><span class="lineNoCov">          0 :     if( i &lt; n ) {</span>
+<span class="lineNum">     380 </span><span class="lineNoCov">          0 :         buf = utf8_to_native( (const char *)p, n, 0 );</span>
+<span class="lineNum">     381 </span><span class="lineNoCov">          0 :         if( max_n &amp;&amp; (strlen( buf ) &gt; max_n )) {</span>
+<span class="lineNum">     382 </span><span class="lineNoCov">          0 :             buf[max_n] = 0;</span>
+<span class="lineNum">     383 </span>            :         }
+<span class="lineNum">     384 </span>            :         /*(utf8 conversion already does the control character quoting)*/
+<span class="lineNum">     385 </span><span class="lineNoCov">          0 :         tty_fprintf (fp, &quot;%s&quot;, buf);</span>
+<span class="lineNum">     386 </span><span class="lineNoCov">          0 :         xfree (buf);</span>
+<span class="lineNum">     387 </span>            :     }
+<span class="lineNum">     388 </span>            :     else {
+<span class="lineNum">     389 </span><span class="lineNoCov">          0 :         if( max_n &amp;&amp; (n &gt; max_n) ) {</span>
+<span class="lineNum">     390 </span><span class="lineNoCov">          0 :             n = max_n;</span>
+<span class="lineNum">     391 </span>            :         }
+<span class="lineNum">     392 </span><span class="lineNoCov">          0 :         do_print_string (fp, p, n );</span>
+<span class="lineNum">     393 </span>            :     }
+<span class="lineNum">     394 </span>            : }
+<span class="lineNum">     395 </span>            : 
+<a name="396"><span class="lineNum">     396 </span>            : </a>
+<span class="lineNum">     397 </span>            : void
+<span class="lineNum">     398 </span><span class="lineNoCov">          0 : tty_print_utf8_string( const byte *p, size_t n )</span>
+<span class="lineNum">     399 </span>            : {
+<span class="lineNum">     400 </span><span class="lineNoCov">          0 :   tty_print_utf8_string2 (NULL, p, n, 0);</span>
+<span class="lineNum">     401 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     402 </span>            : 
+<a name="403"><span class="lineNum">     403 </span>            : </a>
+<span class="lineNum">     404 </span>            : static char *
+<span class="lineNum">     405 </span><span class="lineNoCov">          0 : do_get( const char *prompt, int hidden )</span>
+<span class="lineNum">     406 </span>            : {
+<span class="lineNum">     407 </span>            :     char *buf;
+<span class="lineNum">     408 </span>            : #ifndef __riscos__
+<span class="lineNum">     409 </span>            :     byte cbuf[1];
+<span class="lineNum">     410 </span>            : #endif
+<span class="lineNum">     411 </span>            :     int c, n, i;
+<span class="lineNum">     412 </span>            : 
+<span class="lineNum">     413 </span><span class="lineNoCov">          0 :     if( batchmode ) {</span>
+<span class="lineNum">     414 </span><span class="lineNoCov">          0 :         log_error(&quot;Sorry, we are in batchmode - can't get input\n&quot;);</span>
+<span class="lineNum">     415 </span><span class="lineNoCov">          0 :         exit(2);</span>
+<span class="lineNum">     416 </span>            :     }
+<span class="lineNum">     417 </span>            : 
+<span class="lineNum">     418 </span><span class="lineNoCov">          0 :     if (no_terminal) {</span>
+<span class="lineNum">     419 </span><span class="lineNoCov">          0 :         log_error(&quot;Sorry, no terminal at all requested - can't get input\n&quot;);</span>
+<span class="lineNum">     420 </span><span class="lineNoCov">          0 :         exit(2);</span>
+<span class="lineNum">     421 </span>            :     }
+<span class="lineNum">     422 </span>            : 
+<span class="lineNum">     423 </span><span class="lineNoCov">          0 :     if( !initialized )</span>
+<span class="lineNum">     424 </span><span class="lineNoCov">          0 :         init_ttyfp();</span>
+<span class="lineNum">     425 </span>            : 
+<span class="lineNum">     426 </span><span class="lineNoCov">          0 :     last_prompt_len = 0;</span>
+<span class="lineNum">     427 </span><span class="lineNoCov">          0 :     tty_printf( &quot;%s&quot;, prompt );</span>
+<span class="lineNum">     428 </span><span class="lineNoCov">          0 :     buf = xmalloc((n=50));</span>
+<span class="lineNum">     429 </span><span class="lineNoCov">          0 :     i = 0;</span>
+<span class="lineNum">     430 </span>            : 
+<span class="lineNum">     431 </span>            : #ifdef USE_W32_CONSOLE
+<span class="lineNum">     432 </span>            :     if( hidden )
+<span class="lineNum">     433 </span>            :         SetConsoleMode(con.in, HID_INPMODE );
+<span class="lineNum">     434 </span>            : 
+<span class="lineNum">     435 </span>            :     for(;;) {
+<span class="lineNum">     436 </span>            :         DWORD nread;
+<span class="lineNum">     437 </span>            : 
+<span class="lineNum">     438 </span>            :         if( !ReadConsoleA( con.in, cbuf, 1, &amp;nread, NULL ) )
+<span class="lineNum">     439 </span>            :             log_fatal(&quot;ReadConsole failed: rc=%d&quot;, (int)GetLastError() );
+<span class="lineNum">     440 </span>            :         if( !nread )
+<span class="lineNum">     441 </span>            :             continue;
+<span class="lineNum">     442 </span>            :         if( *cbuf == '\n' )
+<span class="lineNum">     443 </span>            :             break;
+<span class="lineNum">     444 </span>            : 
+<span class="lineNum">     445 </span>            :         if( !hidden )
+<span class="lineNum">     446 </span>            :             last_prompt_len++;
+<span class="lineNum">     447 </span>            :         c = *cbuf;
+<span class="lineNum">     448 </span>            :         if( c == '\t' )
+<span class="lineNum">     449 </span>            :             c = ' ';
+<span class="lineNum">     450 </span>            :         else if( c &gt; 0xa0 )
+<span class="lineNum">     451 </span>            :             ; /* we don't allow 0xa0, as this is a protected blank which may
+<span class="lineNum">     452 </span>            :                * confuse the user */
+<span class="lineNum">     453 </span>            :         else if( iscntrl(c) )
+<span class="lineNum">     454 </span>            :             continue;
+<span class="lineNum">     455 </span>            :         if( !(i &lt; n-1) ) {
+<span class="lineNum">     456 </span>            :             n += 50;
+<span class="lineNum">     457 </span>            :             buf = xrealloc (buf, n);
+<span class="lineNum">     458 </span>            :         }
+<span class="lineNum">     459 </span>            :         buf[i++] = c;
+<span class="lineNum">     460 </span>            :     }
+<span class="lineNum">     461 </span>            : 
+<span class="lineNum">     462 </span>            :     if( hidden )
+<span class="lineNum">     463 </span>            :         SetConsoleMode(con.in, DEF_INPMODE );
+<span class="lineNum">     464 </span>            : 
+<span class="lineNum">     465 </span>            : #elif defined(__riscos__) || defined(HAVE_W32CE_SYSTEM)
+<span class="lineNum">     466 </span>            :     do {
+<span class="lineNum">     467 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">     468 </span>            :       /* Using getchar is not a correct solution but for now it
+<span class="lineNum">     469 </span>            :          doesn't matter because we have no real console at all.  We
+<span class="lineNum">     470 </span>            :          should rework this as soon as we have switched this entire
+<span class="lineNum">     471 </span>            :          module to estream.  */
+<span class="lineNum">     472 </span>            :         c = getchar();
+<span class="lineNum">     473 </span>            : #else
+<span class="lineNum">     474 </span>            :         c = riscos_getchar();
+<span class="lineNum">     475 </span>            : #endif
+<span class="lineNum">     476 </span>            :         if (c == 0xa || c == 0xd) { /* Return || Enter */
+<span class="lineNum">     477 </span>            :             c = (int) '\n';
+<span class="lineNum">     478 </span>            :         } else if (c == 0x8 || c == 0x7f) { /* Backspace || Delete */
+<span class="lineNum">     479 </span>            :             if (i&gt;0) {
+<span class="lineNum">     480 </span>            :                 i--;
+<span class="lineNum">     481 </span>            :                 if (!hidden) {
+<span class="lineNum">     482 </span>            :                     last_prompt_len--;
+<span class="lineNum">     483 </span>            :                     fputc(8, ttyfp);
+<span class="lineNum">     484 </span>            :                     fputc(32, ttyfp);
+<span class="lineNum">     485 </span>            :                     fputc(8, ttyfp);
+<span class="lineNum">     486 </span>            :                     fflush(ttyfp);
+<span class="lineNum">     487 </span>            :                 }
+<span class="lineNum">     488 </span>            :             } else {
+<span class="lineNum">     489 </span>            :                 fputc(7, ttyfp);
+<span class="lineNum">     490 </span>            :                 fflush(ttyfp);
+<span class="lineNum">     491 </span>            :             }
+<span class="lineNum">     492 </span>            :             continue;
+<span class="lineNum">     493 </span>            :         } else if (c == (int) '\t') { /* Tab */
+<span class="lineNum">     494 </span>            :             c = ' ';
+<span class="lineNum">     495 </span>            :         } else if (c &gt; 0xa0) {
+<span class="lineNum">     496 </span>            :             ; /* we don't allow 0xa0, as this is a protected blank which may
+<span class="lineNum">     497 </span>            :                * confuse the user */
+<span class="lineNum">     498 </span>            :         } else if (iscntrl(c)) {
+<span class="lineNum">     499 </span>            :             continue;
+<span class="lineNum">     500 </span>            :         }
+<span class="lineNum">     501 </span>            :         if(!(i &lt; n-1)) {
+<span class="lineNum">     502 </span>            :             n += 50;
+<span class="lineNum">     503 </span>            :             buf = xrealloc (buf, n);
+<span class="lineNum">     504 </span>            :         }
+<span class="lineNum">     505 </span>            :         buf[i++] = c;
+<span class="lineNum">     506 </span>            :         if (!hidden) {
+<span class="lineNum">     507 </span>            :             last_prompt_len++;
+<span class="lineNum">     508 </span>            :             fputc(c, ttyfp);
+<span class="lineNum">     509 </span>            :             fflush(ttyfp);
+<span class="lineNum">     510 </span>            :         }
+<span class="lineNum">     511 </span>            :     } while (c != '\n');
+<span class="lineNum">     512 </span>            :     i = (i&gt;0) ? i-1 : 0;
+<span class="lineNum">     513 </span>            : #else /* Other systems. */
+<span class="lineNum">     514 </span><span class="lineNoCov">          0 :     if( hidden ) {</span>
+<span class="lineNum">     515 </span>            : #ifdef HAVE_TCGETATTR
+<span class="lineNum">     516 </span>            :         struct termios term;
+<span class="lineNum">     517 </span>            : 
+<span class="lineNum">     518 </span><span class="lineNoCov">          0 :         if( tcgetattr(fileno(ttyfp), &amp;termsave) )</span>
+<span class="lineNum">     519 </span><span class="lineNoCov">          0 :             log_fatal(&quot;tcgetattr() failed: %s\n&quot;, strerror(errno) );</span>
+<span class="lineNum">     520 </span><span class="lineNoCov">          0 :         restore_termios = 1;</span>
+<span class="lineNum">     521 </span><span class="lineNoCov">          0 :         term = termsave;</span>
+<span class="lineNum">     522 </span><span class="lineNoCov">          0 :         term.c_lflag &amp;= ~(ECHO | ECHOE | ECHOK | ECHONL);</span>
+<span class="lineNum">     523 </span><span class="lineNoCov">          0 :         if( tcsetattr( fileno(ttyfp), TCSAFLUSH, &amp;term ) )</span>
+<span class="lineNum">     524 </span><span class="lineNoCov">          0 :             log_fatal(&quot;tcsetattr() failed: %s\n&quot;, strerror(errno) );</span>
+<span class="lineNum">     525 </span>            : #endif
+<span class="lineNum">     526 </span>            :     }
+<span class="lineNum">     527 </span>            : 
+<span class="lineNum">     528 </span>            :     /* fixme: How can we avoid that the \n is echoed w/o disabling
+<span class="lineNum">     529 </span>            :      * canonical mode - w/o this kill_prompt can't work */
+<span class="lineNum">     530 </span><span class="lineNoCov">          0 :     while( read(fileno(ttyfp), cbuf, 1) == 1 &amp;&amp; *cbuf != '\n' ) {</span>
+<span class="lineNum">     531 </span><span class="lineNoCov">          0 :         if( !hidden )</span>
+<span class="lineNum">     532 </span><span class="lineNoCov">          0 :             last_prompt_len++;</span>
+<span class="lineNum">     533 </span><span class="lineNoCov">          0 :         c = *cbuf;</span>
+<span class="lineNum">     534 </span><span class="lineNoCov">          0 :         if( c == CONTROL_D )</span>
+<span class="lineNum">     535 </span><span class="lineNoCov">          0 :             log_info(&quot;control d found\n&quot;);</span>
+<span class="lineNum">     536 </span><span class="lineNoCov">          0 :         if( c == '\t' )</span>
+<span class="lineNum">     537 </span><span class="lineNoCov">          0 :             c = ' ';</span>
+<span class="lineNum">     538 </span><span class="lineNoCov">          0 :         else if( c &gt; 0xa0 )</span>
+<span class="lineNum">     539 </span>            :             ; /* we don't allow 0xa0, as this is a protected blank which may
+<span class="lineNum">     540 </span>            :                * confuse the user */
+<span class="lineNum">     541 </span><span class="lineNoCov">          0 :         else if( iscntrl(c) )</span>
+<span class="lineNum">     542 </span><span class="lineNoCov">          0 :             continue;</span>
+<span class="lineNum">     543 </span><span class="lineNoCov">          0 :         if( !(i &lt; n-1) ) {</span>
+<span class="lineNum">     544 </span><span class="lineNoCov">          0 :             n += 50;</span>
+<span class="lineNum">     545 </span><span class="lineNoCov">          0 :             buf = xrealloc (buf, n );</span>
+<span class="lineNum">     546 </span>            :         }
+<span class="lineNum">     547 </span><span class="lineNoCov">          0 :         buf[i++] = c;</span>
+<span class="lineNum">     548 </span>            :     }
+<span class="lineNum">     549 </span><span class="lineNoCov">          0 :     if( *cbuf != '\n' ) {</span>
+<span class="lineNum">     550 </span><span class="lineNoCov">          0 :         buf[0] = CONTROL_D;</span>
+<span class="lineNum">     551 </span><span class="lineNoCov">          0 :         i = 1;</span>
+<span class="lineNum">     552 </span>            :     }
+<span class="lineNum">     553 </span>            : 
+<span class="lineNum">     554 </span><span class="lineNoCov">          0 :     if( hidden ) {</span>
+<span class="lineNum">     555 </span>            : #ifdef HAVE_TCGETATTR
+<span class="lineNum">     556 </span><span class="lineNoCov">          0 :         if( tcsetattr(fileno(ttyfp), TCSAFLUSH, &amp;termsave) )</span>
+<span class="lineNum">     557 </span><span class="lineNoCov">          0 :             log_error(&quot;tcsetattr() failed: %s\n&quot;, strerror(errno) );</span>
+<span class="lineNum">     558 </span><span class="lineNoCov">          0 :         restore_termios = 0;</span>
+<span class="lineNum">     559 </span>            : #endif
+<span class="lineNum">     560 </span>            :     }
+<span class="lineNum">     561 </span>            : #endif /* end unix version */
+<span class="lineNum">     562 </span><span class="lineNoCov">          0 :     buf[i] = 0;</span>
+<span class="lineNum">     563 </span><span class="lineNoCov">          0 :     return buf;</span>
+<span class="lineNum">     564 </span>            : }
+<span class="lineNum">     565 </span>            : 
+<a name="566"><span class="lineNum">     566 </span>            : </a>
+<span class="lineNum">     567 </span>            : char *
+<span class="lineNum">     568 </span><span class="lineNoCov">          0 : tty_get( const char *prompt )</span>
+<span class="lineNum">     569 </span>            : {
+<span class="lineNum">     570 </span><span class="lineNoCov">          0 :   if (!batchmode &amp;&amp; !no_terminal &amp;&amp; my_rl_readline &amp;&amp; my_rl_add_history)</span>
+<span class="lineNum">     571 </span>            :     {
+<span class="lineNum">     572 </span>            :       char *line;
+<span class="lineNum">     573 </span>            :       char *buf;
+<span class="lineNum">     574 </span>            : 
+<span class="lineNum">     575 </span><span class="lineNoCov">          0 :       if (!initialized)</span>
+<span class="lineNum">     576 </span><span class="lineNoCov">          0 :         init_ttyfp();</span>
+<span class="lineNum">     577 </span>            : 
+<span class="lineNum">     578 </span><span class="lineNoCov">          0 :       last_prompt_len = 0;</span>
+<span class="lineNum">     579 </span>            : 
+<span class="lineNum">     580 </span><span class="lineNoCov">          0 :       line = my_rl_readline (prompt?prompt:&quot;&quot;);</span>
+<span class="lineNum">     581 </span>            : 
+<span class="lineNum">     582 </span>            :       /* We need to copy it to memory controlled by our malloc
+<span class="lineNum">     583 </span>            :          implementations; further we need to convert an EOF to our
+<span class="lineNum">     584 </span>            :          convention. */
+<span class="lineNum">     585 </span><span class="lineNoCov">          0 :       buf = xmalloc(line? strlen(line)+1:2);</span>
+<span class="lineNum">     586 </span><span class="lineNoCov">          0 :       if (line)</span>
+<span class="lineNum">     587 </span>            :         {
+<span class="lineNum">     588 </span><span class="lineNoCov">          0 :           strcpy (buf, line);</span>
+<span class="lineNum">     589 </span><span class="lineNoCov">          0 :           trim_spaces (buf);</span>
+<span class="lineNum">     590 </span><span class="lineNoCov">          0 :           if (strlen (buf) &gt; 2 )</span>
+<span class="lineNum">     591 </span><span class="lineNoCov">          0 :             my_rl_add_history (line); /* Note that we test BUF but add LINE. */</span>
+<span class="lineNum">     592 </span><span class="lineNoCov">          0 :           free (line);</span>
+<span class="lineNum">     593 </span>            :         }
+<span class="lineNum">     594 </span>            :       else
+<span class="lineNum">     595 </span>            :         {
+<span class="lineNum">     596 </span><span class="lineNoCov">          0 :           buf[0] = CONTROL_D;</span>
+<span class="lineNum">     597 </span><span class="lineNoCov">          0 :           buf[1] = 0;</span>
+<span class="lineNum">     598 </span>            :         }
+<span class="lineNum">     599 </span><span class="lineNoCov">          0 :       return buf;</span>
+<span class="lineNum">     600 </span>            :     }
+<span class="lineNum">     601 </span>            :   else
+<span class="lineNum">     602 </span><span class="lineNoCov">          0 :     return do_get ( prompt, 0 );</span>
+<span class="lineNum">     603 </span>            : }
+<span class="lineNum">     604 </span>            : 
+<span class="lineNum">     605 </span>            : /* Variable argument version of tty_get.  The prompt is actually a
+<a name="606"><span class="lineNum">     606 </span>            :    format string with arguments.  */</a>
+<span class="lineNum">     607 </span>            : char *
+<span class="lineNum">     608 </span><span class="lineNoCov">          0 : tty_getf (const char *promptfmt, ... )</span>
+<span class="lineNum">     609 </span>            : {
+<span class="lineNum">     610 </span>            :   va_list arg_ptr;
+<span class="lineNum">     611 </span>            :   char *prompt;
+<span class="lineNum">     612 </span>            :   char *answer;
+<span class="lineNum">     613 </span>            : 
+<span class="lineNum">     614 </span><span class="lineNoCov">          0 :   va_start (arg_ptr, promptfmt);</span>
+<span class="lineNum">     615 </span><span class="lineNoCov">          0 :   if (gpgrt_vasprintf (&amp;prompt, promptfmt, arg_ptr) &lt; 0)</span>
+<span class="lineNum">     616 </span><span class="lineNoCov">          0 :     log_fatal (&quot;estream_vasprintf failed: %s\n&quot;, strerror (errno));</span>
+<span class="lineNum">     617 </span><span class="lineNoCov">          0 :   va_end (arg_ptr);</span>
+<span class="lineNum">     618 </span><span class="lineNoCov">          0 :   answer = tty_get (prompt);</span>
+<span class="lineNum">     619 </span><span class="lineNoCov">          0 :   xfree (prompt);</span>
+<span class="lineNum">     620 </span><span class="lineNoCov">          0 :   return answer;</span>
+<span class="lineNum">     621 </span>            : }
+<span class="lineNum">     622 </span>            : 
+<span class="lineNum">     623 </span>            : 
+<a name="624"><span class="lineNum">     624 </span>            : </a>
+<span class="lineNum">     625 </span>            : char *
+<span class="lineNum">     626 </span><span class="lineNoCov">          0 : tty_get_hidden( const char *prompt )</span>
+<span class="lineNum">     627 </span>            : {
+<span class="lineNum">     628 </span><span class="lineNoCov">          0 :     return do_get( prompt, 1 );</span>
+<span class="lineNum">     629 </span>            : }
+<span class="lineNum">     630 </span>            : 
+<a name="631"><span class="lineNum">     631 </span>            : </a>
+<span class="lineNum">     632 </span>            : void
+<span class="lineNum">     633 </span><span class="lineNoCov">          0 : tty_kill_prompt()</span>
+<span class="lineNum">     634 </span>            : {
+<span class="lineNum">     635 </span><span class="lineNoCov">          0 :     if ( no_terminal )</span>
+<span class="lineNum">     636 </span><span class="lineNoCov">          0 :         return;</span>
+<span class="lineNum">     637 </span>            : 
+<span class="lineNum">     638 </span><span class="lineNoCov">          0 :     if( !initialized )</span>
+<span class="lineNum">     639 </span><span class="lineNoCov">          0 :         init_ttyfp();</span>
+<span class="lineNum">     640 </span>            : 
+<span class="lineNum">     641 </span><span class="lineNoCov">          0 :     if( batchmode )</span>
+<span class="lineNum">     642 </span><span class="lineNoCov">          0 :         last_prompt_len = 0;</span>
+<span class="lineNum">     643 </span><span class="lineNoCov">          0 :     if( !last_prompt_len )</span>
+<span class="lineNum">     644 </span><span class="lineNoCov">          0 :         return;</span>
+<span class="lineNum">     645 </span>            : #ifdef USE_W32_CONSOLE
+<span class="lineNum">     646 </span>            :     tty_printf(&quot;\r%*s\r&quot;, last_prompt_len, &quot;&quot;);
+<span class="lineNum">     647 </span>            : #else
+<span class="lineNum">     648 </span>            :     {
+<span class="lineNum">     649 </span>            :         int i;
+<span class="lineNum">     650 </span><span class="lineNoCov">          0 :         putc('\r', ttyfp);</span>
+<span class="lineNum">     651 </span><span class="lineNoCov">          0 :         for(i=0; i &lt; last_prompt_len; i ++ )</span>
+<span class="lineNum">     652 </span><span class="lineNoCov">          0 :             putc(' ', ttyfp);</span>
+<span class="lineNum">     653 </span><span class="lineNoCov">          0 :         putc('\r', ttyfp);</span>
+<span class="lineNum">     654 </span><span class="lineNoCov">          0 :         fflush(ttyfp);</span>
+<span class="lineNum">     655 </span>            :     }
+<span class="lineNum">     656 </span>            : #endif
+<span class="lineNum">     657 </span><span class="lineNoCov">          0 :     last_prompt_len = 0;</span>
+<span class="lineNum">     658 </span>            : }
+<span class="lineNum">     659 </span>            : 
+<a name="660"><span class="lineNum">     660 </span>            : </a>
+<span class="lineNum">     661 </span>            : int
+<span class="lineNum">     662 </span><span class="lineNoCov">          0 : tty_get_answer_is_yes( const char *prompt )</span>
+<span class="lineNum">     663 </span>            : {
+<span class="lineNum">     664 </span>            :     int yes;
+<span class="lineNum">     665 </span><span class="lineNoCov">          0 :     char *p = tty_get( prompt );</span>
+<span class="lineNum">     666 </span><span class="lineNoCov">          0 :     tty_kill_prompt();</span>
+<span class="lineNum">     667 </span><span class="lineNoCov">          0 :     yes = answer_is_yes(p);</span>
+<span class="lineNum">     668 </span><span class="lineNoCov">          0 :     xfree(p);</span>
+<span class="lineNum">     669 </span><span class="lineNoCov">          0 :     return yes;</span>
+<span class="lineNum">     670 </span>            : }
+<span class="lineNum">     671 </span>            : 
+<span class="lineNum">     672 </span>            : 
+<a name="673"><span class="lineNum">     673 </span>            : /* Called by gnupg_rl_initialize to setup the readline support. */</a>
+<span class="lineNum">     674 </span>            : void
+<span class="lineNum">     675 </span><span class="lineNoCov">          0 : tty_private_set_rl_hooks (void (*init_stream) (FILE *),</span>
+<span class="lineNum">     676 </span>            :                           void (*set_completer) (rl_completion_func_t*),
+<span class="lineNum">     677 </span>            :                           void (*inhibit_completion) (int),
+<span class="lineNum">     678 </span>            :                           void (*cleanup_after_signal) (void),
+<span class="lineNum">     679 </span>            :                           char *(*readline_fun) (const char*),
+<span class="lineNum">     680 </span>            :                           void (*add_history_fun) (const char*))
+<span class="lineNum">     681 </span>            : {
+<span class="lineNum">     682 </span><span class="lineNoCov">          0 :   my_rl_init_stream = init_stream;</span>
+<span class="lineNum">     683 </span><span class="lineNoCov">          0 :   my_rl_set_completer = set_completer;</span>
+<span class="lineNum">     684 </span><span class="lineNoCov">          0 :   my_rl_inhibit_completion = inhibit_completion;</span>
+<span class="lineNum">     685 </span><span class="lineNoCov">          0 :   my_rl_cleanup_after_signal = cleanup_after_signal;</span>
+<span class="lineNum">     686 </span><span class="lineNoCov">          0 :   my_rl_readline = readline_fun;</span>
+<span class="lineNum">     687 </span><span class="lineNoCov">          0 :   my_rl_add_history = add_history_fun;</span>
+<span class="lineNum">     688 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     689 </span>            : 
+<span class="lineNum">     690 </span>            : 
+<span class="lineNum">     691 </span>            : #ifdef HAVE_LIBREADLINE
+<span class="lineNum">     692 </span>            : void
+<span class="lineNum">     693 </span>            : tty_enable_completion (rl_completion_func_t *completer)
+<span class="lineNum">     694 </span>            : {
+<span class="lineNum">     695 </span>            :   if (no_terminal || !my_rl_set_completer )
+<span class="lineNum">     696 </span>            :     return;
+<span class="lineNum">     697 </span>            : 
+<span class="lineNum">     698 </span>            :   if (!initialized)
+<span class="lineNum">     699 </span>            :     init_ttyfp();
+<span class="lineNum">     700 </span>            : 
+<span class="lineNum">     701 </span>            :   my_rl_set_completer (completer);
+<span class="lineNum">     702 </span>            : }
+<span class="lineNum">     703 </span>            : 
+<span class="lineNum">     704 </span>            : void
+<span class="lineNum">     705 </span>            : tty_disable_completion (void)
+<span class="lineNum">     706 </span>            : {
+<span class="lineNum">     707 </span>            :   if (no_terminal || !my_rl_inhibit_completion)
+<span class="lineNum">     708 </span>            :     return;
+<span class="lineNum">     709 </span>            : 
+<span class="lineNum">     710 </span>            :   if (!initialized)
+<span class="lineNum">     711 </span>            :     init_ttyfp();
+<span class="lineNum">     712 </span>            : 
+<span class="lineNum">     713 </span>            :   my_rl_inhibit_completion (1);
+<span class="lineNum">     714 </span>            : }
+<span class="lineNum">     715 </span>            : #endif
+<a name="716"><span class="lineNum">     716 </span>            : </a>
+<span class="lineNum">     717 </span>            : void
+<span class="lineNum">     718 </span><span class="lineNoCov">          0 : tty_cleanup_after_signal (void)</span>
+<span class="lineNum">     719 </span>            : {
+<span class="lineNum">     720 </span>            : #ifdef HAVE_TCGETATTR
+<span class="lineNum">     721 </span><span class="lineNoCov">          0 :   cleanup ();</span>
+<span class="lineNum">     722 </span>            : #endif
+<span class="lineNum">     723 </span><span class="lineNoCov">          0 : }</span>
+<a name="724"><span class="lineNum">     724 </span>            : </a>
+<span class="lineNum">     725 </span>            : void
+<span class="lineNum">     726 </span><span class="lineNoCov">          0 : tty_cleanup_rl_after_signal (void)</span>
+<span class="lineNum">     727 </span>            : {
+<span class="lineNum">     728 </span><span class="lineNoCov">          0 :   if (my_rl_cleanup_after_signal)</span>
+<span class="lineNum">     729 </span><span class="lineNoCov">          0 :     my_rl_cleanup_after_signal ();</span>
+<span class="lineNum">     730 </span><span class="lineNoCov">          0 : }</span>
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

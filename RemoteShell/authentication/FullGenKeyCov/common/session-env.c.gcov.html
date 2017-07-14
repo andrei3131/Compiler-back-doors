@@ -1,0 +1,476 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - common/session-env.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">common</a> - session-env.c<span style="font-size: 80%;"> (source / <a href="session-env.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">57</td>
+            <td class="headerCovTableEntry">132</td>
+            <td class="headerCovTableEntryLo">43.2 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 12:47:41</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">4</td>
+            <td class="headerCovTableEntry">10</td>
+            <td class="headerCovTableEntryLo">40.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* session-env.c - Session environment helper functions.</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 2009 Free Software Foundation, Inc.
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * This file is free software; you can redistribute it and/or modify
+<span class="lineNum">       7 </span>            :  * it under the terms of either
+<span class="lineNum">       8 </span>            :  *
+<span class="lineNum">       9 </span>            :  *   - the GNU Lesser General Public License as published by the Free
+<span class="lineNum">      10 </span>            :  *     Software Foundation; either version 3 of the License, or (at
+<span class="lineNum">      11 </span>            :  *     your option) any later version.
+<span class="lineNum">      12 </span>            :  *
+<span class="lineNum">      13 </span>            :  * or
+<span class="lineNum">      14 </span>            :  *
+<span class="lineNum">      15 </span>            :  *   - the GNU General Public License as published by the Free
+<span class="lineNum">      16 </span>            :  *     Software Foundation; either version 2 of the License, or (at
+<span class="lineNum">      17 </span>            :  *     your option) any later version.
+<span class="lineNum">      18 </span>            :  *
+<span class="lineNum">      19 </span>            :  * or both in parallel, as here.
+<span class="lineNum">      20 </span>            :  *
+<span class="lineNum">      21 </span>            :  * This file is distributed in the hope that it will be useful,
+<span class="lineNum">      22 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      23 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      24 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      25 </span>            :  *
+<span class="lineNum">      26 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      27 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      28 </span>            :  */
+<span class="lineNum">      29 </span>            : 
+<span class="lineNum">      30 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      31 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      32 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      33 </span>            : #include &lt;ctype.h&gt;
+<span class="lineNum">      34 </span>            : #include &lt;assert.h&gt;
+<span class="lineNum">      35 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span>            : #include &quot;util.h&quot;
+<span class="lineNum">      38 </span>            : #include &quot;session-env.h&quot;
+<span class="lineNum">      39 </span>            : 
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span>            : struct variable_s
+<span class="lineNum">      42 </span>            : {
+<span class="lineNum">      43 </span>            :   char *value;    /* Pointer into NAME to the Nul terminated value. */
+<span class="lineNum">      44 </span>            :   int is_default; /* The value is a default one.  */
+<span class="lineNum">      45 </span>            :   char name[1];   /* Nul terminated Name and space for the value.  */
+<span class="lineNum">      46 </span>            : };
+<span class="lineNum">      47 </span>            : 
+<span class="lineNum">      48 </span>            : 
+<span class="lineNum">      49 </span>            : 
+<span class="lineNum">      50 </span>            : /* The session environment object.  */
+<span class="lineNum">      51 </span>            : struct session_environment_s
+<span class="lineNum">      52 </span>            : {
+<span class="lineNum">      53 </span>            :   size_t arraysize;          /* Allocated size or ARRAY.  */
+<span class="lineNum">      54 </span>            :   size_t arrayused;          /* Used size of ARRAY.  */
+<span class="lineNum">      55 </span>            :   struct variable_s **array; /* Array of variables.  NULL slots are unused.  */
+<span class="lineNum">      56 </span>            : };
+<span class="lineNum">      57 </span>            : 
+<span class="lineNum">      58 </span>            : 
+<span class="lineNum">      59 </span>            : /* A list of environment variables we pass from the actual user
+<span class="lineNum">      60 </span>            :   (e.g. gpgme) down to the pinentry.  We do not handle the locale
+<span class="lineNum">      61 </span>            :   settings because they do not only depend on envvars.  */
+<span class="lineNum">      62 </span>            : static struct
+<span class="lineNum">      63 </span>            : {
+<span class="lineNum">      64 </span>            :   const char *name;
+<span class="lineNum">      65 </span>            :   const char *assname;  /* Name used by Assuan or NULL.  */
+<span class="lineNum">      66 </span>            : } stdenvnames[] = {
+<span class="lineNum">      67 </span>            :   { &quot;GPG_TTY&quot;, &quot;ttyname&quot; },      /* GnuPG specific envvar.  */
+<span class="lineNum">      68 </span>            :   { &quot;TERM&quot;,    &quot;ttytype&quot; },      /* Used to set ttytype. */
+<span class="lineNum">      69 </span>            :   { &quot;DISPLAY&quot;, &quot;display&quot; },      /* The X-Display.  */
+<span class="lineNum">      70 </span>            :   { &quot;XAUTHORITY&quot;,&quot;xauthority&quot;},  /* Xlib Authentication.  */
+<span class="lineNum">      71 </span>            :   { &quot;XMODIFIERS&quot; },              /* Used by Xlib to select X input
+<span class="lineNum">      72 </span>            :                                       modules (eg &quot;@im=SCIM&quot;).  */
+<span class="lineNum">      73 </span>            :   { &quot;GTK_IM_MODULE&quot; },           /* Used by gtk to select gtk input
+<span class="lineNum">      74 </span>            :                                     modules (eg &quot;scim-bridge&quot;).  */
+<span class="lineNum">      75 </span>            :   { &quot;DBUS_SESSION_BUS_ADDRESS&quot; },/* Used by GNOME3 to talk to gcr over
+<span class="lineNum">      76 </span>            :                                     dbus */
+<span class="lineNum">      77 </span>            :   { &quot;QT_IM_MODULE&quot; },            /* Used by Qt to select qt input
+<span class="lineNum">      78 </span>            :                                       modules (eg &quot;xim&quot;).  */
+<span class="lineNum">      79 </span>            :   { &quot;INSIDE_EMACS&quot; },            /* Set by Emacs before running a
+<span class="lineNum">      80 </span>            :                                     process.  */
+<span class="lineNum">      81 </span>            :   { &quot;PINENTRY_USER_DATA&quot;, &quot;pinentry-user-data&quot;}
+<span class="lineNum">      82 </span>            :                                  /* Used for communication with
+<span class="lineNum">      83 </span>            :                                     non-standard Pinentries.  */
+<span class="lineNum">      84 </span>            : };
+<span class="lineNum">      85 </span>            : 
+<span class="lineNum">      86 </span>            : 
+<span class="lineNum">      87 </span>            : /* Track last allocated arraysize of all objects ever created.  If
+<span class="lineNum">      88 </span>            :    nothing has ever been allocated we use INITIAL_ARRAYSIZE and we
+<span class="lineNum">      89 </span>            :    will never use more than MAXDEFAULT_ARRAYSIZE for initial
+<span class="lineNum">      90 </span>            :    allocation.  Note that this is not reentrant if used with a
+<span class="lineNum">      91 </span>            :    preemptive thread model.  */
+<span class="lineNum">      92 </span>            : static size_t lastallocatedarraysize;
+<span class="lineNum">      93 </span>            : #define INITIAL_ARRAYSIZE 8  /* Let's use the number of stdenvnames.  */
+<span class="lineNum">      94 </span>            : #define CHUNK_ARRAYSIZE 10
+<span class="lineNum">      95 </span>            : #define MAXDEFAULT_ARRAYSIZE (INITIAL_ARRAYSIZE + CHUNK_ARRAYSIZE * 5)
+<span class="lineNum">      96 </span>            : 
+<span class="lineNum">      97 </span>            : 
+<span class="lineNum">      98 </span>            : /* Return the names of standard environment variables one after the
+<span class="lineNum">      99 </span>            :    other.  The caller needs to set the value at the address of
+<span class="lineNum">     100 </span>            :    ITERATOR initially to 0 and then call this function until it returns
+<a name="101"><span class="lineNum">     101 </span>            :    NULL.  */</a>
+<span class="lineNum">     102 </span>            : const char *
+<span class="lineNum">     103 </span><span class="lineCov">         11 : session_env_list_stdenvnames (int *iterator, const char **r_assname)</span>
+<span class="lineNum">     104 </span>            : {
+<span class="lineNum">     105 </span><span class="lineCov">         11 :   int idx = *iterator;</span>
+<span class="lineNum">     106 </span>            : 
+<span class="lineNum">     107 </span><span class="lineCov">         11 :   if (idx &lt; 0 || idx &gt;= DIM (stdenvnames))</span>
+<span class="lineNum">     108 </span><span class="lineCov">          1 :     return NULL;</span>
+<span class="lineNum">     109 </span><span class="lineCov">         10 :   *iterator = idx + 1;</span>
+<span class="lineNum">     110 </span><span class="lineCov">         10 :   if (r_assname)</span>
+<span class="lineNum">     111 </span><span class="lineCov">         10 :     *r_assname = stdenvnames[idx].assname;</span>
+<span class="lineNum">     112 </span><span class="lineCov">         10 :   return stdenvnames[idx].name;</span>
+<span class="lineNum">     113 </span>            : }
+<span class="lineNum">     114 </span>            : 
+<span class="lineNum">     115 </span>            : 
+<span class="lineNum">     116 </span>            : /* Create a new session environment object.  Return NULL and sets
+<a name="117"><span class="lineNum">     117 </span>            :    ERRNO on failure. */</a>
+<span class="lineNum">     118 </span>            : session_env_t
+<span class="lineNum">     119 </span><span class="lineCov">          4 : session_env_new (void)</span>
+<span class="lineNum">     120 </span>            : {
+<span class="lineNum">     121 </span>            :   session_env_t se;
+<span class="lineNum">     122 </span>            : 
+<span class="lineNum">     123 </span><span class="lineCov">          4 :   se = xtrycalloc (1, sizeof *se);</span>
+<span class="lineNum">     124 </span><span class="lineCov">          4 :   if (se)</span>
+<span class="lineNum">     125 </span>            :     {
+<span class="lineNum">     126 </span><span class="lineCov">          8 :       se-&gt;arraysize = (lastallocatedarraysize?</span>
+<span class="lineNum">     127 </span><span class="lineCov">          4 :                        lastallocatedarraysize : INITIAL_ARRAYSIZE);</span>
+<span class="lineNum">     128 </span><span class="lineCov">          4 :       se-&gt;array = xtrycalloc (se-&gt;arraysize, sizeof *se-&gt;array);</span>
+<span class="lineNum">     129 </span><span class="lineCov">          4 :       if (!se-&gt;array)</span>
+<span class="lineNum">     130 </span>            :         {
+<span class="lineNum">     131 </span><span class="lineNoCov">          0 :           xfree (se);</span>
+<span class="lineNum">     132 </span><span class="lineNoCov">          0 :           se = NULL;</span>
+<span class="lineNum">     133 </span>            :         }
+<span class="lineNum">     134 </span>            :     }
+<span class="lineNum">     135 </span>            : 
+<span class="lineNum">     136 </span><span class="lineCov">          4 :   return se;</span>
+<span class="lineNum">     137 </span>            : }
+<span class="lineNum">     138 </span>            : 
+<span class="lineNum">     139 </span>            : 
+<a name="140"><span class="lineNum">     140 </span>            : /* Release a session environment object.  */</a>
+<span class="lineNum">     141 </span>            : void
+<span class="lineNum">     142 </span><span class="lineNoCov">          0 : session_env_release (session_env_t se)</span>
+<span class="lineNum">     143 </span>            : {
+<span class="lineNum">     144 </span>            :   int idx;
+<span class="lineNum">     145 </span>            : 
+<span class="lineNum">     146 </span><span class="lineNoCov">          0 :   if (!se)</span>
+<span class="lineNum">     147 </span><span class="lineNoCov">          0 :     return;</span>
+<span class="lineNum">     148 </span>            : 
+<span class="lineNum">     149 </span><span class="lineNoCov">          0 :   if (se-&gt;arraysize &gt; INITIAL_ARRAYSIZE</span>
+<span class="lineNum">     150 </span><span class="lineNoCov">          0 :       &amp;&amp; se-&gt;arraysize &lt;= MAXDEFAULT_ARRAYSIZE</span>
+<span class="lineNum">     151 </span><span class="lineNoCov">          0 :       &amp;&amp; se-&gt;arraysize &gt; lastallocatedarraysize)</span>
+<span class="lineNum">     152 </span><span class="lineNoCov">          0 :     lastallocatedarraysize = se-&gt;arraysize;</span>
+<span class="lineNum">     153 </span>            : 
+<span class="lineNum">     154 </span><span class="lineNoCov">          0 :   for (idx=0; idx &lt; se-&gt;arrayused; idx++)</span>
+<span class="lineNum">     155 </span><span class="lineNoCov">          0 :     if (se-&gt;array[idx])</span>
+<span class="lineNum">     156 </span><span class="lineNoCov">          0 :       xfree (se-&gt;array[idx]);</span>
+<span class="lineNum">     157 </span><span class="lineNoCov">          0 :   xfree (se-&gt;array);</span>
+<span class="lineNum">     158 </span><span class="lineNoCov">          0 :   xfree (se);</span>
+<span class="lineNum">     159 </span>            : }
+<span class="lineNum">     160 </span>            : 
+<a name="161"><span class="lineNum">     161 </span>            : </a>
+<span class="lineNum">     162 </span>            : static gpg_error_t
+<span class="lineNum">     163 </span><span class="lineNoCov">          0 : delete_var (session_env_t se, const char *name)</span>
+<span class="lineNum">     164 </span>            : {
+<span class="lineNum">     165 </span>            :   int idx;
+<span class="lineNum">     166 </span>            : 
+<span class="lineNum">     167 </span><span class="lineNoCov">          0 :   for (idx=0; idx &lt; se-&gt;arrayused; idx++)</span>
+<span class="lineNum">     168 </span><span class="lineNoCov">          0 :     if (se-&gt;array[idx] &amp;&amp; !strcmp (se-&gt;array[idx]-&gt;name, name))</span>
+<span class="lineNum">     169 </span>            :       {
+<span class="lineNum">     170 </span><span class="lineNoCov">          0 :         xfree (se-&gt;array[idx]);</span>
+<span class="lineNum">     171 </span><span class="lineNoCov">          0 :         se-&gt;array[idx] = NULL;</span>
+<span class="lineNum">     172 </span>            :       }
+<span class="lineNum">     173 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     174 </span>            : }
+<span class="lineNum">     175 </span>            : 
+<a name="176"><span class="lineNum">     176 </span>            : </a>
+<span class="lineNum">     177 </span>            : static gpg_error_t
+<span class="lineNum">     178 </span><span class="lineCov">          2 : update_var (session_env_t se, const char *string, size_t namelen,</span>
+<span class="lineNum">     179 </span>            :             const char *explicit_value, int set_default)
+<span class="lineNum">     180 </span>            : {
+<span class="lineNum">     181 </span>            :   int idx;
+<span class="lineNum">     182 </span><span class="lineCov">          2 :   int freeidx = -1;</span>
+<span class="lineNum">     183 </span>            :   const char *value;
+<span class="lineNum">     184 </span>            :   size_t valuelen;
+<span class="lineNum">     185 </span>            :   struct variable_s *var;
+<span class="lineNum">     186 </span>            : 
+<span class="lineNum">     187 </span><span class="lineCov">          2 :   if (explicit_value)</span>
+<span class="lineNum">     188 </span><span class="lineCov">          2 :     value = explicit_value;</span>
+<span class="lineNum">     189 </span>            :   else
+<span class="lineNum">     190 </span><span class="lineNoCov">          0 :     value = string + namelen + 1;</span>
+<span class="lineNum">     191 </span><span class="lineCov">          2 :   valuelen = strlen (value);</span>
+<span class="lineNum">     192 </span>            : 
+<span class="lineNum">     193 </span><span class="lineCov">          3 :   for (idx=0; idx &lt; se-&gt;arrayused; idx++)</span>
+<span class="lineNum">     194 </span>            :     {
+<span class="lineNum">     195 </span><span class="lineCov">          1 :       if (!se-&gt;array[idx])</span>
+<span class="lineNum">     196 </span><span class="lineNoCov">          0 :         freeidx = idx;</span>
+<span class="lineNum">     197 </span><span class="lineCov">          1 :       else if (!strncmp (se-&gt;array[idx]-&gt;name, string, namelen)</span>
+<span class="lineNum">     198 </span><span class="lineNoCov">          0 :                &amp;&amp; strlen (se-&gt;array[idx]-&gt;name) == namelen)</span>
+<span class="lineNum">     199 </span>            :         {
+<span class="lineNum">     200 </span><span class="lineNoCov">          0 :           if (strlen (se-&gt;array[idx]-&gt;value) == valuelen)</span>
+<span class="lineNum">     201 </span>            :             {
+<span class="lineNum">     202 </span>            :               /* The new value has the same length.  We can update it
+<span class="lineNum">     203 </span>            :                  in-place.  */
+<span class="lineNum">     204 </span><span class="lineNoCov">          0 :               memcpy (se-&gt;array[idx]-&gt;value, value, valuelen);</span>
+<span class="lineNum">     205 </span><span class="lineNoCov">          0 :               se-&gt;array[idx]-&gt;is_default = !!set_default;</span>
+<span class="lineNum">     206 </span><span class="lineNoCov">          0 :               return 0;</span>
+<span class="lineNum">     207 </span>            :             }
+<span class="lineNum">     208 </span>            :           /* Prepare for update.  */
+<span class="lineNum">     209 </span><span class="lineNoCov">          0 :           freeidx = idx;</span>
+<span class="lineNum">     210 </span>            :         }
+<span class="lineNum">     211 </span>            :     }
+<span class="lineNum">     212 </span>            : 
+<span class="lineNum">     213 </span><span class="lineCov">          2 :   if (freeidx == -1)</span>
+<span class="lineNum">     214 </span>            :     {
+<span class="lineNum">     215 </span><span class="lineCov">          2 :       if (se-&gt;arrayused == se-&gt;arraysize)</span>
+<span class="lineNum">     216 </span>            :         {
+<span class="lineNum">     217 </span>            :           /* Reallocate the array. */
+<span class="lineNum">     218 </span>            :           size_t newsize;
+<span class="lineNum">     219 </span>            :           struct variable_s **newarray;
+<span class="lineNum">     220 </span>            : 
+<span class="lineNum">     221 </span><span class="lineNoCov">          0 :           newsize = se-&gt;arraysize + CHUNK_ARRAYSIZE;</span>
+<span class="lineNum">     222 </span><span class="lineNoCov">          0 :           newarray = xtrycalloc (newsize, sizeof *newarray);</span>
+<span class="lineNum">     223 </span><span class="lineNoCov">          0 :           if (!newarray)</span>
+<span class="lineNum">     224 </span><span class="lineNoCov">          0 :             return gpg_error_from_syserror ();</span>
+<span class="lineNum">     225 </span><span class="lineNoCov">          0 :           for (idx=0; idx &lt; se-&gt;arrayused; idx++)</span>
+<span class="lineNum">     226 </span><span class="lineNoCov">          0 :             newarray[idx] = se-&gt;array[idx];</span>
+<span class="lineNum">     227 </span><span class="lineNoCov">          0 :           se-&gt;arraysize = newsize;</span>
+<span class="lineNum">     228 </span><span class="lineNoCov">          0 :           xfree (se-&gt;array);</span>
+<span class="lineNum">     229 </span><span class="lineNoCov">          0 :           se-&gt;array = newarray;</span>
+<span class="lineNum">     230 </span>            :         }
+<span class="lineNum">     231 </span><span class="lineCov">          2 :       freeidx = se-&gt;arrayused++;</span>
+<span class="lineNum">     232 </span>            :     }
+<span class="lineNum">     233 </span>            : 
+<span class="lineNum">     234 </span>            :   /* Allocate new memory and return an error if that didn't worked.
+<span class="lineNum">     235 </span>            :      Allocating it first allows us to keep the old value; it doesn't
+<span class="lineNum">     236 </span>            :      matter that arrayused has already been incremented in case of a
+<span class="lineNum">     237 </span>            :      new entry - it will then pint to a NULL slot.  */
+<span class="lineNum">     238 </span><span class="lineCov">          2 :   var = xtrymalloc (sizeof *var + namelen + 1 + valuelen);</span>
+<span class="lineNum">     239 </span><span class="lineCov">          2 :   if (!var)</span>
+<span class="lineNum">     240 </span><span class="lineNoCov">          0 :     return gpg_error_from_syserror ();</span>
+<span class="lineNum">     241 </span><span class="lineCov">          2 :   var-&gt;is_default = !!set_default;</span>
+<span class="lineNum">     242 </span><span class="lineCov">          2 :   memcpy (var-&gt;name, string, namelen);</span>
+<span class="lineNum">     243 </span><span class="lineCov">          2 :   var-&gt;name[namelen] = '\0';</span>
+<span class="lineNum">     244 </span><span class="lineCov">          2 :   var-&gt;value = var-&gt;name + namelen + 1;</span>
+<span class="lineNum">     245 </span><span class="lineCov">          2 :   strcpy (var-&gt;value, value);</span>
+<span class="lineNum">     246 </span>            : 
+<span class="lineNum">     247 </span><span class="lineCov">          2 :   xfree (se-&gt;array[freeidx]);</span>
+<span class="lineNum">     248 </span><span class="lineCov">          2 :   se-&gt;array[freeidx] = var;</span>
+<span class="lineNum">     249 </span><span class="lineCov">          2 :   return 0;</span>
+<span class="lineNum">     250 </span>            : }
+<span class="lineNum">     251 </span>            : 
+<span class="lineNum">     252 </span>            : 
+<span class="lineNum">     253 </span>            : /* Set or update an environment variable of the session environment.
+<span class="lineNum">     254 </span>            :    String is similar to the putval(3) function but it is reentrant and
+<span class="lineNum">     255 </span>            :    takes a copy.  In particular it exhibits this behaviour:
+<span class="lineNum">     256 </span>            : 
+<span class="lineNum">     257 </span>            :           &lt;NAME&gt;            Delete envvar NAME
+<span class="lineNum">     258 </span>            :           &lt;KEY&gt;=            Set envvar NAME to the empty string
+<span class="lineNum">     259 </span>            :           &lt;KEY&gt;=&lt;VALUE&gt;     Set envvar NAME to VALUE
+<span class="lineNum">     260 </span>            : 
+<a name="261"><span class="lineNum">     261 </span>            :    On success 0 is returned; on error an gpg-error code.  */</a>
+<span class="lineNum">     262 </span>            : gpg_error_t
+<span class="lineNum">     263 </span><span class="lineNoCov">          0 : session_env_putenv (session_env_t se, const char *string)</span>
+<span class="lineNum">     264 </span>            : {
+<span class="lineNum">     265 </span>            :   const char *s;
+<span class="lineNum">     266 </span>            : 
+<span class="lineNum">     267 </span><span class="lineNoCov">          0 :   if (!string || !*string)</span>
+<span class="lineNum">     268 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_INV_VALUE);</span>
+<span class="lineNum">     269 </span><span class="lineNoCov">          0 :   s = strchr (string, '=');</span>
+<span class="lineNum">     270 </span><span class="lineNoCov">          0 :   if (s == string)</span>
+<span class="lineNum">     271 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_INV_VALUE);</span>
+<span class="lineNum">     272 </span><span class="lineNoCov">          0 :   if (!s)</span>
+<span class="lineNum">     273 </span><span class="lineNoCov">          0 :     return delete_var (se, string);</span>
+<span class="lineNum">     274 </span>            :   else
+<span class="lineNum">     275 </span><span class="lineNoCov">          0 :     return update_var (se, string, s - string, NULL, 0);</span>
+<span class="lineNum">     276 </span>            : }
+<span class="lineNum">     277 </span>            : 
+<span class="lineNum">     278 </span>            : 
+<span class="lineNum">     279 </span>            : /* Same as session_env_putenv but with name and value given as distict
+<a name="280"><span class="lineNum">     280 </span>            :    values.  */</a>
+<span class="lineNum">     281 </span>            : gpg_error_t
+<span class="lineNum">     282 </span><span class="lineNoCov">          0 : session_env_setenv (session_env_t se, const char *name, const char *value)</span>
+<span class="lineNum">     283 </span>            : {
+<span class="lineNum">     284 </span><span class="lineNoCov">          0 :   if (!name || !*name)</span>
+<span class="lineNum">     285 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_INV_VALUE);</span>
+<span class="lineNum">     286 </span><span class="lineNoCov">          0 :   if (!value)</span>
+<span class="lineNum">     287 </span><span class="lineNoCov">          0 :     return delete_var (se, name);</span>
+<span class="lineNum">     288 </span>            :   else
+<span class="lineNum">     289 </span><span class="lineNoCov">          0 :     return update_var (se, name, strlen (name), value, 0);</span>
+<span class="lineNum">     290 </span>            : }
+<span class="lineNum">     291 </span>            : 
+<span class="lineNum">     292 </span>            : 
+<span class="lineNum">     293 </span>            : 
+<span class="lineNum">     294 </span>            : 
+<span class="lineNum">     295 </span>            : /* Return the value of the environment variable NAME from the SE
+<span class="lineNum">     296 </span>            :    object.  If the variable does not exist, NULL is returned.  The
+<span class="lineNum">     297 </span>            :    returned value is valid as long as SE is valid and as long it has
+<span class="lineNum">     298 </span>            :    not been removed or updated by a call to session_env_putenv.  The
+<a name="299"><span class="lineNum">     299 </span>            :    caller MUST not change the returned value. */</a>
+<span class="lineNum">     300 </span>            : char *
+<span class="lineNum">     301 </span><span class="lineNoCov">          0 : session_env_getenv (session_env_t se, const char *name)</span>
+<span class="lineNum">     302 </span>            : {
+<span class="lineNum">     303 </span>            :   int idx;
+<span class="lineNum">     304 </span>            : 
+<span class="lineNum">     305 </span><span class="lineNoCov">          0 :   if (!se || !name || !*name)</span>
+<span class="lineNum">     306 </span><span class="lineNoCov">          0 :     return NULL;</span>
+<span class="lineNum">     307 </span>            : 
+<span class="lineNum">     308 </span><span class="lineNoCov">          0 :   for (idx=0; idx &lt; se-&gt;arrayused; idx++)</span>
+<span class="lineNum">     309 </span><span class="lineNoCov">          0 :     if (se-&gt;array[idx] &amp;&amp; !strcmp (se-&gt;array[idx]-&gt;name, name))</span>
+<span class="lineNum">     310 </span><span class="lineNoCov">          0 :       return se-&gt;array[idx]-&gt;is_default? NULL : se-&gt;array[idx]-&gt;value;</span>
+<span class="lineNum">     311 </span><span class="lineNoCov">          0 :   return NULL;</span>
+<span class="lineNum">     312 </span>            : }
+<span class="lineNum">     313 </span>            : 
+<span class="lineNum">     314 </span>            : 
+<span class="lineNum">     315 </span>            : /* Return the value of the environment variable NAME from the SE
+<span class="lineNum">     316 </span>            :    object.  The returned value is valid as long as SE is valid and as
+<span class="lineNum">     317 </span>            :    long it has not been removed or updated by a call to
+<span class="lineNum">     318 </span>            :    session_env_putenv.  If the variable does not exist, the function
+<span class="lineNum">     319 </span>            :    tries to return the value trough a call to getenv; if that returns
+<span class="lineNum">     320 </span>            :    a value, this value is recorded and used.  If no value could be
+<span class="lineNum">     321 </span>            :    found, returns NULL.  The caller must not change the returned
+<a name="322"><span class="lineNum">     322 </span>            :    value. */</a>
+<span class="lineNum">     323 </span>            : char *
+<span class="lineNum">     324 </span><span class="lineCov">         11 : session_env_getenv_or_default (session_env_t se, const char *name,</span>
+<span class="lineNum">     325 </span>            :                                int *r_default)
+<span class="lineNum">     326 </span>            : {
+<span class="lineNum">     327 </span>            :   int idx;
+<span class="lineNum">     328 </span>            :   char *defvalue;
+<span class="lineNum">     329 </span>            : 
+<span class="lineNum">     330 </span><span class="lineCov">         11 :   if (r_default)</span>
+<span class="lineNum">     331 </span><span class="lineCov">          1 :     *r_default = 0;</span>
+<span class="lineNum">     332 </span><span class="lineCov">         11 :   if (!se || !name || !*name)</span>
+<span class="lineNum">     333 </span><span class="lineNoCov">          0 :     return NULL;</span>
+<span class="lineNum">     334 </span>            : 
+<span class="lineNum">     335 </span><span class="lineCov">         28 :   for (idx=0; idx &lt; se-&gt;arrayused; idx++)</span>
+<span class="lineNum">     336 </span><span class="lineCov">         18 :     if (se-&gt;array[idx] &amp;&amp; !strcmp (se-&gt;array[idx]-&gt;name, name))</span>
+<span class="lineNum">     337 </span>            :       {
+<span class="lineNum">     338 </span><span class="lineCov">          1 :         if (r_default &amp;&amp; se-&gt;array[idx]-&gt;is_default)</span>
+<span class="lineNum">     339 </span><span class="lineCov">          1 :           *r_default = 1;</span>
+<span class="lineNum">     340 </span><span class="lineCov">          1 :         return se-&gt;array[idx]-&gt;value;</span>
+<span class="lineNum">     341 </span>            :       }
+<span class="lineNum">     342 </span>            : 
+<span class="lineNum">     343 </span>            :   /* Get the default value with an additional fallback for GPG_TTY.  */
+<span class="lineNum">     344 </span><span class="lineCov">         10 :   defvalue = getenv (name);</span>
+<span class="lineNum">     345 </span><span class="lineCov">         10 :   if ((!defvalue || !*defvalue) &amp;&amp; !strcmp (name, &quot;GPG_TTY&quot;)</span>
+<span class="lineNum">     346 </span><span class="lineCov">          1 :       &amp;&amp; gnupg_ttyname (0))</span>
+<span class="lineNum">     347 </span>            :     {
+<span class="lineNum">     348 </span><span class="lineCov">          1 :       defvalue = gnupg_ttyname (0);</span>
+<span class="lineNum">     349 </span>            :     }
+<span class="lineNum">     350 </span><span class="lineCov">         10 :   if (defvalue)</span>
+<span class="lineNum">     351 </span>            :     {
+<span class="lineNum">     352 </span>            :       /* Record the default value for later use so that we are safe
+<span class="lineNum">     353 </span>            :          from later modifications of the environment.  We need to take
+<span class="lineNum">     354 </span>            :          a copy to better cope with the rules of putenv(3).  We ignore
+<span class="lineNum">     355 </span>            :          the error of the update function because we can't return an
+<span class="lineNum">     356 </span>            :          explicit error anyway and the following scan would then fail
+<span class="lineNum">     357 </span>            :          anyway. */
+<span class="lineNum">     358 </span><span class="lineCov">          2 :       update_var (se, name, strlen (name), defvalue, 1);</span>
+<span class="lineNum">     359 </span>            : 
+<span class="lineNum">     360 </span><span class="lineCov">          3 :       for (idx=0; idx &lt; se-&gt;arrayused; idx++)</span>
+<span class="lineNum">     361 </span><span class="lineCov">          3 :         if (se-&gt;array[idx] &amp;&amp; !strcmp (se-&gt;array[idx]-&gt;name, name))</span>
+<span class="lineNum">     362 </span>            :           {
+<span class="lineNum">     363 </span><span class="lineCov">          2 :             if (r_default &amp;&amp; se-&gt;array[idx]-&gt;is_default)</span>
+<span class="lineNum">     364 </span><span class="lineNoCov">          0 :               *r_default = 1;</span>
+<span class="lineNum">     365 </span><span class="lineCov">          2 :             return se-&gt;array[idx]-&gt;value;</span>
+<span class="lineNum">     366 </span>            :           }
+<span class="lineNum">     367 </span>            :     }
+<span class="lineNum">     368 </span>            : 
+<span class="lineNum">     369 </span><span class="lineCov">          8 :   return NULL;</span>
+<span class="lineNum">     370 </span>            : }
+<span class="lineNum">     371 </span>            : 
+<span class="lineNum">     372 </span>            : 
+<span class="lineNum">     373 </span>            : /* List the entire environment stored in SE.  The caller initially
+<span class="lineNum">     374 </span>            :    needs to set the value of ITERATOR to 0 and then call this function
+<span class="lineNum">     375 </span>            :    until it returns NULL.  The value is returned at R_VALUE.  If
+<span class="lineNum">     376 </span>            :    R_DEFAULT is not NULL, the default flag is stored on return.  The
+<span class="lineNum">     377 </span>            :    default flag indicates that the value has been taken from the
+<span class="lineNum">     378 </span>            :    process' environment.  The caller must not change the returned
+<a name="379"><span class="lineNum">     379 </span>            :    name or value.  */</a>
+<span class="lineNum">     380 </span>            : char *
+<span class="lineNum">     381 </span><span class="lineNoCov">          0 : session_env_listenv (session_env_t se, int *iterator,</span>
+<span class="lineNum">     382 </span>            :                      const char **r_value, int *r_default)
+<span class="lineNum">     383 </span>            : {
+<span class="lineNum">     384 </span><span class="lineNoCov">          0 :   int idx = *iterator;</span>
+<span class="lineNum">     385 </span>            : 
+<span class="lineNum">     386 </span><span class="lineNoCov">          0 :   if (!se || idx &lt; 0)</span>
+<span class="lineNum">     387 </span><span class="lineNoCov">          0 :     return NULL;</span>
+<span class="lineNum">     388 </span>            : 
+<span class="lineNum">     389 </span><span class="lineNoCov">          0 :   for (; idx &lt; se-&gt;arrayused; idx++)</span>
+<span class="lineNum">     390 </span><span class="lineNoCov">          0 :     if (se-&gt;array[idx])</span>
+<span class="lineNum">     391 </span>            :       {
+<span class="lineNum">     392 </span><span class="lineNoCov">          0 :         *iterator = idx+1;</span>
+<span class="lineNum">     393 </span><span class="lineNoCov">          0 :         if (r_default)</span>
+<span class="lineNum">     394 </span><span class="lineNoCov">          0 :           *r_default = se-&gt;array[idx]-&gt;is_default;</span>
+<span class="lineNum">     395 </span><span class="lineNoCov">          0 :         if (r_value)</span>
+<span class="lineNum">     396 </span><span class="lineNoCov">          0 :           *r_value = se-&gt;array[idx]-&gt;value;</span>
+<span class="lineNum">     397 </span><span class="lineNoCov">          0 :         return se-&gt;array[idx]-&gt;name;</span>
+<span class="lineNum">     398 </span>            :       }
+<span class="lineNum">     399 </span><span class="lineNoCov">          0 :   return NULL;</span>
+<span class="lineNum">     400 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

@@ -1,0 +1,1015 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - sm/import.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">sm</a> - import.c<span style="font-size: 80%;"> (source / <a href="import.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">86</td>
+            <td class="headerCovTableEntry">439</td>
+            <td class="headerCovTableEntryLo">19.6 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 12:47:41</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntry">11</td>
+            <td class="headerCovTableEntryLo">45.5 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* import.c - Import certificates</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 2001, 2003, 2004, 2009, 2010 Free Software Foundation, Inc.
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       7 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">       8 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">       9 </span>            :  * (at your option) any later version.
+<span class="lineNum">      10 </span>            :  *
+<span class="lineNum">      11 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      12 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      13 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      14 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      15 </span>            :  *
+<span class="lineNum">      16 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      17 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      18 </span>            :  */
+<span class="lineNum">      19 </span>            : 
+<span class="lineNum">      20 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      21 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      22 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      23 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      24 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      25 </span>            : #include &lt;time.h&gt;
+<span class="lineNum">      26 </span>            : #include &lt;assert.h&gt;
+<span class="lineNum">      27 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      28 </span>            : 
+<span class="lineNum">      29 </span>            : #include &quot;gpgsm.h&quot;
+<span class="lineNum">      30 </span>            : #include &lt;gcrypt.h&gt;
+<span class="lineNum">      31 </span>            : #include &lt;ksba.h&gt;
+<span class="lineNum">      32 </span>            : 
+<span class="lineNum">      33 </span>            : #include &quot;keydb.h&quot;
+<span class="lineNum">      34 </span>            : #include &quot;../common/exechelp.h&quot;
+<span class="lineNum">      35 </span>            : #include &quot;../common/i18n.h&quot;
+<span class="lineNum">      36 </span>            : #include &quot;../common/sysutils.h&quot;
+<span class="lineNum">      37 </span>            : #include &quot;../kbx/keybox.h&quot; /* for KEYBOX_FLAG_* */
+<span class="lineNum">      38 </span>            : #include &quot;../common/membuf.h&quot;
+<span class="lineNum">      39 </span>            : #include &quot;minip12.h&quot;
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span>            : /* The arbitrary limit of one PKCS#12 object.  */
+<span class="lineNum">      42 </span>            : #define MAX_P12OBJ_SIZE 128 /*kb*/
+<span class="lineNum">      43 </span>            : 
+<span class="lineNum">      44 </span>            : 
+<span class="lineNum">      45 </span>            : struct stats_s {
+<span class="lineNum">      46 </span>            :   unsigned long count;
+<span class="lineNum">      47 </span>            :   unsigned long imported;
+<span class="lineNum">      48 </span>            :   unsigned long unchanged;
+<span class="lineNum">      49 </span>            :   unsigned long not_imported;
+<span class="lineNum">      50 </span>            :   unsigned long secret_read;
+<span class="lineNum">      51 </span>            :   unsigned long secret_imported;
+<span class="lineNum">      52 </span>            :   unsigned long secret_dups;
+<span class="lineNum">      53 </span>            :  };
+<span class="lineNum">      54 </span>            : 
+<span class="lineNum">      55 </span>            : 
+<span class="lineNum">      56 </span>            : struct rsa_secret_key_s
+<span class="lineNum">      57 </span>            : {
+<span class="lineNum">      58 </span>            :   gcry_mpi_t n;     /* public modulus */
+<span class="lineNum">      59 </span>            :   gcry_mpi_t e;     /* public exponent */
+<span class="lineNum">      60 </span>            :   gcry_mpi_t d;     /* exponent */
+<span class="lineNum">      61 </span>            :   gcry_mpi_t p;     /* prime  p. */
+<span class="lineNum">      62 </span>            :   gcry_mpi_t q;     /* prime  q. */
+<span class="lineNum">      63 </span>            :   gcry_mpi_t u;     /* inverse of p mod q. */
+<span class="lineNum">      64 </span>            : };
+<span class="lineNum">      65 </span>            : 
+<span class="lineNum">      66 </span>            : 
+<span class="lineNum">      67 </span>            : static gpg_error_t parse_p12 (ctrl_t ctrl, ksba_reader_t reader,
+<span class="lineNum">      68 </span>            :                               struct stats_s *stats);
+<span class="lineNum">      69 </span>            : 
+<span class="lineNum">      70 </span>            : 
+<a name="71"><span class="lineNum">      71 </span>            : </a>
+<span class="lineNum">      72 </span>            : static void
+<span class="lineNum">      73 </span><span class="lineCov">          3 : print_imported_status (ctrl_t ctrl, ksba_cert_t cert, int new_cert)</span>
+<span class="lineNum">      74 </span>            : {
+<span class="lineNum">      75 </span>            :   char *fpr;
+<span class="lineNum">      76 </span>            : 
+<span class="lineNum">      77 </span><span class="lineCov">          3 :   fpr = gpgsm_get_fingerprint_hexstring (cert, GCRY_MD_SHA1);</span>
+<span class="lineNum">      78 </span><span class="lineCov">          3 :   if (new_cert)</span>
+<span class="lineNum">      79 </span><span class="lineCov">          3 :     gpgsm_status2 (ctrl, STATUS_IMPORTED, fpr, &quot;[X.509]&quot;, NULL);</span>
+<span class="lineNum">      80 </span>            : 
+<span class="lineNum">      81 </span><span class="lineCov">          3 :   gpgsm_status2 (ctrl, STATUS_IMPORT_OK,</span>
+<span class="lineNum">      82 </span>            :                  new_cert? &quot;1&quot;:&quot;0&quot;,  fpr, NULL);
+<span class="lineNum">      83 </span>            : 
+<span class="lineNum">      84 </span><span class="lineCov">          3 :   xfree (fpr);</span>
+<span class="lineNum">      85 </span><span class="lineCov">          3 : }</span>
+<span class="lineNum">      86 </span>            : 
+<span class="lineNum">      87 </span>            : 
+<span class="lineNum">      88 </span>            : /* Print an IMPORT_PROBLEM status.  REASON is one of:
+<span class="lineNum">      89 </span>            :    0 := &quot;No specific reason given&quot;.
+<span class="lineNum">      90 </span>            :    1 := &quot;Invalid Certificate&quot;.
+<span class="lineNum">      91 </span>            :    2 := &quot;Issuer Certificate missing&quot;.
+<span class="lineNum">      92 </span>            :    3 := &quot;Certificate Chain too long&quot;.
+<span class="lineNum">      93 </span>            :    4 := &quot;Error storing certificate&quot;.
+<a name="94"><span class="lineNum">      94 </span>            : */</a>
+<span class="lineNum">      95 </span>            : static void
+<span class="lineNum">      96 </span><span class="lineNoCov">          0 : print_import_problem (ctrl_t ctrl, ksba_cert_t cert, int reason)</span>
+<span class="lineNum">      97 </span>            : {
+<span class="lineNum">      98 </span><span class="lineNoCov">          0 :   char *fpr = NULL;</span>
+<span class="lineNum">      99 </span>            :   char buf[25];
+<span class="lineNum">     100 </span>            :   int i;
+<span class="lineNum">     101 </span>            : 
+<span class="lineNum">     102 </span><span class="lineNoCov">          0 :   sprintf (buf, &quot;%d&quot;, reason);</span>
+<span class="lineNum">     103 </span><span class="lineNoCov">          0 :   if (cert)</span>
+<span class="lineNum">     104 </span>            :     {
+<span class="lineNum">     105 </span><span class="lineNoCov">          0 :       fpr = gpgsm_get_fingerprint_hexstring (cert, GCRY_MD_SHA1);</span>
+<span class="lineNum">     106 </span>            :       /* detetect an error (all high) value */
+<span class="lineNum">     107 </span><span class="lineNoCov">          0 :       for (i=0; fpr[i] == 'F'; i++)</span>
+<span class="lineNum">     108 </span>            :         ;
+<span class="lineNum">     109 </span><span class="lineNoCov">          0 :       if (!fpr[i])</span>
+<span class="lineNum">     110 </span>            :         {
+<span class="lineNum">     111 </span><span class="lineNoCov">          0 :           xfree (fpr);</span>
+<span class="lineNum">     112 </span><span class="lineNoCov">          0 :           fpr = NULL;</span>
+<span class="lineNum">     113 </span>            :         }
+<span class="lineNum">     114 </span>            :     }
+<span class="lineNum">     115 </span><span class="lineNoCov">          0 :   gpgsm_status2 (ctrl, STATUS_IMPORT_PROBLEM, buf, fpr, NULL);</span>
+<span class="lineNum">     116 </span><span class="lineNoCov">          0 :   xfree (fpr);</span>
+<span class="lineNum">     117 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     118 </span>            : 
+<a name="119"><span class="lineNum">     119 </span>            : </a>
+<span class="lineNum">     120 </span>            : void
+<span class="lineNum">     121 </span><span class="lineCov">          3 : print_imported_summary (ctrl_t ctrl, struct stats_s *stats)</span>
+<span class="lineNum">     122 </span>            : {
+<span class="lineNum">     123 </span>            :   char buf[14*25];
+<span class="lineNum">     124 </span>            : 
+<span class="lineNum">     125 </span><span class="lineCov">          3 :   if (!opt.quiet)</span>
+<span class="lineNum">     126 </span>            :     {
+<span class="lineNum">     127 </span><span class="lineCov">          3 :       log_info (_(&quot;total number processed: %lu\n&quot;), stats-&gt;count);</span>
+<span class="lineNum">     128 </span><span class="lineCov">          3 :       if (stats-&gt;imported)</span>
+<span class="lineNum">     129 </span>            :         {
+<span class="lineNum">     130 </span><span class="lineCov">          3 :           log_info (_(&quot;              imported: %lu&quot;), stats-&gt;imported );</span>
+<span class="lineNum">     131 </span><span class="lineCov">          3 :           log_printf (&quot;\n&quot;);</span>
+<span class="lineNum">     132 </span>            :         }
+<span class="lineNum">     133 </span><span class="lineCov">          3 :       if (stats-&gt;unchanged)</span>
+<span class="lineNum">     134 </span><span class="lineNoCov">          0 :         log_info (_(&quot;             unchanged: %lu\n&quot;), stats-&gt;unchanged);</span>
+<span class="lineNum">     135 </span><span class="lineCov">          3 :       if (stats-&gt;secret_read)</span>
+<span class="lineNum">     136 </span><span class="lineNoCov">          0 :         log_info (_(&quot;      secret keys read: %lu\n&quot;), stats-&gt;secret_read );</span>
+<span class="lineNum">     137 </span><span class="lineCov">          3 :       if (stats-&gt;secret_imported)</span>
+<span class="lineNum">     138 </span><span class="lineNoCov">          0 :         log_info (_(&quot;  secret keys imported: %lu\n&quot;), stats-&gt;secret_imported );</span>
+<span class="lineNum">     139 </span><span class="lineCov">          3 :       if (stats-&gt;secret_dups)</span>
+<span class="lineNum">     140 </span><span class="lineNoCov">          0 :         log_info (_(&quot; secret keys unchanged: %lu\n&quot;), stats-&gt;secret_dups );</span>
+<span class="lineNum">     141 </span><span class="lineCov">          3 :       if (stats-&gt;not_imported)</span>
+<span class="lineNum">     142 </span><span class="lineNoCov">          0 :         log_info (_(&quot;          not imported: %lu\n&quot;), stats-&gt;not_imported);</span>
+<span class="lineNum">     143 </span>            :     }
+<span class="lineNum">     144 </span>            : 
+<span class="lineNum">     145 </span><span class="lineCov">          3 :   sprintf(buf, &quot;%lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu&quot;,</span>
+<span class="lineNum">     146 </span>            :           stats-&gt;count,
+<span class="lineNum">     147 </span>            :           0l /*stats-&gt;no_user_id*/,
+<span class="lineNum">     148 </span>            :           stats-&gt;imported,
+<span class="lineNum">     149 </span>            :           0l /*stats-&gt;imported_rsa*/,
+<span class="lineNum">     150 </span>            :           stats-&gt;unchanged,
+<span class="lineNum">     151 </span>            :           0l /*stats-&gt;n_uids*/,
+<span class="lineNum">     152 </span>            :           0l /*stats-&gt;n_subk*/,
+<span class="lineNum">     153 </span>            :           0l /*stats-&gt;n_sigs*/,
+<span class="lineNum">     154 </span>            :           0l /*stats-&gt;n_revoc*/,
+<span class="lineNum">     155 </span>            :           stats-&gt;secret_read,
+<span class="lineNum">     156 </span>            :           stats-&gt;secret_imported,
+<span class="lineNum">     157 </span>            :           stats-&gt;secret_dups,
+<span class="lineNum">     158 </span>            :           0l /*stats-&gt;skipped_new_keys*/,
+<span class="lineNum">     159 </span>            :           stats-&gt;not_imported
+<span class="lineNum">     160 </span>            :           );
+<span class="lineNum">     161 </span><span class="lineCov">          3 :   gpgsm_status (ctrl, STATUS_IMPORT_RES, buf);</span>
+<span class="lineNum">     162 </span><span class="lineCov">          3 : }</span>
+<span class="lineNum">     163 </span>            : 
+<span class="lineNum">     164 </span>            : 
+<a name="165"><span class="lineNum">     165 </span>            : </a>
+<span class="lineNum">     166 </span>            : static void
+<span class="lineNum">     167 </span><span class="lineCov">          3 : check_and_store (ctrl_t ctrl, struct stats_s *stats,</span>
+<span class="lineNum">     168 </span>            :                  ksba_cert_t cert, int depth)
+<span class="lineNum">     169 </span>            : {
+<span class="lineNum">     170 </span>            :   int rc;
+<span class="lineNum">     171 </span>            : 
+<span class="lineNum">     172 </span><span class="lineCov">          3 :   if (stats)</span>
+<span class="lineNum">     173 </span><span class="lineCov">          3 :     stats-&gt;count++;</span>
+<span class="lineNum">     174 </span><span class="lineCov">          3 :   if ( depth &gt;= 50 )</span>
+<span class="lineNum">     175 </span>            :     {
+<span class="lineNum">     176 </span><span class="lineNoCov">          0 :       log_error (_(&quot;certificate chain too long\n&quot;));</span>
+<span class="lineNum">     177 </span><span class="lineNoCov">          0 :       if (stats)</span>
+<span class="lineNum">     178 </span><span class="lineNoCov">          0 :         stats-&gt;not_imported++;</span>
+<span class="lineNum">     179 </span><span class="lineNoCov">          0 :       print_import_problem (ctrl, cert, 3);</span>
+<span class="lineNum">     180 </span><span class="lineNoCov">          0 :       return;</span>
+<span class="lineNum">     181 </span>            :     }
+<span class="lineNum">     182 </span>            : 
+<span class="lineNum">     183 </span>            :   /* Some basic checks, but don't care about missing certificates;
+<span class="lineNum">     184 </span>            :      this is so that we are able to import entire certificate chains
+<span class="lineNum">     185 </span>            :      w/o requiring a special order (i.e. root-CA first).  This used
+<span class="lineNum">     186 </span>            :      to be different but because gpgsm_verify even imports
+<span class="lineNum">     187 </span>            :      certificates without any checks, it doesn't matter much and the
+<span class="lineNum">     188 </span>            :      code gets much cleaner.  A housekeeping function to remove
+<span class="lineNum">     189 </span>            :      certificates w/o an anchor would be nice, though.
+<span class="lineNum">     190 </span>            : 
+<span class="lineNum">     191 </span>            :      Optionally we do a full validation in addition to the basic test.
+<span class="lineNum">     192 </span>            :   */
+<span class="lineNum">     193 </span><span class="lineCov">          3 :   rc = gpgsm_basic_cert_check (ctrl, cert);</span>
+<span class="lineNum">     194 </span><span class="lineCov">          3 :   if (!rc &amp;&amp; ctrl-&gt;with_validation)</span>
+<span class="lineNum">     195 </span><span class="lineNoCov">          0 :     rc = gpgsm_validate_chain (ctrl, cert, &quot;&quot;, NULL, 0, NULL, 0, NULL);</span>
+<span class="lineNum">     196 </span><span class="lineCov">          3 :   if (!rc || (!ctrl-&gt;with_validation</span>
+<span class="lineNum">     197 </span><span class="lineNoCov">          0 :               &amp;&amp; (gpg_err_code (rc) == GPG_ERR_MISSING_CERT</span>
+<span class="lineNum">     198 </span><span class="lineNoCov">          0 :                   || gpg_err_code (rc) == GPG_ERR_MISSING_ISSUER_CERT)))</span>
+<span class="lineNum">     199 </span><span class="lineCov">          3 :     {</span>
+<span class="lineNum">     200 </span>            :       int existed;
+<span class="lineNum">     201 </span>            : 
+<span class="lineNum">     202 </span><span class="lineCov">          3 :       if (!keydb_store_cert (ctrl, cert, 0, &amp;existed))</span>
+<span class="lineNum">     203 </span>            :         {
+<span class="lineNum">     204 </span><span class="lineCov">          3 :           ksba_cert_t next = NULL;</span>
+<span class="lineNum">     205 </span>            : 
+<span class="lineNum">     206 </span><span class="lineCov">          3 :           if (!existed)</span>
+<span class="lineNum">     207 </span>            :             {
+<span class="lineNum">     208 </span><span class="lineCov">          3 :               print_imported_status (ctrl, cert, 1);</span>
+<span class="lineNum">     209 </span><span class="lineCov">          3 :               if (stats)</span>
+<span class="lineNum">     210 </span><span class="lineCov">          3 :                 stats-&gt;imported++;</span>
+<span class="lineNum">     211 </span>            :             }
+<span class="lineNum">     212 </span>            :           else
+<span class="lineNum">     213 </span>            :             {
+<span class="lineNum">     214 </span><span class="lineNoCov">          0 :               print_imported_status (ctrl, cert, 0);</span>
+<span class="lineNum">     215 </span><span class="lineNoCov">          0 :               if (stats)</span>
+<span class="lineNum">     216 </span><span class="lineNoCov">          0 :                 stats-&gt;unchanged++;</span>
+<span class="lineNum">     217 </span>            :             }
+<span class="lineNum">     218 </span>            : 
+<span class="lineNum">     219 </span><span class="lineCov">          3 :           if (opt.verbose &gt; 1 &amp;&amp; existed)</span>
+<span class="lineNum">     220 </span>            :             {
+<span class="lineNum">     221 </span><span class="lineNoCov">          0 :               if (depth)</span>
+<span class="lineNum">     222 </span><span class="lineNoCov">          0 :                 log_info (&quot;issuer certificate already in DB\n&quot;);</span>
+<span class="lineNum">     223 </span>            :               else
+<span class="lineNum">     224 </span><span class="lineNoCov">          0 :                 log_info (&quot;certificate already in DB\n&quot;);</span>
+<span class="lineNum">     225 </span>            :             }
+<span class="lineNum">     226 </span><span class="lineCov">          3 :           else if (opt.verbose &amp;&amp; !existed)</span>
+<span class="lineNum">     227 </span>            :             {
+<span class="lineNum">     228 </span><span class="lineNoCov">          0 :               if (depth)</span>
+<span class="lineNum">     229 </span><span class="lineNoCov">          0 :                 log_info (&quot;issuer certificate imported\n&quot;);</span>
+<span class="lineNum">     230 </span>            :               else
+<span class="lineNum">     231 </span><span class="lineNoCov">          0 :                 log_info (&quot;certificate imported\n&quot;);</span>
+<span class="lineNum">     232 </span>            :             }
+<span class="lineNum">     233 </span>            : 
+<span class="lineNum">     234 </span>            :           /* Now lets walk up the chain and import all certificates up
+<span class="lineNum">     235 </span>            :              the chain.  This is required in case we already stored
+<span class="lineNum">     236 </span>            :              parent certificates in the ephemeral keybox.  Do not
+<span class="lineNum">     237 </span>            :              update the statistics, though. */
+<span class="lineNum">     238 </span><span class="lineCov">          3 :           if (!gpgsm_walk_cert_chain (ctrl, cert, &amp;next))</span>
+<span class="lineNum">     239 </span>            :             {
+<span class="lineNum">     240 </span><span class="lineNoCov">          0 :               check_and_store (ctrl, NULL, next, depth+1);</span>
+<span class="lineNum">     241 </span><span class="lineNoCov">          0 :               ksba_cert_release (next);</span>
+<span class="lineNum">     242 </span>            :             }
+<span class="lineNum">     243 </span>            :         }
+<span class="lineNum">     244 </span>            :       else
+<span class="lineNum">     245 </span>            :         {
+<span class="lineNum">     246 </span><span class="lineNoCov">          0 :           log_error (_(&quot;error storing certificate\n&quot;));</span>
+<span class="lineNum">     247 </span><span class="lineNoCov">          0 :           if (stats)</span>
+<span class="lineNum">     248 </span><span class="lineNoCov">          0 :             stats-&gt;not_imported++;</span>
+<span class="lineNum">     249 </span><span class="lineNoCov">          0 :           print_import_problem (ctrl, cert, 4);</span>
+<span class="lineNum">     250 </span>            :         }
+<span class="lineNum">     251 </span>            :     }
+<span class="lineNum">     252 </span>            :   else
+<span class="lineNum">     253 </span>            :     {
+<span class="lineNum">     254 </span><span class="lineNoCov">          0 :       log_error (_(&quot;basic certificate checks failed - not imported\n&quot;));</span>
+<span class="lineNum">     255 </span><span class="lineNoCov">          0 :       if (stats)</span>
+<span class="lineNum">     256 </span><span class="lineNoCov">          0 :         stats-&gt;not_imported++;</span>
+<span class="lineNum">     257 </span>            :       /* We keep the test for GPG_ERR_MISSING_CERT only in case
+<span class="lineNum">     258 </span>            :          GPG_ERR_MISSING_CERT has been used instead of the newer
+<span class="lineNum">     259 </span>            :          GPG_ERR_MISSING_ISSUER_CERT.  */
+<span class="lineNum">     260 </span><span class="lineNoCov">          0 :       print_import_problem</span>
+<span class="lineNum">     261 </span>            :         (ctrl, cert,
+<span class="lineNum">     262 </span><span class="lineNoCov">          0 :          gpg_err_code (rc) == GPG_ERR_MISSING_ISSUER_CERT? 2 :</span>
+<span class="lineNum">     263 </span><span class="lineNoCov">          0 :          gpg_err_code (rc) == GPG_ERR_MISSING_CERT? 2 :</span>
+<span class="lineNum">     264 </span><span class="lineNoCov">          0 :          gpg_err_code (rc) == GPG_ERR_BAD_CERT?     1 : 0);</span>
+<span class="lineNum">     265 </span>            :     }
+<span class="lineNum">     266 </span>            : }
+<span class="lineNum">     267 </span>            : 
+<span class="lineNum">     268 </span>            : 
+<span class="lineNum">     269 </span>            : 
+<a name="270"><span class="lineNum">     270 </span>            : </a>
+<span class="lineNum">     271 </span>            : static int
+<span class="lineNum">     272 </span><span class="lineCov">          3 : import_one (ctrl_t ctrl, struct stats_s *stats, int in_fd)</span>
+<span class="lineNum">     273 </span>            : {
+<span class="lineNum">     274 </span>            :   int rc;
+<span class="lineNum">     275 </span><span class="lineCov">          3 :   gnupg_ksba_io_t b64reader = NULL;</span>
+<span class="lineNum">     276 </span>            :   ksba_reader_t reader;
+<span class="lineNum">     277 </span><span class="lineCov">          3 :   ksba_cert_t cert = NULL;</span>
+<span class="lineNum">     278 </span><span class="lineCov">          3 :   ksba_cms_t cms = NULL;</span>
+<span class="lineNum">     279 </span><span class="lineCov">          3 :   estream_t fp = NULL;</span>
+<span class="lineNum">     280 </span>            :   ksba_content_type_t ct;
+<span class="lineNum">     281 </span><span class="lineCov">          3 :   int any = 0;</span>
+<span class="lineNum">     282 </span>            : 
+<span class="lineNum">     283 </span><span class="lineCov">          3 :   fp = es_fdopen_nc (in_fd, &quot;rb&quot;);</span>
+<span class="lineNum">     284 </span><span class="lineCov">          3 :   if (!fp)</span>
+<span class="lineNum">     285 </span>            :     {
+<span class="lineNum">     286 </span><span class="lineNoCov">          0 :       rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">     287 </span><span class="lineNoCov">          0 :       log_error (&quot;fdopen() failed: %s\n&quot;, strerror (errno));</span>
+<span class="lineNum">     288 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     289 </span>            :     }
+<span class="lineNum">     290 </span>            : 
+<span class="lineNum">     291 </span><span class="lineCov">          3 :   rc = gnupg_ksba_create_reader</span>
+<span class="lineNum">     292 </span><span class="lineCov">          3 :     (&amp;b64reader, ((ctrl-&gt;is_pem? GNUPG_KSBA_IO_PEM : 0)</span>
+<span class="lineNum">     293 </span><span class="lineCov">          3 :                   | (ctrl-&gt;is_base64? GNUPG_KSBA_IO_BASE64 : 0)</span>
+<span class="lineNum">     294 </span><span class="lineCov">          3 :                   | (ctrl-&gt;autodetect_encoding? GNUPG_KSBA_IO_AUTODETECT : 0)</span>
+<span class="lineNum">     295 </span><span class="lineCov">          3 :                   | GNUPG_KSBA_IO_MULTIPEM),</span>
+<span class="lineNum">     296 </span>            :      fp, &amp;reader);
+<span class="lineNum">     297 </span><span class="lineCov">          3 :   if (rc)</span>
+<span class="lineNum">     298 </span>            :     {
+<span class="lineNum">     299 </span><span class="lineNoCov">          0 :       log_error (&quot;can't create reader: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">     300 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     301 </span>            :     }
+<span class="lineNum">     302 </span>            : 
+<span class="lineNum">     303 </span>            : 
+<span class="lineNum">     304 </span>            :   /* We need to loop here to handle multiple PEM objects in one
+<span class="lineNum">     305 </span>            :      file. */
+<span class="lineNum">     306 </span>            :   do
+<span class="lineNum">     307 </span>            :     {
+<span class="lineNum">     308 </span><span class="lineCov">          6 :       ksba_cms_release (cms); cms = NULL;</span>
+<span class="lineNum">     309 </span><span class="lineCov">          6 :       ksba_cert_release (cert); cert = NULL;</span>
+<span class="lineNum">     310 </span>            : 
+<span class="lineNum">     311 </span><span class="lineCov">          6 :       ct = ksba_cms_identify (reader);</span>
+<span class="lineNum">     312 </span><span class="lineCov">          6 :       if (ct == KSBA_CT_SIGNED_DATA)</span>
+<span class="lineNum">     313 </span>            :         { /* This is probably a signed-only message - import the certs */
+<span class="lineNum">     314 </span>            :           ksba_stop_reason_t stopreason;
+<span class="lineNum">     315 </span>            :           int i;
+<span class="lineNum">     316 </span>            : 
+<span class="lineNum">     317 </span><span class="lineNoCov">          0 :           rc = ksba_cms_new (&amp;cms);</span>
+<span class="lineNum">     318 </span><span class="lineNoCov">          0 :           if (rc)</span>
+<span class="lineNum">     319 </span><span class="lineNoCov">          0 :             goto leave;</span>
+<span class="lineNum">     320 </span>            : 
+<span class="lineNum">     321 </span><span class="lineNoCov">          0 :           rc = ksba_cms_set_reader_writer (cms, reader, NULL);</span>
+<span class="lineNum">     322 </span><span class="lineNoCov">          0 :           if (rc)</span>
+<span class="lineNum">     323 </span>            :             {
+<span class="lineNum">     324 </span><span class="lineNoCov">          0 :               log_error (&quot;ksba_cms_set_reader_writer failed: %s\n&quot;,</span>
+<span class="lineNum">     325 </span>            :                          gpg_strerror (rc));
+<span class="lineNum">     326 </span><span class="lineNoCov">          0 :               goto leave;</span>
+<span class="lineNum">     327 </span>            :             }
+<span class="lineNum">     328 </span>            : 
+<span class="lineNum">     329 </span>            :           do
+<span class="lineNum">     330 </span>            :             {
+<span class="lineNum">     331 </span><span class="lineNoCov">          0 :               rc = ksba_cms_parse (cms, &amp;stopreason);</span>
+<span class="lineNum">     332 </span><span class="lineNoCov">          0 :               if (rc)</span>
+<span class="lineNum">     333 </span>            :                 {
+<span class="lineNum">     334 </span><span class="lineNoCov">          0 :                   log_error (&quot;ksba_cms_parse failed: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">     335 </span><span class="lineNoCov">          0 :                   goto leave;</span>
+<span class="lineNum">     336 </span>            :                 }
+<span class="lineNum">     337 </span>            : 
+<span class="lineNum">     338 </span><span class="lineNoCov">          0 :               if (stopreason == KSBA_SR_BEGIN_DATA)</span>
+<span class="lineNum">     339 </span><span class="lineNoCov">          0 :                 log_info (&quot;not a certs-only message\n&quot;);</span>
+<span class="lineNum">     340 </span>            :             }
+<span class="lineNum">     341 </span><span class="lineNoCov">          0 :           while (stopreason != KSBA_SR_READY);</span>
+<span class="lineNum">     342 </span>            : 
+<span class="lineNum">     343 </span><span class="lineNoCov">          0 :           for (i=0; (cert=ksba_cms_get_cert (cms, i)); i++)</span>
+<span class="lineNum">     344 </span>            :             {
+<span class="lineNum">     345 </span><span class="lineNoCov">          0 :               check_and_store (ctrl, stats, cert, 0);</span>
+<span class="lineNum">     346 </span><span class="lineNoCov">          0 :               ksba_cert_release (cert);</span>
+<span class="lineNum">     347 </span><span class="lineNoCov">          0 :               cert = NULL;</span>
+<span class="lineNum">     348 </span>            :             }
+<span class="lineNum">     349 </span><span class="lineNoCov">          0 :           if (!i)</span>
+<span class="lineNum">     350 </span><span class="lineNoCov">          0 :             log_error (&quot;no certificate found\n&quot;);</span>
+<span class="lineNum">     351 </span>            :           else
+<span class="lineNum">     352 </span><span class="lineNoCov">          0 :             any = 1;</span>
+<span class="lineNum">     353 </span>            :         }
+<span class="lineNum">     354 </span><span class="lineCov">          6 :       else if (ct == KSBA_CT_PKCS12)</span>
+<span class="lineNum">     355 </span>            :         {
+<span class="lineNum">     356 </span>            :           /* This seems to be a pkcs12 message. */
+<span class="lineNum">     357 </span><span class="lineNoCov">          0 :           rc = parse_p12 (ctrl, reader, stats);</span>
+<span class="lineNum">     358 </span><span class="lineNoCov">          0 :           if (!rc)</span>
+<span class="lineNum">     359 </span><span class="lineNoCov">          0 :             any = 1;</span>
+<span class="lineNum">     360 </span>            :         }
+<span class="lineNum">     361 </span><span class="lineCov">          6 :       else if (ct == KSBA_CT_NONE)</span>
+<span class="lineNum">     362 </span>            :         { /* Failed to identify this message - assume a certificate */
+<span class="lineNum">     363 </span>            : 
+<span class="lineNum">     364 </span><span class="lineCov">          6 :           rc = ksba_cert_new (&amp;cert);</span>
+<span class="lineNum">     365 </span><span class="lineCov">          6 :           if (rc)</span>
+<span class="lineNum">     366 </span><span class="lineNoCov">          0 :             goto leave;</span>
+<span class="lineNum">     367 </span>            : 
+<span class="lineNum">     368 </span><span class="lineCov">          6 :           rc = ksba_cert_read_der (cert, reader);</span>
+<span class="lineNum">     369 </span><span class="lineCov">          6 :           if (rc)</span>
+<span class="lineNum">     370 </span><span class="lineCov">          3 :             goto leave;</span>
+<span class="lineNum">     371 </span>            : 
+<span class="lineNum">     372 </span><span class="lineCov">          3 :           check_and_store (ctrl, stats, cert, 0);</span>
+<span class="lineNum">     373 </span><span class="lineCov">          3 :           any = 1;</span>
+<span class="lineNum">     374 </span>            :         }
+<span class="lineNum">     375 </span>            :       else
+<span class="lineNum">     376 </span>            :         {
+<span class="lineNum">     377 </span><span class="lineNoCov">          0 :           log_error (&quot;can't extract certificates from input\n&quot;);</span>
+<span class="lineNum">     378 </span><span class="lineNoCov">          0 :           rc = gpg_error (GPG_ERR_NO_DATA);</span>
+<span class="lineNum">     379 </span>            :         }
+<span class="lineNum">     380 </span>            : 
+<span class="lineNum">     381 </span><span class="lineCov">          3 :       ksba_reader_clear (reader, NULL, NULL);</span>
+<span class="lineNum">     382 </span>            :     }
+<span class="lineNum">     383 </span><span class="lineCov">          3 :   while (!gnupg_ksba_reader_eof_seen (b64reader));</span>
+<span class="lineNum">     384 </span>            : 
+<span class="lineNum">     385 </span>            :  leave:
+<span class="lineNum">     386 </span><span class="lineCov">          3 :   if (any &amp;&amp; gpg_err_code (rc) == GPG_ERR_EOF)</span>
+<span class="lineNum">     387 </span><span class="lineCov">          3 :     rc = 0;</span>
+<span class="lineNum">     388 </span><span class="lineCov">          3 :   ksba_cms_release (cms);</span>
+<span class="lineNum">     389 </span><span class="lineCov">          3 :   ksba_cert_release (cert);</span>
+<span class="lineNum">     390 </span><span class="lineCov">          3 :   gnupg_ksba_destroy_reader (b64reader);</span>
+<span class="lineNum">     391 </span><span class="lineCov">          3 :   es_fclose (fp);</span>
+<span class="lineNum">     392 </span><span class="lineCov">          3 :   return rc;</span>
+<span class="lineNum">     393 </span>            : }
+<span class="lineNum">     394 </span>            : 
+<span class="lineNum">     395 </span>            : 
+<span class="lineNum">     396 </span>            : 
+<span class="lineNum">     397 </span>            : /* Re-import certifciates.  IN_FD is a list of linefeed delimited
+<span class="lineNum">     398 </span>            :    fingerprints t re-import.  The actual re-import is done by clearing
+<a name="399"><span class="lineNum">     399 </span>            :    the ephemeral flag.  */</a>
+<span class="lineNum">     400 </span>            : static int
+<span class="lineNum">     401 </span><span class="lineNoCov">          0 : reimport_one (ctrl_t ctrl, struct stats_s *stats, int in_fd)</span>
+<span class="lineNum">     402 </span>            : {
+<span class="lineNum">     403 </span><span class="lineNoCov">          0 :   gpg_error_t err = 0;</span>
+<span class="lineNum">     404 </span><span class="lineNoCov">          0 :   estream_t fp = NULL;</span>
+<span class="lineNum">     405 </span>            :   char line[100];  /* Sufficient for a fingerprint.  */
+<span class="lineNum">     406 </span>            :   KEYDB_HANDLE kh;
+<span class="lineNum">     407 </span>            :   KEYDB_SEARCH_DESC desc;
+<span class="lineNum">     408 </span><span class="lineNoCov">          0 :   ksba_cert_t cert = NULL;</span>
+<span class="lineNum">     409 </span>            :   unsigned int flags;
+<span class="lineNum">     410 </span>            : 
+<span class="lineNum">     411 </span><span class="lineNoCov">          0 :   kh = keydb_new ();</span>
+<span class="lineNum">     412 </span><span class="lineNoCov">          0 :   if (!kh)</span>
+<span class="lineNum">     413 </span>            :     {
+<span class="lineNum">     414 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_ENOMEM);;</span>
+<span class="lineNum">     415 </span><span class="lineNoCov">          0 :       log_error (_(&quot;failed to allocate keyDB handle\n&quot;));</span>
+<span class="lineNum">     416 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     417 </span>            :     }
+<span class="lineNum">     418 </span><span class="lineNoCov">          0 :   keydb_set_ephemeral (kh, 1);</span>
+<span class="lineNum">     419 </span>            : 
+<span class="lineNum">     420 </span><span class="lineNoCov">          0 :   fp = es_fdopen_nc (in_fd, &quot;r&quot;);</span>
+<span class="lineNum">     421 </span><span class="lineNoCov">          0 :   if (!fp)</span>
+<span class="lineNum">     422 </span>            :     {
+<span class="lineNum">     423 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     424 </span><span class="lineNoCov">          0 :       log_error (&quot;es_fdopen(%d) failed: %s\n&quot;, in_fd, gpg_strerror (err));</span>
+<span class="lineNum">     425 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     426 </span>            :     }
+<span class="lineNum">     427 </span>            : 
+<span class="lineNum">     428 </span><span class="lineNoCov">          0 :   while (es_fgets (line, DIM(line)-1, fp) )</span>
+<span class="lineNum">     429 </span>            :     {
+<span class="lineNum">     430 </span><span class="lineNoCov">          0 :       if (*line &amp;&amp; line[strlen(line)-1] != '\n')</span>
+<span class="lineNum">     431 </span>            :         {
+<span class="lineNum">     432 </span><span class="lineNoCov">          0 :           err = gpg_error (GPG_ERR_LINE_TOO_LONG);</span>
+<span class="lineNum">     433 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     434 </span>            :         }
+<span class="lineNum">     435 </span><span class="lineNoCov">          0 :       trim_spaces (line);</span>
+<span class="lineNum">     436 </span><span class="lineNoCov">          0 :       if (!*line)</span>
+<span class="lineNum">     437 </span><span class="lineNoCov">          0 :         continue;</span>
+<span class="lineNum">     438 </span>            : 
+<span class="lineNum">     439 </span><span class="lineNoCov">          0 :       stats-&gt;count++;</span>
+<span class="lineNum">     440 </span>            : 
+<span class="lineNum">     441 </span><span class="lineNoCov">          0 :       err = classify_user_id (line, &amp;desc, 0);</span>
+<span class="lineNum">     442 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     443 </span>            :         {
+<span class="lineNum">     444 </span><span class="lineNoCov">          0 :           print_import_problem (ctrl, NULL, 0);</span>
+<span class="lineNum">     445 </span><span class="lineNoCov">          0 :           stats-&gt;not_imported++;</span>
+<span class="lineNum">     446 </span><span class="lineNoCov">          0 :           continue;</span>
+<span class="lineNum">     447 </span>            :         }
+<span class="lineNum">     448 </span>            : 
+<span class="lineNum">     449 </span><span class="lineNoCov">          0 :       keydb_search_reset (kh);</span>
+<span class="lineNum">     450 </span><span class="lineNoCov">          0 :       err = keydb_search (ctrl, kh, &amp;desc, 1);</span>
+<span class="lineNum">     451 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     452 </span>            :         {
+<span class="lineNum">     453 </span><span class="lineNoCov">          0 :           print_import_problem (ctrl, NULL, 0);</span>
+<span class="lineNum">     454 </span><span class="lineNoCov">          0 :           stats-&gt;not_imported++;</span>
+<span class="lineNum">     455 </span><span class="lineNoCov">          0 :           continue;</span>
+<span class="lineNum">     456 </span>            :         }
+<span class="lineNum">     457 </span>            : 
+<span class="lineNum">     458 </span><span class="lineNoCov">          0 :       ksba_cert_release (cert);</span>
+<span class="lineNum">     459 </span><span class="lineNoCov">          0 :       cert = NULL;</span>
+<span class="lineNum">     460 </span><span class="lineNoCov">          0 :       err = keydb_get_cert (kh, &amp;cert);</span>
+<span class="lineNum">     461 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     462 </span>            :         {
+<span class="lineNum">     463 </span><span class="lineNoCov">          0 :           log_error (&quot;keydb_get_cert() failed: %s\n&quot;, gpg_strerror (err));</span>
+<span class="lineNum">     464 </span><span class="lineNoCov">          0 :           print_import_problem (ctrl, NULL, 1);</span>
+<span class="lineNum">     465 </span><span class="lineNoCov">          0 :           stats-&gt;not_imported++;</span>
+<span class="lineNum">     466 </span><span class="lineNoCov">          0 :           continue;</span>
+<span class="lineNum">     467 </span>            :         }
+<span class="lineNum">     468 </span>            : 
+<span class="lineNum">     469 </span><span class="lineNoCov">          0 :       err = keydb_get_flags (kh, KEYBOX_FLAG_BLOB, 0, &amp;flags);</span>
+<span class="lineNum">     470 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     471 </span>            :         {
+<span class="lineNum">     472 </span><span class="lineNoCov">          0 :           log_error (_(&quot;error getting stored flags: %s\n&quot;), gpg_strerror (err));</span>
+<span class="lineNum">     473 </span><span class="lineNoCov">          0 :           print_imported_status (ctrl, cert, 0);</span>
+<span class="lineNum">     474 </span><span class="lineNoCov">          0 :           stats-&gt;not_imported++;</span>
+<span class="lineNum">     475 </span><span class="lineNoCov">          0 :           continue;</span>
+<span class="lineNum">     476 </span>            :         }
+<span class="lineNum">     477 </span><span class="lineNoCov">          0 :       if ( !(flags &amp; KEYBOX_FLAG_BLOB_EPHEMERAL) )</span>
+<span class="lineNum">     478 </span>            :         {
+<span class="lineNum">     479 </span><span class="lineNoCov">          0 :           print_imported_status (ctrl, cert, 0);</span>
+<span class="lineNum">     480 </span><span class="lineNoCov">          0 :           stats-&gt;unchanged++;</span>
+<span class="lineNum">     481 </span><span class="lineNoCov">          0 :           continue;</span>
+<span class="lineNum">     482 </span>            :         }
+<span class="lineNum">     483 </span>            : 
+<span class="lineNum">     484 </span><span class="lineNoCov">          0 :       err = keydb_set_cert_flags (ctrl, cert, 1, KEYBOX_FLAG_BLOB, 0,</span>
+<span class="lineNum">     485 </span>            :                                   KEYBOX_FLAG_BLOB_EPHEMERAL, 0);
+<span class="lineNum">     486 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     487 </span>            :         {
+<span class="lineNum">     488 </span><span class="lineNoCov">          0 :           log_error (&quot;clearing ephemeral flag failed: %s\n&quot;,</span>
+<span class="lineNum">     489 </span>            :                      gpg_strerror (err));
+<span class="lineNum">     490 </span><span class="lineNoCov">          0 :           print_import_problem (ctrl, cert, 0);</span>
+<span class="lineNum">     491 </span><span class="lineNoCov">          0 :           stats-&gt;not_imported++;</span>
+<span class="lineNum">     492 </span><span class="lineNoCov">          0 :           continue;</span>
+<span class="lineNum">     493 </span>            :         }
+<span class="lineNum">     494 </span>            : 
+<span class="lineNum">     495 </span><span class="lineNoCov">          0 :       print_imported_status (ctrl, cert, 1);</span>
+<span class="lineNum">     496 </span><span class="lineNoCov">          0 :       stats-&gt;imported++;</span>
+<span class="lineNum">     497 </span>            :     }
+<span class="lineNum">     498 </span><span class="lineNoCov">          0 :   err = 0;</span>
+<span class="lineNum">     499 </span><span class="lineNoCov">          0 :   if (es_ferror (fp))</span>
+<span class="lineNum">     500 </span>            :     {
+<span class="lineNum">     501 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     502 </span><span class="lineNoCov">          0 :       log_error (&quot;error reading fd %d: %s\n&quot;, in_fd, gpg_strerror (err));</span>
+<span class="lineNum">     503 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     504 </span>            :     }
+<span class="lineNum">     505 </span>            : 
+<span class="lineNum">     506 </span>            :  leave:
+<span class="lineNum">     507 </span><span class="lineNoCov">          0 :   ksba_cert_release (cert);</span>
+<span class="lineNum">     508 </span><span class="lineNoCov">          0 :   keydb_release (kh);</span>
+<span class="lineNum">     509 </span><span class="lineNoCov">          0 :   es_fclose (fp);</span>
+<span class="lineNum">     510 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     511 </span>            : }
+<span class="lineNum">     512 </span>            : 
+<span class="lineNum">     513 </span>            : 
+<a name="514"><span class="lineNum">     514 </span>            : </a>
+<span class="lineNum">     515 </span>            : int
+<span class="lineNum">     516 </span><span class="lineNoCov">          0 : gpgsm_import (ctrl_t ctrl, int in_fd, int reimport_mode)</span>
+<span class="lineNum">     517 </span>            : {
+<span class="lineNum">     518 </span>            :   int rc;
+<span class="lineNum">     519 </span>            :   struct stats_s stats;
+<span class="lineNum">     520 </span>            : 
+<span class="lineNum">     521 </span><span class="lineNoCov">          0 :   memset (&amp;stats, 0, sizeof stats);</span>
+<span class="lineNum">     522 </span><span class="lineNoCov">          0 :   if (reimport_mode)</span>
+<span class="lineNum">     523 </span><span class="lineNoCov">          0 :     rc = reimport_one (ctrl, &amp;stats, in_fd);</span>
+<span class="lineNum">     524 </span>            :   else
+<span class="lineNum">     525 </span><span class="lineNoCov">          0 :     rc = import_one (ctrl, &amp;stats, in_fd);</span>
+<span class="lineNum">     526 </span><span class="lineNoCov">          0 :   print_imported_summary (ctrl, &amp;stats);</span>
+<span class="lineNum">     527 </span>            :   /* If we never printed an error message do it now so that a command
+<span class="lineNum">     528 </span>            :      line invocation will return with an error (log_error keeps a
+<span class="lineNum">     529 </span>            :      global errorcount) */
+<span class="lineNum">     530 </span><span class="lineNoCov">          0 :   if (rc &amp;&amp; !log_get_errorcount (0))</span>
+<span class="lineNum">     531 </span><span class="lineNoCov">          0 :     log_error (_(&quot;error importing certificate: %s\n&quot;), gpg_strerror (rc));</span>
+<span class="lineNum">     532 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     533 </span>            : }
+<span class="lineNum">     534 </span>            : 
+<a name="535"><span class="lineNum">     535 </span>            : </a>
+<span class="lineNum">     536 </span>            : int
+<span class="lineNum">     537 </span><span class="lineCov">          3 : gpgsm_import_files (ctrl_t ctrl, int nfiles, char **files,</span>
+<span class="lineNum">     538 </span>            :                     int (*of)(const char *fname))
+<span class="lineNum">     539 </span>            : {
+<span class="lineNum">     540 </span><span class="lineCov">          3 :   int rc = 0;</span>
+<span class="lineNum">     541 </span>            :   struct stats_s stats;
+<span class="lineNum">     542 </span>            : 
+<span class="lineNum">     543 </span><span class="lineCov">          3 :   memset (&amp;stats, 0, sizeof stats);</span>
+<span class="lineNum">     544 </span>            : 
+<span class="lineNum">     545 </span><span class="lineCov">          3 :   if (!nfiles)</span>
+<span class="lineNum">     546 </span><span class="lineNoCov">          0 :     rc = import_one (ctrl, &amp;stats, 0);</span>
+<span class="lineNum">     547 </span>            :   else
+<span class="lineNum">     548 </span>            :     {
+<span class="lineNum">     549 </span><span class="lineCov">          6 :       for (; nfiles &amp;&amp; !rc ; nfiles--, files++)</span>
+<span class="lineNum">     550 </span>            :         {
+<span class="lineNum">     551 </span><span class="lineCov">          3 :           int fd = of (*files);</span>
+<span class="lineNum">     552 </span><span class="lineCov">          3 :           rc = import_one (ctrl, &amp;stats, fd);</span>
+<span class="lineNum">     553 </span><span class="lineCov">          3 :           close (fd);</span>
+<span class="lineNum">     554 </span><span class="lineCov">          3 :           if (rc == -1)</span>
+<span class="lineNum">     555 </span><span class="lineNoCov">          0 :             rc = 0;</span>
+<span class="lineNum">     556 </span>            :         }
+<span class="lineNum">     557 </span>            :     }
+<span class="lineNum">     558 </span><span class="lineCov">          3 :   print_imported_summary (ctrl, &amp;stats);</span>
+<span class="lineNum">     559 </span>            :   /* If we never printed an error message do it now so that a command
+<span class="lineNum">     560 </span>            :      line invocation will return with an error (log_error keeps a
+<span class="lineNum">     561 </span>            :      global errorcount) */
+<span class="lineNum">     562 </span><span class="lineCov">          3 :   if (rc &amp;&amp; !log_get_errorcount (0))</span>
+<span class="lineNum">     563 </span><span class="lineNoCov">          0 :     log_error (_(&quot;error importing certificate: %s\n&quot;), gpg_strerror (rc));</span>
+<span class="lineNum">     564 </span><span class="lineCov">          3 :   return rc;</span>
+<span class="lineNum">     565 </span>            : }
+<span class="lineNum">     566 </span>            : 
+<span class="lineNum">     567 </span>            : 
+<span class="lineNum">     568 </span>            : /* Check that the RSA secret key SKEY is valid.  Swap parameters to
+<a name="569"><span class="lineNum">     569 </span>            :    the libgcrypt standard.  */</a>
+<span class="lineNum">     570 </span>            : static gpg_error_t
+<span class="lineNum">     571 </span><span class="lineNoCov">          0 : rsa_key_check (struct rsa_secret_key_s *skey)</span>
+<span class="lineNum">     572 </span>            : {
+<span class="lineNum">     573 </span><span class="lineNoCov">          0 :   int err = 0;</span>
+<span class="lineNum">     574 </span><span class="lineNoCov">          0 :   gcry_mpi_t t = gcry_mpi_snew (0);</span>
+<span class="lineNum">     575 </span><span class="lineNoCov">          0 :   gcry_mpi_t t1 = gcry_mpi_snew (0);</span>
+<span class="lineNum">     576 </span><span class="lineNoCov">          0 :   gcry_mpi_t t2 = gcry_mpi_snew (0);</span>
+<span class="lineNum">     577 </span><span class="lineNoCov">          0 :   gcry_mpi_t phi = gcry_mpi_snew (0);</span>
+<span class="lineNum">     578 </span>            : 
+<span class="lineNum">     579 </span>            :   /* Check that n == p * q.  */
+<span class="lineNum">     580 </span><span class="lineNoCov">          0 :   gcry_mpi_mul (t, skey-&gt;p, skey-&gt;q);</span>
+<span class="lineNum">     581 </span><span class="lineNoCov">          0 :   if (gcry_mpi_cmp( t, skey-&gt;n) )</span>
+<span class="lineNum">     582 </span>            :     {
+<span class="lineNum">     583 </span><span class="lineNoCov">          0 :       log_error (&quot;RSA oops: n != p * q\n&quot;);</span>
+<span class="lineNum">     584 </span><span class="lineNoCov">          0 :       err++;</span>
+<span class="lineNum">     585 </span>            :     }
+<span class="lineNum">     586 </span>            : 
+<span class="lineNum">     587 </span>            :   /* Check that p is less than q.  */
+<span class="lineNum">     588 </span><span class="lineNoCov">          0 :   if (gcry_mpi_cmp (skey-&gt;p, skey-&gt;q) &gt; 0)</span>
+<span class="lineNum">     589 </span>            :     {
+<span class="lineNum">     590 </span>            :       gcry_mpi_t tmp;
+<span class="lineNum">     591 </span>            : 
+<span class="lineNum">     592 </span><span class="lineNoCov">          0 :       log_info (&quot;swapping secret primes\n&quot;);</span>
+<span class="lineNum">     593 </span><span class="lineNoCov">          0 :       tmp = gcry_mpi_copy (skey-&gt;p);</span>
+<span class="lineNum">     594 </span><span class="lineNoCov">          0 :       gcry_mpi_set (skey-&gt;p, skey-&gt;q);</span>
+<span class="lineNum">     595 </span><span class="lineNoCov">          0 :       gcry_mpi_set (skey-&gt;q, tmp);</span>
+<span class="lineNum">     596 </span><span class="lineNoCov">          0 :       gcry_mpi_release (tmp);</span>
+<span class="lineNum">     597 </span>            :       /* Recompute u.  */
+<span class="lineNum">     598 </span><span class="lineNoCov">          0 :       gcry_mpi_invm (skey-&gt;u, skey-&gt;p, skey-&gt;q);</span>
+<span class="lineNum">     599 </span>            :     }
+<span class="lineNum">     600 </span>            : 
+<span class="lineNum">     601 </span>            :   /* Check that e divides neither p-1 nor q-1.  */
+<span class="lineNum">     602 </span><span class="lineNoCov">          0 :   gcry_mpi_sub_ui (t, skey-&gt;p, 1 );</span>
+<span class="lineNum">     603 </span><span class="lineNoCov">          0 :   gcry_mpi_div (NULL, t, t, skey-&gt;e, 0);</span>
+<span class="lineNum">     604 </span><span class="lineNoCov">          0 :   if (!gcry_mpi_cmp_ui( t, 0) )</span>
+<span class="lineNum">     605 </span>            :     {
+<span class="lineNum">     606 </span><span class="lineNoCov">          0 :       log_error (&quot;RSA oops: e divides p-1\n&quot;);</span>
+<span class="lineNum">     607 </span><span class="lineNoCov">          0 :       err++;</span>
+<span class="lineNum">     608 </span>            :     }
+<span class="lineNum">     609 </span><span class="lineNoCov">          0 :   gcry_mpi_sub_ui (t, skey-&gt;q, 1);</span>
+<span class="lineNum">     610 </span><span class="lineNoCov">          0 :   gcry_mpi_div (NULL, t, t, skey-&gt;e, 0);</span>
+<span class="lineNum">     611 </span><span class="lineNoCov">          0 :   if (!gcry_mpi_cmp_ui( t, 0))</span>
+<span class="lineNum">     612 </span>            :     {
+<span class="lineNum">     613 </span><span class="lineNoCov">          0 :       log_info (&quot;RSA oops: e divides q-1\n&quot; );</span>
+<span class="lineNum">     614 </span><span class="lineNoCov">          0 :       err++;</span>
+<span class="lineNum">     615 </span>            :     }
+<span class="lineNum">     616 </span>            : 
+<span class="lineNum">     617 </span>            :   /* Check that d is correct.  */
+<span class="lineNum">     618 </span><span class="lineNoCov">          0 :   gcry_mpi_sub_ui (t1, skey-&gt;p, 1);</span>
+<span class="lineNum">     619 </span><span class="lineNoCov">          0 :   gcry_mpi_sub_ui (t2, skey-&gt;q, 1);</span>
+<span class="lineNum">     620 </span><span class="lineNoCov">          0 :   gcry_mpi_mul (phi, t1, t2);</span>
+<span class="lineNum">     621 </span><span class="lineNoCov">          0 :   gcry_mpi_invm (t, skey-&gt;e, phi);</span>
+<span class="lineNum">     622 </span><span class="lineNoCov">          0 :   if (gcry_mpi_cmp (t, skey-&gt;d))</span>
+<span class="lineNum">     623 </span>            :     {
+<span class="lineNum">     624 </span>            :       /* No: try universal exponent. */
+<span class="lineNum">     625 </span><span class="lineNoCov">          0 :       gcry_mpi_gcd (t, t1, t2);</span>
+<span class="lineNum">     626 </span><span class="lineNoCov">          0 :       gcry_mpi_div (t, NULL, phi, t, 0);</span>
+<span class="lineNum">     627 </span><span class="lineNoCov">          0 :       gcry_mpi_invm (t, skey-&gt;e, t);</span>
+<span class="lineNum">     628 </span><span class="lineNoCov">          0 :       if (gcry_mpi_cmp (t, skey-&gt;d))</span>
+<span class="lineNum">     629 </span>            :         {
+<span class="lineNum">     630 </span><span class="lineNoCov">          0 :           log_error (&quot;RSA oops: bad secret exponent\n&quot;);</span>
+<span class="lineNum">     631 </span><span class="lineNoCov">          0 :           err++;</span>
+<span class="lineNum">     632 </span>            :         }
+<span class="lineNum">     633 </span>            :     }
+<span class="lineNum">     634 </span>            : 
+<span class="lineNum">     635 </span>            :   /* Check for correctness of u.  */
+<span class="lineNum">     636 </span><span class="lineNoCov">          0 :   gcry_mpi_invm (t, skey-&gt;p, skey-&gt;q);</span>
+<span class="lineNum">     637 </span><span class="lineNoCov">          0 :   if (gcry_mpi_cmp (t, skey-&gt;u))</span>
+<span class="lineNum">     638 </span>            :     {
+<span class="lineNum">     639 </span><span class="lineNoCov">          0 :       log_info (&quot;RSA oops: bad u parameter\n&quot;);</span>
+<span class="lineNum">     640 </span><span class="lineNoCov">          0 :       err++;</span>
+<span class="lineNum">     641 </span>            :     }
+<span class="lineNum">     642 </span>            : 
+<span class="lineNum">     643 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     644 </span><span class="lineNoCov">          0 :     log_info (&quot;RSA secret key check failed\n&quot;);</span>
+<span class="lineNum">     645 </span>            : 
+<span class="lineNum">     646 </span><span class="lineNoCov">          0 :   gcry_mpi_release (t);</span>
+<span class="lineNum">     647 </span><span class="lineNoCov">          0 :   gcry_mpi_release (t1);</span>
+<span class="lineNum">     648 </span><span class="lineNoCov">          0 :   gcry_mpi_release (t2);</span>
+<span class="lineNum">     649 </span><span class="lineNoCov">          0 :   gcry_mpi_release (phi);</span>
+<span class="lineNum">     650 </span>            : 
+<span class="lineNum">     651 </span><span class="lineNoCov">          0 :   return err? gpg_error (GPG_ERR_BAD_SECKEY):0;</span>
+<span class="lineNum">     652 </span>            : }
+<span class="lineNum">     653 </span>            : 
+<span class="lineNum">     654 </span>            : 
+<span class="lineNum">     655 </span>            : /* Object passed to store_cert_cb.  */
+<span class="lineNum">     656 </span>            : struct store_cert_parm_s
+<span class="lineNum">     657 </span>            : {
+<span class="lineNum">     658 </span>            :   gpg_error_t err;        /* First error seen.  */
+<span class="lineNum">     659 </span>            :   struct stats_s *stats;  /* The stats object.  */
+<span class="lineNum">     660 </span>            :   ctrl_t ctrl;            /* The control object.  */
+<span class="lineNum">     661 </span>            : };
+<span class="lineNum">     662 </span>            : 
+<span class="lineNum">     663 </span>            : /* Helper to store the DER encoded certificate CERTDATA of length
+<a name="664"><span class="lineNum">     664 </span>            :    CERTDATALEN.  */</a>
+<span class="lineNum">     665 </span>            : static void
+<span class="lineNum">     666 </span><span class="lineNoCov">          0 : store_cert_cb (void *opaque,</span>
+<span class="lineNum">     667 </span>            :                const unsigned char *certdata, size_t certdatalen)
+<span class="lineNum">     668 </span>            : {
+<span class="lineNum">     669 </span><span class="lineNoCov">          0 :   struct store_cert_parm_s *parm = opaque;</span>
+<span class="lineNum">     670 </span>            :   gpg_error_t err;
+<span class="lineNum">     671 </span>            :   ksba_cert_t cert;
+<span class="lineNum">     672 </span>            : 
+<span class="lineNum">     673 </span><span class="lineNoCov">          0 :   err = ksba_cert_new (&amp;cert);</span>
+<span class="lineNum">     674 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     675 </span>            :     {
+<span class="lineNum">     676 </span><span class="lineNoCov">          0 :       if (!parm-&gt;err)</span>
+<span class="lineNum">     677 </span><span class="lineNoCov">          0 :         parm-&gt;err = err;</span>
+<span class="lineNum">     678 </span><span class="lineNoCov">          0 :       return;</span>
+<span class="lineNum">     679 </span>            :     }
+<span class="lineNum">     680 </span>            : 
+<span class="lineNum">     681 </span><span class="lineNoCov">          0 :   err = ksba_cert_init_from_mem (cert, certdata, certdatalen);</span>
+<span class="lineNum">     682 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     683 </span>            :     {
+<span class="lineNum">     684 </span><span class="lineNoCov">          0 :       log_error (&quot;failed to parse a certificate: %s\n&quot;, gpg_strerror (err));</span>
+<span class="lineNum">     685 </span><span class="lineNoCov">          0 :       if (!parm-&gt;err)</span>
+<span class="lineNum">     686 </span><span class="lineNoCov">          0 :         parm-&gt;err = err;</span>
+<span class="lineNum">     687 </span>            :     }
+<span class="lineNum">     688 </span>            :   else
+<span class="lineNum">     689 </span><span class="lineNoCov">          0 :     check_and_store (parm-&gt;ctrl, parm-&gt;stats, cert, 0);</span>
+<span class="lineNum">     690 </span><span class="lineNoCov">          0 :   ksba_cert_release (cert);</span>
+<span class="lineNum">     691 </span>            : }
+<span class="lineNum">     692 </span>            : 
+<span class="lineNum">     693 </span>            : 
+<span class="lineNum">     694 </span>            : /* Assume that the reader is at a pkcs#12 message and try to import
+<span class="lineNum">     695 </span>            :    certificates from that stupid format.  We will transfer secret
+<a name="696"><span class="lineNum">     696 </span>            :    keys to the agent.  */</a>
+<span class="lineNum">     697 </span>            : static gpg_error_t
+<span class="lineNum">     698 </span><span class="lineNoCov">          0 : parse_p12 (ctrl_t ctrl, ksba_reader_t reader, struct stats_s *stats)</span>
+<span class="lineNum">     699 </span>            : {
+<span class="lineNum">     700 </span><span class="lineNoCov">          0 :   gpg_error_t err = 0;</span>
+<span class="lineNum">     701 </span>            :   char buffer[1024];
+<span class="lineNum">     702 </span>            :   size_t ntotal, nread;
+<span class="lineNum">     703 </span>            :   membuf_t p12mbuf;
+<span class="lineNum">     704 </span><span class="lineNoCov">          0 :   char *p12buffer = NULL;</span>
+<span class="lineNum">     705 </span>            :   size_t p12buflen;
+<span class="lineNum">     706 </span>            :   size_t p12bufoff;
+<span class="lineNum">     707 </span><span class="lineNoCov">          0 :   gcry_mpi_t *kparms = NULL;</span>
+<span class="lineNum">     708 </span>            :   struct rsa_secret_key_s sk;
+<span class="lineNum">     709 </span><span class="lineNoCov">          0 :   char *passphrase = NULL;</span>
+<span class="lineNum">     710 </span><span class="lineNoCov">          0 :   unsigned char *key = NULL;</span>
+<span class="lineNum">     711 </span>            :   size_t keylen;
+<span class="lineNum">     712 </span><span class="lineNoCov">          0 :   void *kek = NULL;</span>
+<span class="lineNum">     713 </span>            :   size_t keklen;
+<span class="lineNum">     714 </span><span class="lineNoCov">          0 :   unsigned char *wrappedkey = NULL;</span>
+<span class="lineNum">     715 </span>            :   size_t wrappedkeylen;
+<span class="lineNum">     716 </span><span class="lineNoCov">          0 :   gcry_cipher_hd_t cipherhd = NULL;</span>
+<span class="lineNum">     717 </span><span class="lineNoCov">          0 :   gcry_sexp_t s_key = NULL;</span>
+<span class="lineNum">     718 </span>            :   unsigned char grip[20];
+<span class="lineNum">     719 </span><span class="lineNoCov">          0 :   int bad_pass = 0;</span>
+<span class="lineNum">     720 </span>            :   int i;
+<span class="lineNum">     721 </span>            :   struct store_cert_parm_s store_cert_parm;
+<span class="lineNum">     722 </span>            : 
+<span class="lineNum">     723 </span><span class="lineNoCov">          0 :   memset (&amp;store_cert_parm, 0, sizeof store_cert_parm);</span>
+<span class="lineNum">     724 </span><span class="lineNoCov">          0 :   store_cert_parm.ctrl = ctrl;</span>
+<span class="lineNum">     725 </span><span class="lineNoCov">          0 :   store_cert_parm.stats = stats;</span>
+<span class="lineNum">     726 </span>            : 
+<span class="lineNum">     727 </span><span class="lineNoCov">          0 :   init_membuf (&amp;p12mbuf, 4096);</span>
+<span class="lineNum">     728 </span><span class="lineNoCov">          0 :   ntotal = 0;</span>
+<span class="lineNum">     729 </span><span class="lineNoCov">          0 :   while (!(err = ksba_reader_read (reader, buffer, sizeof buffer, &amp;nread)))</span>
+<span class="lineNum">     730 </span>            :     {
+<span class="lineNum">     731 </span><span class="lineNoCov">          0 :       if (ntotal &gt;= MAX_P12OBJ_SIZE*1024)</span>
+<span class="lineNum">     732 </span>            :         {
+<span class="lineNum">     733 </span>            :           /* Arbitrary limit to avoid DoS attacks. */
+<span class="lineNum">     734 </span><span class="lineNoCov">          0 :           err = gpg_error (GPG_ERR_TOO_LARGE);</span>
+<span class="lineNum">     735 </span><span class="lineNoCov">          0 :           log_error (&quot;pkcs#12 object is larger than %dk\n&quot;, MAX_P12OBJ_SIZE);</span>
+<span class="lineNum">     736 </span><span class="lineNoCov">          0 :           break;</span>
+<span class="lineNum">     737 </span>            :         }
+<span class="lineNum">     738 </span><span class="lineNoCov">          0 :       put_membuf (&amp;p12mbuf, buffer, nread);</span>
+<span class="lineNum">     739 </span><span class="lineNoCov">          0 :       ntotal += nread;</span>
+<span class="lineNum">     740 </span>            :     }
+<span class="lineNum">     741 </span><span class="lineNoCov">          0 :   if (gpg_err_code (err) == GPG_ERR_EOF)</span>
+<span class="lineNum">     742 </span><span class="lineNoCov">          0 :     err = 0;</span>
+<span class="lineNum">     743 </span><span class="lineNoCov">          0 :   if (!err)</span>
+<span class="lineNum">     744 </span>            :     {
+<span class="lineNum">     745 </span><span class="lineNoCov">          0 :       p12buffer = get_membuf (&amp;p12mbuf, &amp;p12buflen);</span>
+<span class="lineNum">     746 </span><span class="lineNoCov">          0 :       if (!p12buffer)</span>
+<span class="lineNum">     747 </span><span class="lineNoCov">          0 :         err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     748 </span>            :     }
+<span class="lineNum">     749 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     750 </span>            :     {
+<span class="lineNum">     751 </span><span class="lineNoCov">          0 :       log_error (_(&quot;error reading input: %s\n&quot;), gpg_strerror (err));</span>
+<span class="lineNum">     752 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     753 </span>            :     }
+<span class="lineNum">     754 </span>            : 
+<span class="lineNum">     755 </span>            :   /* GnuPG 2.0.4 accidentally created binary P12 files with the string
+<span class="lineNum">     756 </span>            :      &quot;The passphrase is %s encoded.\n\n&quot; prepended to the ASN.1 data.
+<span class="lineNum">     757 </span>            :      We fix that here.  */
+<span class="lineNum">     758 </span><span class="lineNoCov">          0 :   if (p12buflen &gt; 29 &amp;&amp; !memcmp (p12buffer, &quot;The passphrase is &quot;, 18))</span>
+<span class="lineNum">     759 </span>            :     {
+<span class="lineNum">     760 </span><span class="lineNoCov">          0 :       for (p12bufoff=18;</span>
+<span class="lineNum">     761 </span><span class="lineNoCov">          0 :            p12bufoff &lt; p12buflen &amp;&amp; p12buffer[p12bufoff] != '\n';</span>
+<span class="lineNum">     762 </span><span class="lineNoCov">          0 :            p12bufoff++)</span>
+<span class="lineNum">     763 </span>            :         ;
+<span class="lineNum">     764 </span><span class="lineNoCov">          0 :       p12bufoff++;</span>
+<span class="lineNum">     765 </span><span class="lineNoCov">          0 :       if (p12bufoff &lt; p12buflen &amp;&amp; p12buffer[p12bufoff] == '\n')</span>
+<span class="lineNum">     766 </span><span class="lineNoCov">          0 :         p12bufoff++;</span>
+<span class="lineNum">     767 </span>            :     }
+<span class="lineNum">     768 </span>            :   else
+<span class="lineNum">     769 </span><span class="lineNoCov">          0 :     p12bufoff = 0;</span>
+<span class="lineNum">     770 </span>            : 
+<span class="lineNum">     771 </span>            : 
+<span class="lineNum">     772 </span><span class="lineNoCov">          0 :   err = gpgsm_agent_ask_passphrase</span>
+<span class="lineNum">     773 </span>            :     (ctrl,
+<span class="lineNum">     774 </span>            :      i18n_utf8 (&quot;Please enter the passphrase to unprotect the PKCS#12 object.&quot;),
+<span class="lineNum">     775 </span>            :      0, &amp;passphrase);
+<span class="lineNum">     776 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     777 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     778 </span>            : 
+<span class="lineNum">     779 </span><span class="lineNoCov">          0 :   kparms = p12_parse (p12buffer + p12bufoff, p12buflen - p12bufoff,</span>
+<span class="lineNum">     780 </span>            :                       passphrase, store_cert_cb, &amp;store_cert_parm, &amp;bad_pass);
+<span class="lineNum">     781 </span>            : 
+<span class="lineNum">     782 </span><span class="lineNoCov">          0 :   xfree (passphrase);</span>
+<span class="lineNum">     783 </span><span class="lineNoCov">          0 :   passphrase = NULL;</span>
+<span class="lineNum">     784 </span>            : 
+<span class="lineNum">     785 </span><span class="lineNoCov">          0 :   if (!kparms)</span>
+<span class="lineNum">     786 </span>            :     {
+<span class="lineNum">     787 </span><span class="lineNoCov">          0 :       log_error (&quot;error parsing or decrypting the PKCS#12 file\n&quot;);</span>
+<span class="lineNum">     788 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_INV_OBJ);</span>
+<span class="lineNum">     789 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     790 </span>            :     }
+<span class="lineNum">     791 </span>            : 
+<span class="lineNum">     792 </span>            : /*    print_mpi (&quot;   n&quot;, kparms[0]); */
+<span class="lineNum">     793 </span>            : /*    print_mpi (&quot;   e&quot;, kparms[1]); */
+<span class="lineNum">     794 </span>            : /*    print_mpi (&quot;   d&quot;, kparms[2]); */
+<span class="lineNum">     795 </span>            : /*    print_mpi (&quot;   p&quot;, kparms[3]); */
+<span class="lineNum">     796 </span>            : /*    print_mpi (&quot;   q&quot;, kparms[4]); */
+<span class="lineNum">     797 </span>            : /*    print_mpi (&quot;dmp1&quot;, kparms[5]); */
+<span class="lineNum">     798 </span>            : /*    print_mpi (&quot;dmq1&quot;, kparms[6]); */
+<span class="lineNum">     799 </span>            : /*    print_mpi (&quot;   u&quot;, kparms[7]); */
+<span class="lineNum">     800 </span>            : 
+<span class="lineNum">     801 </span><span class="lineNoCov">          0 :   sk.n = kparms[0];</span>
+<span class="lineNum">     802 </span><span class="lineNoCov">          0 :   sk.e = kparms[1];</span>
+<span class="lineNum">     803 </span><span class="lineNoCov">          0 :   sk.d = kparms[2];</span>
+<span class="lineNum">     804 </span><span class="lineNoCov">          0 :   sk.q = kparms[3];</span>
+<span class="lineNum">     805 </span><span class="lineNoCov">          0 :   sk.p = kparms[4];</span>
+<span class="lineNum">     806 </span><span class="lineNoCov">          0 :   sk.u = kparms[7];</span>
+<span class="lineNum">     807 </span><span class="lineNoCov">          0 :   err = rsa_key_check (&amp;sk);</span>
+<span class="lineNum">     808 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     809 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     810 </span>            : /*    print_mpi (&quot;   n&quot;, sk.n); */
+<span class="lineNum">     811 </span>            : /*    print_mpi (&quot;   e&quot;, sk.e); */
+<span class="lineNum">     812 </span>            : /*    print_mpi (&quot;   d&quot;, sk.d); */
+<span class="lineNum">     813 </span>            : /*    print_mpi (&quot;   p&quot;, sk.p); */
+<span class="lineNum">     814 </span>            : /*    print_mpi (&quot;   q&quot;, sk.q); */
+<span class="lineNum">     815 </span>            : /*    print_mpi (&quot;   u&quot;, sk.u); */
+<span class="lineNum">     816 </span>            : 
+<span class="lineNum">     817 </span>            :   /* Create an S-expression from the parameters. */
+<span class="lineNum">     818 </span><span class="lineNoCov">          0 :   err = gcry_sexp_build (&amp;s_key, NULL,</span>
+<span class="lineNum">     819 </span>            :                          &quot;(private-key(rsa(n%m)(e%m)(d%m)(p%m)(q%m)(u%m)))&quot;,
+<span class="lineNum">     820 </span>            :                          sk.n, sk.e, sk.d, sk.p, sk.q, sk.u, NULL);
+<span class="lineNum">     821 </span><span class="lineNoCov">          0 :   for (i=0; i &lt; 8; i++)</span>
+<span class="lineNum">     822 </span><span class="lineNoCov">          0 :     gcry_mpi_release (kparms[i]);</span>
+<span class="lineNum">     823 </span><span class="lineNoCov">          0 :   gcry_free (kparms);</span>
+<span class="lineNum">     824 </span><span class="lineNoCov">          0 :   kparms = NULL;</span>
+<span class="lineNum">     825 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     826 </span>            :     {
+<span class="lineNum">     827 </span><span class="lineNoCov">          0 :       log_error (&quot;failed to create S-expression from key: %s\n&quot;,</span>
+<span class="lineNum">     828 </span>            :                  gpg_strerror (err));
+<span class="lineNum">     829 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     830 </span>            :     }
+<span class="lineNum">     831 </span>            : 
+<span class="lineNum">     832 </span>            :   /* Compute the keygrip. */
+<span class="lineNum">     833 </span><span class="lineNoCov">          0 :   if (!gcry_pk_get_keygrip (s_key, grip))</span>
+<span class="lineNum">     834 </span>            :     {
+<span class="lineNum">     835 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_GENERAL);</span>
+<span class="lineNum">     836 </span><span class="lineNoCov">          0 :       log_error (&quot;can't calculate keygrip\n&quot;);</span>
+<span class="lineNum">     837 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     838 </span>            :     }
+<span class="lineNum">     839 </span><span class="lineNoCov">          0 :   log_printhex (&quot;keygrip=&quot;, grip, 20);</span>
+<span class="lineNum">     840 </span>            : 
+<span class="lineNum">     841 </span>            :   /* Convert to canonical encoding using a function which pads it to a
+<span class="lineNum">     842 </span>            :      multiple of 64 bits.  We need this padding for AESWRAP.  */
+<span class="lineNum">     843 </span><span class="lineNoCov">          0 :   err = make_canon_sexp_pad (s_key, 1, &amp;key, &amp;keylen);</span>
+<span class="lineNum">     844 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     845 </span>            :     {
+<span class="lineNum">     846 </span><span class="lineNoCov">          0 :       log_error (&quot;error creating canonical S-expression\n&quot;);</span>
+<span class="lineNum">     847 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     848 </span>            :     }
+<span class="lineNum">     849 </span><span class="lineNoCov">          0 :   gcry_sexp_release (s_key);</span>
+<span class="lineNum">     850 </span><span class="lineNoCov">          0 :   s_key = NULL;</span>
+<span class="lineNum">     851 </span>            : 
+<span class="lineNum">     852 </span>            :   /* Get the current KEK.  */
+<span class="lineNum">     853 </span><span class="lineNoCov">          0 :   err = gpgsm_agent_keywrap_key (ctrl, 0, &amp;kek, &amp;keklen);</span>
+<span class="lineNum">     854 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     855 </span>            :     {
+<span class="lineNum">     856 </span><span class="lineNoCov">          0 :       log_error (&quot;error getting the KEK: %s\n&quot;, gpg_strerror (err));</span>
+<span class="lineNum">     857 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     858 </span>            :     }
+<span class="lineNum">     859 </span>            : 
+<span class="lineNum">     860 </span>            :   /* Wrap the key.  */
+<span class="lineNum">     861 </span><span class="lineNoCov">          0 :   err = gcry_cipher_open (&amp;cipherhd, GCRY_CIPHER_AES128,</span>
+<span class="lineNum">     862 </span>            :                           GCRY_CIPHER_MODE_AESWRAP, 0);
+<span class="lineNum">     863 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     864 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     865 </span><span class="lineNoCov">          0 :   err = gcry_cipher_setkey (cipherhd, kek, keklen);</span>
+<span class="lineNum">     866 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     867 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     868 </span><span class="lineNoCov">          0 :   xfree (kek);</span>
+<span class="lineNum">     869 </span><span class="lineNoCov">          0 :   kek = NULL;</span>
+<span class="lineNum">     870 </span>            : 
+<span class="lineNum">     871 </span><span class="lineNoCov">          0 :   wrappedkeylen = keylen + 8;</span>
+<span class="lineNum">     872 </span><span class="lineNoCov">          0 :   wrappedkey = xtrymalloc (wrappedkeylen);</span>
+<span class="lineNum">     873 </span><span class="lineNoCov">          0 :   if (!wrappedkey)</span>
+<span class="lineNum">     874 </span>            :     {
+<span class="lineNum">     875 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     876 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     877 </span>            :     }
+<span class="lineNum">     878 </span>            : 
+<span class="lineNum">     879 </span><span class="lineNoCov">          0 :   err = gcry_cipher_encrypt (cipherhd, wrappedkey, wrappedkeylen, key, keylen);</span>
+<span class="lineNum">     880 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     881 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     882 </span><span class="lineNoCov">          0 :   xfree (key);</span>
+<span class="lineNum">     883 </span><span class="lineNoCov">          0 :   key = NULL;</span>
+<span class="lineNum">     884 </span><span class="lineNoCov">          0 :   gcry_cipher_close (cipherhd);</span>
+<span class="lineNum">     885 </span><span class="lineNoCov">          0 :   cipherhd = NULL;</span>
+<span class="lineNum">     886 </span>            : 
+<span class="lineNum">     887 </span>            :   /* Send the wrapped key to the agent.  */
+<span class="lineNum">     888 </span><span class="lineNoCov">          0 :   err = gpgsm_agent_import_key (ctrl, wrappedkey, wrappedkeylen);</span>
+<span class="lineNum">     889 </span><span class="lineNoCov">          0 :   if (!err)</span>
+<span class="lineNum">     890 </span>            :     {
+<span class="lineNum">     891 </span><span class="lineNoCov">          0 :       stats-&gt;count++;</span>
+<span class="lineNum">     892 </span><span class="lineNoCov">          0 :       stats-&gt;secret_read++;</span>
+<span class="lineNum">     893 </span><span class="lineNoCov">          0 :       stats-&gt;secret_imported++;</span>
+<span class="lineNum">     894 </span>            :     }
+<span class="lineNum">     895 </span><span class="lineNoCov">          0 :   else if ( gpg_err_code (err) == GPG_ERR_EEXIST )</span>
+<span class="lineNum">     896 </span>            :     {
+<span class="lineNum">     897 </span><span class="lineNoCov">          0 :       err = 0;</span>
+<span class="lineNum">     898 </span><span class="lineNoCov">          0 :       stats-&gt;count++;</span>
+<span class="lineNum">     899 </span><span class="lineNoCov">          0 :       stats-&gt;secret_read++;</span>
+<span class="lineNum">     900 </span><span class="lineNoCov">          0 :       stats-&gt;secret_dups++;</span>
+<span class="lineNum">     901 </span>            :     }
+<span class="lineNum">     902 </span>            : 
+<span class="lineNum">     903 </span>            :   /* If we did not get an error from storing the secret key we return
+<span class="lineNum">     904 </span>            :      a possible error from parsing the certificates.  We do this after
+<span class="lineNum">     905 </span>            :      storing the secret keys so that a bad certificate does not
+<span class="lineNum">     906 </span>            :      inhibit our chance to store the secret key.  */
+<span class="lineNum">     907 </span><span class="lineNoCov">          0 :   if (!err &amp;&amp; store_cert_parm.err)</span>
+<span class="lineNum">     908 </span><span class="lineNoCov">          0 :     err = store_cert_parm.err;</span>
+<span class="lineNum">     909 </span>            : 
+<span class="lineNum">     910 </span>            :  leave:
+<span class="lineNum">     911 </span><span class="lineNoCov">          0 :   if (kparms)</span>
+<span class="lineNum">     912 </span>            :     {
+<span class="lineNum">     913 </span><span class="lineNoCov">          0 :       for (i=0; i &lt; 8; i++)</span>
+<span class="lineNum">     914 </span><span class="lineNoCov">          0 :         gcry_mpi_release (kparms[i]);</span>
+<span class="lineNum">     915 </span><span class="lineNoCov">          0 :       gcry_free (kparms);</span>
+<span class="lineNum">     916 </span><span class="lineNoCov">          0 :       kparms = NULL;</span>
+<span class="lineNum">     917 </span>            :     }
+<span class="lineNum">     918 </span><span class="lineNoCov">          0 :   xfree (key);</span>
+<span class="lineNum">     919 </span><span class="lineNoCov">          0 :   gcry_sexp_release (s_key);</span>
+<span class="lineNum">     920 </span><span class="lineNoCov">          0 :   xfree (passphrase);</span>
+<span class="lineNum">     921 </span><span class="lineNoCov">          0 :   gcry_cipher_close (cipherhd);</span>
+<span class="lineNum">     922 </span><span class="lineNoCov">          0 :   xfree (wrappedkey);</span>
+<span class="lineNum">     923 </span><span class="lineNoCov">          0 :   xfree (kek);</span>
+<span class="lineNum">     924 </span><span class="lineNoCov">          0 :   xfree (get_membuf (&amp;p12mbuf, NULL));</span>
+<span class="lineNum">     925 </span><span class="lineNoCov">          0 :   xfree (p12buffer);</span>
+<span class="lineNum">     926 </span>            : 
+<span class="lineNum">     927 </span><span class="lineNoCov">          0 :   if (bad_pass)</span>
+<span class="lineNum">     928 </span>            :     {
+<span class="lineNum">     929 </span>            :       /* We only write a plain error code and not direct
+<span class="lineNum">     930 </span>            :          BAD_PASSPHRASE because the pkcs12 parser might issue this
+<span class="lineNum">     931 </span>            :          message multiple times, BAD_PASSPHRASE in general requires a
+<span class="lineNum">     932 </span>            :          keyID and parts of the import might actually succeed so that
+<span class="lineNum">     933 </span>            :          IMPORT_PROBLEM is also not appropriate. */
+<span class="lineNum">     934 </span><span class="lineNoCov">          0 :       gpgsm_status_with_err_code (ctrl, STATUS_ERROR,</span>
+<span class="lineNum">     935 </span>            :                                   &quot;import.parsep12&quot;, GPG_ERR_BAD_PASSPHRASE);
+<span class="lineNum">     936 </span>            :     }
+<span class="lineNum">     937 </span>            : 
+<span class="lineNum">     938 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     939 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

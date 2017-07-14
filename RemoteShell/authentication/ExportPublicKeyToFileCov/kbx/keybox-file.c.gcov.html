@@ -1,0 +1,256 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - kbx/keybox-file.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">kbx</a> - keybox-file.c<span style="font-size: 80%;"> (source / <a href="keybox-file.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">75</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 14:32:15</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">3</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* keybox-file.c - File operations</a>
+<span class="lineNum">       2 </span>            :  *      Copyright (C) 2001, 2003 Free Software Foundation, Inc.
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       7 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">       8 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">       9 </span>            :  * (at your option) any later version.
+<span class="lineNum">      10 </span>            :  *
+<span class="lineNum">      11 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      12 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      13 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      14 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      15 </span>            :  *
+<span class="lineNum">      16 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      17 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      18 </span>            :  */
+<span class="lineNum">      19 </span>            : 
+<span class="lineNum">      20 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      21 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      22 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      23 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      24 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      25 </span>            : #include &lt;time.h&gt;
+<span class="lineNum">      26 </span>            : 
+<span class="lineNum">      27 </span>            : #include &quot;keybox-defs.h&quot;
+<span class="lineNum">      28 </span>            : 
+<span class="lineNum">      29 </span>            : 
+<span class="lineNum">      30 </span>            : #define IMAGELEN_LIMIT (5*1024*1024)
+<span class="lineNum">      31 </span>            : 
+<span class="lineNum">      32 </span>            : 
+<span class="lineNum">      33 </span>            : #if !defined(HAVE_FTELLO) &amp;&amp; !defined(ftello)
+<span class="lineNum">      34 </span>            : static off_t
+<span class="lineNum">      35 </span>            : ftello (FILE *stream)
+<span class="lineNum">      36 </span>            : {
+<span class="lineNum">      37 </span>            :   long int off;
+<span class="lineNum">      38 </span>            : 
+<span class="lineNum">      39 </span>            :   off = ftell (stream);
+<span class="lineNum">      40 </span>            :   if (off == -1)
+<span class="lineNum">      41 </span>            :     return (off_t)-1;
+<span class="lineNum">      42 </span>            :   return off;
+<span class="lineNum">      43 </span>            : }
+<span class="lineNum">      44 </span>            : #endif /* !defined(HAVE_FTELLO) &amp;&amp; !defined(ftello) */
+<span class="lineNum">      45 </span>            : 
+<span class="lineNum">      46 </span>            : 
+<span class="lineNum">      47 </span>            : 
+<span class="lineNum">      48 </span>            : /* Read a block at the current position and return it in R_BLOB.
+<a name="49"><span class="lineNum">      49 </span>            :    R_BLOB may be NULL to simply skip the current block.  */</a>
+<span class="lineNum">      50 </span>            : int
+<span class="lineNum">      51 </span><span class="lineNoCov">          0 : _keybox_read_blob (KEYBOXBLOB *r_blob, FILE *fp, int *skipped_deleted)</span>
+<span class="lineNum">      52 </span>            : {
+<span class="lineNum">      53 </span>            :   unsigned char *image;
+<span class="lineNum">      54 </span><span class="lineNoCov">          0 :   size_t imagelen = 0;</span>
+<span class="lineNum">      55 </span>            :   int c1, c2, c3, c4, type;
+<span class="lineNum">      56 </span>            :   int rc;
+<span class="lineNum">      57 </span>            :   off_t off;
+<span class="lineNum">      58 </span>            : 
+<span class="lineNum">      59 </span><span class="lineNoCov">          0 :   if (skipped_deleted)</span>
+<span class="lineNum">      60 </span><span class="lineNoCov">          0 :     *skipped_deleted = 0;</span>
+<span class="lineNum">      61 </span>            :  again:
+<span class="lineNum">      62 </span><span class="lineNoCov">          0 :   if (r_blob)</span>
+<span class="lineNum">      63 </span><span class="lineNoCov">          0 :     *r_blob = NULL;</span>
+<span class="lineNum">      64 </span><span class="lineNoCov">          0 :   off = ftello (fp);</span>
+<span class="lineNum">      65 </span><span class="lineNoCov">          0 :   if (off == (off_t)-1)</span>
+<span class="lineNum">      66 </span><span class="lineNoCov">          0 :     return gpg_error_from_syserror ();</span>
+<span class="lineNum">      67 </span>            : 
+<span class="lineNum">      68 </span><span class="lineNoCov">          0 :   if ((c1 = getc (fp)) == EOF</span>
+<span class="lineNum">      69 </span><span class="lineNoCov">          0 :       || (c2 = getc (fp)) == EOF</span>
+<span class="lineNum">      70 </span><span class="lineNoCov">          0 :       || (c3 = getc (fp)) == EOF</span>
+<span class="lineNum">      71 </span><span class="lineNoCov">          0 :       || (c4 = getc (fp)) == EOF</span>
+<span class="lineNum">      72 </span><span class="lineNoCov">          0 :       || (type = getc (fp)) == EOF)</span>
+<span class="lineNum">      73 </span>            :     {
+<span class="lineNum">      74 </span><span class="lineNoCov">          0 :       if ( c1 == EOF &amp;&amp; !ferror (fp) )</span>
+<span class="lineNum">      75 </span><span class="lineNoCov">          0 :         return -1; /* eof */</span>
+<span class="lineNum">      76 </span><span class="lineNoCov">          0 :       if (!ferror (fp))</span>
+<span class="lineNum">      77 </span><span class="lineNoCov">          0 :         return gpg_error (GPG_ERR_TOO_SHORT);</span>
+<span class="lineNum">      78 </span><span class="lineNoCov">          0 :       return gpg_error_from_syserror ();</span>
+<span class="lineNum">      79 </span>            :     }
+<span class="lineNum">      80 </span>            : 
+<span class="lineNum">      81 </span><span class="lineNoCov">          0 :   imagelen = ((unsigned int) c1 &lt;&lt; 24) | (c2 &lt;&lt; 16) | (c3 &lt;&lt; 8 ) | c4;</span>
+<span class="lineNum">      82 </span><span class="lineNoCov">          0 :   if (imagelen &lt; 5)</span>
+<span class="lineNum">      83 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_TOO_SHORT);</span>
+<span class="lineNum">      84 </span>            : 
+<span class="lineNum">      85 </span><span class="lineNoCov">          0 :   if (!type)</span>
+<span class="lineNum">      86 </span>            :     {
+<span class="lineNum">      87 </span>            :       /* Special treatment for empty blobs. */
+<span class="lineNum">      88 </span><span class="lineNoCov">          0 :       if (fseek (fp, imagelen-5, SEEK_CUR))</span>
+<span class="lineNum">      89 </span><span class="lineNoCov">          0 :         return gpg_error_from_syserror ();</span>
+<span class="lineNum">      90 </span><span class="lineNoCov">          0 :       if (skipped_deleted)</span>
+<span class="lineNum">      91 </span><span class="lineNoCov">          0 :         *skipped_deleted = 1;</span>
+<span class="lineNum">      92 </span><span class="lineNoCov">          0 :       goto again;</span>
+<span class="lineNum">      93 </span>            :     }
+<span class="lineNum">      94 </span>            : 
+<span class="lineNum">      95 </span><span class="lineNoCov">          0 :   if (imagelen &gt; IMAGELEN_LIMIT) /* Sanity check. */</span>
+<span class="lineNum">      96 </span>            :     {
+<span class="lineNum">      97 </span>            :       /* Seek forward so that the caller may choose to ignore this
+<span class="lineNum">      98 </span>            :          record.  */
+<span class="lineNum">      99 </span><span class="lineNoCov">          0 :       if (fseek (fp, imagelen-5, SEEK_CUR))</span>
+<span class="lineNum">     100 </span><span class="lineNoCov">          0 :         return gpg_error_from_syserror ();</span>
+<span class="lineNum">     101 </span><span class="lineNoCov">          0 :       return gpg_error (GPG_ERR_TOO_LARGE);</span>
+<span class="lineNum">     102 </span>            :     }
+<span class="lineNum">     103 </span>            : 
+<span class="lineNum">     104 </span><span class="lineNoCov">          0 :   if (!r_blob)</span>
+<span class="lineNum">     105 </span>            :     {
+<span class="lineNum">     106 </span>            :       /* This blob shall be skipped.  */
+<span class="lineNum">     107 </span><span class="lineNoCov">          0 :       if (fseek (fp, imagelen-5, SEEK_CUR))</span>
+<span class="lineNum">     108 </span><span class="lineNoCov">          0 :         return gpg_error_from_syserror ();</span>
+<span class="lineNum">     109 </span><span class="lineNoCov">          0 :       return 0;</span>
+<span class="lineNum">     110 </span>            :     }
+<span class="lineNum">     111 </span>            : 
+<span class="lineNum">     112 </span><span class="lineNoCov">          0 :   image = xtrymalloc (imagelen);</span>
+<span class="lineNum">     113 </span><span class="lineNoCov">          0 :   if (!image)</span>
+<span class="lineNum">     114 </span><span class="lineNoCov">          0 :     return gpg_error_from_syserror ();</span>
+<span class="lineNum">     115 </span>            : 
+<span class="lineNum">     116 </span><span class="lineNoCov">          0 :   image[0] = c1; image[1] = c2; image[2] = c3; image[3] = c4; image[4] = type;</span>
+<span class="lineNum">     117 </span><span class="lineNoCov">          0 :   if (fread (image+5, imagelen-5, 1, fp) != 1)</span>
+<span class="lineNum">     118 </span>            :     {
+<span class="lineNum">     119 </span><span class="lineNoCov">          0 :       gpg_error_t tmperr = gpg_error_from_syserror ();</span>
+<span class="lineNum">     120 </span><span class="lineNoCov">          0 :       xfree (image);</span>
+<span class="lineNum">     121 </span><span class="lineNoCov">          0 :       return tmperr;</span>
+<span class="lineNum">     122 </span>            :     }
+<span class="lineNum">     123 </span>            : 
+<span class="lineNum">     124 </span><span class="lineNoCov">          0 :   rc = _keybox_new_blob (r_blob, image, imagelen, off);</span>
+<span class="lineNum">     125 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     126 </span><span class="lineNoCov">          0 :     xfree (image);</span>
+<span class="lineNum">     127 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     128 </span>            : }
+<span class="lineNum">     129 </span>            : 
+<span class="lineNum">     130 </span>            : 
+<a name="131"><span class="lineNum">     131 </span>            : /* Write the block to the current file position */</a>
+<span class="lineNum">     132 </span>            : int
+<span class="lineNum">     133 </span><span class="lineNoCov">          0 : _keybox_write_blob (KEYBOXBLOB blob, FILE *fp)</span>
+<span class="lineNum">     134 </span>            : {
+<span class="lineNum">     135 </span>            :   const unsigned char *image;
+<span class="lineNum">     136 </span>            :   size_t length;
+<span class="lineNum">     137 </span>            : 
+<span class="lineNum">     138 </span><span class="lineNoCov">          0 :   image = _keybox_get_blob_image (blob, &amp;length);</span>
+<span class="lineNum">     139 </span>            : 
+<span class="lineNum">     140 </span><span class="lineNoCov">          0 :   if (length &gt; IMAGELEN_LIMIT)</span>
+<span class="lineNum">     141 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_TOO_LARGE);</span>
+<span class="lineNum">     142 </span>            : 
+<span class="lineNum">     143 </span><span class="lineNoCov">          0 :   if (fwrite (image, length, 1, fp) != 1)</span>
+<span class="lineNum">     144 </span><span class="lineNoCov">          0 :     return gpg_error_from_syserror ();</span>
+<span class="lineNum">     145 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     146 </span>            : }
+<span class="lineNum">     147 </span>            : 
+<span class="lineNum">     148 </span>            : 
+<a name="149"><span class="lineNum">     149 </span>            : /* Write a fresh header type blob. */</a>
+<span class="lineNum">     150 </span>            : int
+<span class="lineNum">     151 </span><span class="lineNoCov">          0 : _keybox_write_header_blob (FILE *fp, int for_openpgp)</span>
+<span class="lineNum">     152 </span>            : {
+<span class="lineNum">     153 </span>            :   unsigned char image[32];
+<span class="lineNum">     154 </span>            :   u32 val;
+<span class="lineNum">     155 </span>            : 
+<span class="lineNum">     156 </span><span class="lineNoCov">          0 :   memset (image, 0, sizeof image);</span>
+<span class="lineNum">     157 </span>            :   /* Length of this blob. */
+<span class="lineNum">     158 </span><span class="lineNoCov">          0 :   image[3] = 32;</span>
+<span class="lineNum">     159 </span>            : 
+<span class="lineNum">     160 </span><span class="lineNoCov">          0 :   image[4] = KEYBOX_BLOBTYPE_HEADER;</span>
+<span class="lineNum">     161 </span><span class="lineNoCov">          0 :   image[5] = 1; /* Version */</span>
+<span class="lineNum">     162 </span><span class="lineNoCov">          0 :   if (for_openpgp)</span>
+<span class="lineNum">     163 </span><span class="lineNoCov">          0 :     image[7] = 0x02; /* OpenPGP data may be available.  */</span>
+<span class="lineNum">     164 </span>            : 
+<span class="lineNum">     165 </span><span class="lineNoCov">          0 :   memcpy (image+8, &quot;KBXf&quot;, 4);</span>
+<span class="lineNum">     166 </span><span class="lineNoCov">          0 :   val = time (NULL);</span>
+<span class="lineNum">     167 </span>            :   /* created_at and last maintenance run. */
+<span class="lineNum">     168 </span><span class="lineNoCov">          0 :   image[16]   = (val &gt;&gt; 24);</span>
+<span class="lineNum">     169 </span><span class="lineNoCov">          0 :   image[16+1] = (val &gt;&gt; 16);</span>
+<span class="lineNum">     170 </span><span class="lineNoCov">          0 :   image[16+2] = (val &gt;&gt;  8);</span>
+<span class="lineNum">     171 </span><span class="lineNoCov">          0 :   image[16+3] = (val      );</span>
+<span class="lineNum">     172 </span><span class="lineNoCov">          0 :   image[20]   = (val &gt;&gt; 24);</span>
+<span class="lineNum">     173 </span><span class="lineNoCov">          0 :   image[20+1] = (val &gt;&gt; 16);</span>
+<span class="lineNum">     174 </span><span class="lineNoCov">          0 :   image[20+2] = (val &gt;&gt;  8);</span>
+<span class="lineNum">     175 </span><span class="lineNoCov">          0 :   image[20+3] = (val      );</span>
+<span class="lineNum">     176 </span>            : 
+<span class="lineNum">     177 </span><span class="lineNoCov">          0 :   if (fwrite (image, 32, 1, fp) != 1)</span>
+<span class="lineNum">     178 </span><span class="lineNoCov">          0 :     return gpg_error_from_syserror ();</span>
+<span class="lineNum">     179 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     180 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

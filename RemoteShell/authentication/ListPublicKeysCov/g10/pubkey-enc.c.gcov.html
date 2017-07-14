@@ -1,0 +1,535 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - g10/pubkey-enc.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">g10</a> - pubkey-enc.c<span style="font-size: 80%;"> (source / <a href="pubkey-enc.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">207</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 14:05:58</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">4</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* pubkey-enc.c - Process a public key encoded packet.</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 1998, 1999, 2000, 2001, 2002, 2006, 2009,
+<span class="lineNum">       3 </span>            :  *               2010 Free Software Foundation, Inc.
+<span class="lineNum">       4 </span>            :  *
+<span class="lineNum">       5 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       6 </span>            :  *
+<span class="lineNum">       7 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       8 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">       9 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">      10 </span>            :  * (at your option) any later version.
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      13 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      14 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      15 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      16 </span>            :  *
+<span class="lineNum">      17 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      18 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      19 </span>            :  */
+<span class="lineNum">      20 </span>            : 
+<span class="lineNum">      21 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      22 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      23 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      24 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      25 </span>            : 
+<span class="lineNum">      26 </span>            : #include &quot;gpg.h&quot;
+<span class="lineNum">      27 </span>            : #include &quot;../common/util.h&quot;
+<span class="lineNum">      28 </span>            : #include &quot;packet.h&quot;
+<span class="lineNum">      29 </span>            : #include &quot;keydb.h&quot;
+<span class="lineNum">      30 </span>            : #include &quot;trustdb.h&quot;
+<span class="lineNum">      31 </span>            : #include &quot;../common/status.h&quot;
+<span class="lineNum">      32 </span>            : #include &quot;options.h&quot;
+<span class="lineNum">      33 </span>            : #include &quot;main.h&quot;
+<span class="lineNum">      34 </span>            : #include &quot;../common/i18n.h&quot;
+<span class="lineNum">      35 </span>            : #include &quot;pkglue.h&quot;
+<span class="lineNum">      36 </span>            : #include &quot;call-agent.h&quot;
+<span class="lineNum">      37 </span>            : #include &quot;../common/host2net.h&quot;
+<span class="lineNum">      38 </span>            : 
+<span class="lineNum">      39 </span>            : 
+<span class="lineNum">      40 </span>            : static gpg_error_t get_it (ctrl_t ctrl, PKT_pubkey_enc *k,
+<span class="lineNum">      41 </span>            :                            DEK *dek, PKT_public_key *sk, u32 *keyid);
+<span class="lineNum">      42 </span>            : 
+<span class="lineNum">      43 </span>            : 
+<a name="44"><span class="lineNum">      44 </span>            : /* Check that the given algo is mentioned in one of the valid user-ids. */</a>
+<span class="lineNum">      45 </span>            : static int
+<span class="lineNum">      46 </span><span class="lineNoCov">          0 : is_algo_in_prefs (kbnode_t keyblock, preftype_t type, int algo)</span>
+<span class="lineNum">      47 </span>            : {
+<span class="lineNum">      48 </span>            :   kbnode_t k;
+<span class="lineNum">      49 </span>            : 
+<span class="lineNum">      50 </span><span class="lineNoCov">          0 :   for (k = keyblock; k; k = k-&gt;next)</span>
+<span class="lineNum">      51 </span>            :     {
+<span class="lineNum">      52 </span><span class="lineNoCov">          0 :       if (k-&gt;pkt-&gt;pkttype == PKT_USER_ID)</span>
+<span class="lineNum">      53 </span>            :         {
+<span class="lineNum">      54 </span><span class="lineNoCov">          0 :           PKT_user_id *uid = k-&gt;pkt-&gt;pkt.user_id;</span>
+<span class="lineNum">      55 </span><span class="lineNoCov">          0 :           prefitem_t *prefs = uid-&gt;prefs;</span>
+<span class="lineNum">      56 </span>            : 
+<span class="lineNum">      57 </span><span class="lineNoCov">          0 :           if (uid-&gt;created &amp;&amp; prefs &amp;&amp; !uid-&gt;flags.revoked &amp;&amp; !uid-&gt;flags.expired)</span>
+<span class="lineNum">      58 </span>            :             {
+<span class="lineNum">      59 </span><span class="lineNoCov">          0 :               for (; prefs-&gt;type; prefs++)</span>
+<span class="lineNum">      60 </span><span class="lineNoCov">          0 :                 if (prefs-&gt;type == type &amp;&amp; prefs-&gt;value == algo)</span>
+<span class="lineNum">      61 </span><span class="lineNoCov">          0 :                   return 1;</span>
+<span class="lineNum">      62 </span>            :             }
+<span class="lineNum">      63 </span>            :         }
+<span class="lineNum">      64 </span>            :     }
+<span class="lineNum">      65 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">      66 </span>            : }
+<span class="lineNum">      67 </span>            : 
+<span class="lineNum">      68 </span>            : 
+<span class="lineNum">      69 </span>            : /*
+<span class="lineNum">      70 </span>            :  * Get the session key from a pubkey enc packet and return it in DEK,
+<span class="lineNum">      71 </span>            :  * which should have been allocated in secure memory by the caller.
+<a name="72"><span class="lineNum">      72 </span>            :  */</a>
+<span class="lineNum">      73 </span>            : gpg_error_t
+<span class="lineNum">      74 </span><span class="lineNoCov">          0 : get_session_key (ctrl_t ctrl, PKT_pubkey_enc * k, DEK * dek)</span>
+<span class="lineNum">      75 </span>            : {
+<span class="lineNum">      76 </span><span class="lineNoCov">          0 :   PKT_public_key *sk = NULL;</span>
+<span class="lineNum">      77 </span>            :   int rc;
+<span class="lineNum">      78 </span>            : 
+<span class="lineNum">      79 </span><span class="lineNoCov">          0 :   if (DBG_CLOCK)</span>
+<span class="lineNum">      80 </span><span class="lineNoCov">          0 :     log_clock (&quot;get_session_key enter&quot;);</span>
+<span class="lineNum">      81 </span>            : 
+<span class="lineNum">      82 </span><span class="lineNoCov">          0 :   rc = openpgp_pk_test_algo2 (k-&gt;pubkey_algo, PUBKEY_USAGE_ENC);</span>
+<span class="lineNum">      83 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">      84 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">      85 </span>            : 
+<span class="lineNum">      86 </span><span class="lineNoCov">          0 :   if ((k-&gt;keyid[0] || k-&gt;keyid[1]) &amp;&amp; !opt.try_all_secrets)</span>
+<span class="lineNum">      87 </span>            :     {
+<span class="lineNum">      88 </span><span class="lineNoCov">          0 :       sk = xmalloc_clear (sizeof *sk);</span>
+<span class="lineNum">      89 </span><span class="lineNoCov">          0 :       sk-&gt;pubkey_algo = k-&gt;pubkey_algo; /* We want a pubkey with this algo.  */</span>
+<span class="lineNum">      90 </span><span class="lineNoCov">          0 :       if (!(rc = get_seckey (ctrl, sk, k-&gt;keyid)))</span>
+<span class="lineNum">      91 </span><span class="lineNoCov">          0 :         rc = get_it (ctrl, k, dek, sk, k-&gt;keyid);</span>
+<span class="lineNum">      92 </span>            :     }
+<span class="lineNum">      93 </span><span class="lineNoCov">          0 :   else if (opt.skip_hidden_recipients)</span>
+<span class="lineNum">      94 </span><span class="lineNoCov">          0 :     rc = gpg_error (GPG_ERR_NO_SECKEY);</span>
+<span class="lineNum">      95 </span>            :   else  /* Anonymous receiver: Try all available secret keys.  */
+<span class="lineNum">      96 </span>            :     {
+<span class="lineNum">      97 </span><span class="lineNoCov">          0 :       void *enum_context = NULL;</span>
+<span class="lineNum">      98 </span>            :       u32 keyid[2];
+<span class="lineNum">      99 </span>            : 
+<span class="lineNum">     100 </span>            :       for (;;)
+<span class="lineNum">     101 </span>            :         {
+<span class="lineNum">     102 </span><span class="lineNoCov">          0 :           free_public_key (sk);</span>
+<span class="lineNum">     103 </span><span class="lineNoCov">          0 :           sk = xmalloc_clear (sizeof *sk);</span>
+<span class="lineNum">     104 </span><span class="lineNoCov">          0 :           rc = enum_secret_keys (ctrl, &amp;enum_context, sk);</span>
+<span class="lineNum">     105 </span><span class="lineNoCov">          0 :           if (rc)</span>
+<span class="lineNum">     106 </span>            :             {
+<span class="lineNum">     107 </span><span class="lineNoCov">          0 :               rc = GPG_ERR_NO_SECKEY;</span>
+<span class="lineNum">     108 </span><span class="lineNoCov">          0 :               break;</span>
+<span class="lineNum">     109 </span>            :             }
+<span class="lineNum">     110 </span><span class="lineNoCov">          0 :           if (sk-&gt;pubkey_algo != k-&gt;pubkey_algo)</span>
+<span class="lineNum">     111 </span><span class="lineNoCov">          0 :             continue;</span>
+<span class="lineNum">     112 </span><span class="lineNoCov">          0 :           if (!(sk-&gt;pubkey_usage &amp; PUBKEY_USAGE_ENC))</span>
+<span class="lineNum">     113 </span><span class="lineNoCov">          0 :             continue;</span>
+<span class="lineNum">     114 </span><span class="lineNoCov">          0 :           keyid_from_pk (sk, keyid);</span>
+<span class="lineNum">     115 </span><span class="lineNoCov">          0 :           if (!opt.quiet)</span>
+<span class="lineNum">     116 </span><span class="lineNoCov">          0 :             log_info (_(&quot;anonymous recipient; trying secret key %s ...\n&quot;),</span>
+<span class="lineNum">     117 </span>            :                       keystr (keyid));
+<span class="lineNum">     118 </span>            : 
+<span class="lineNum">     119 </span><span class="lineNoCov">          0 :           rc = get_it (ctrl, k, dek, sk, keyid);</span>
+<span class="lineNum">     120 </span><span class="lineNoCov">          0 :           if (!rc)</span>
+<span class="lineNum">     121 </span>            :             {
+<span class="lineNum">     122 </span><span class="lineNoCov">          0 :               if (!opt.quiet)</span>
+<span class="lineNum">     123 </span><span class="lineNoCov">          0 :                 log_info (_(&quot;okay, we are the anonymous recipient.\n&quot;));</span>
+<span class="lineNum">     124 </span><span class="lineNoCov">          0 :               break;</span>
+<span class="lineNum">     125 </span>            :             }
+<span class="lineNum">     126 </span><span class="lineNoCov">          0 :           else if (gpg_err_code (rc) == GPG_ERR_FULLY_CANCELED)</span>
+<span class="lineNum">     127 </span><span class="lineNoCov">          0 :             break; /* Don't try any more secret keys.  */</span>
+<span class="lineNum">     128 </span><span class="lineNoCov">          0 :         }</span>
+<span class="lineNum">     129 </span><span class="lineNoCov">          0 :       enum_secret_keys (ctrl, &amp;enum_context, NULL);  /* free context */</span>
+<span class="lineNum">     130 </span>            :     }
+<span class="lineNum">     131 </span>            : 
+<span class="lineNum">     132 </span>            : leave:
+<span class="lineNum">     133 </span><span class="lineNoCov">          0 :   free_public_key (sk);</span>
+<span class="lineNum">     134 </span><span class="lineNoCov">          0 :   if (DBG_CLOCK)</span>
+<span class="lineNum">     135 </span><span class="lineNoCov">          0 :     log_clock (&quot;get_session_key leave&quot;);</span>
+<span class="lineNum">     136 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     137 </span>            : }
+<span class="lineNum">     138 </span>            : 
+<a name="139"><span class="lineNum">     139 </span>            : </a>
+<span class="lineNum">     140 </span>            : static gpg_error_t
+<span class="lineNum">     141 </span><span class="lineNoCov">          0 : get_it (ctrl_t ctrl,</span>
+<span class="lineNum">     142 </span>            :         PKT_pubkey_enc *enc, DEK *dek, PKT_public_key *sk, u32 *keyid)
+<span class="lineNum">     143 </span>            : {
+<span class="lineNum">     144 </span>            :   gpg_error_t err;
+<span class="lineNum">     145 </span><span class="lineNoCov">          0 :   byte *frame = NULL;</span>
+<span class="lineNum">     146 </span>            :   unsigned int n;
+<span class="lineNum">     147 </span>            :   size_t nframe;
+<span class="lineNum">     148 </span>            :   u16 csum, csum2;
+<span class="lineNum">     149 </span>            :   int padding;
+<span class="lineNum">     150 </span>            :   gcry_sexp_t s_data;
+<span class="lineNum">     151 </span>            :   char *desc;
+<span class="lineNum">     152 </span>            :   char *keygrip;
+<span class="lineNum">     153 </span>            :   byte fp[MAX_FINGERPRINT_LEN];
+<span class="lineNum">     154 </span>            :   size_t fpn;
+<span class="lineNum">     155 </span>            : 
+<span class="lineNum">     156 </span><span class="lineNoCov">          0 :   if (DBG_CLOCK)</span>
+<span class="lineNum">     157 </span><span class="lineNoCov">          0 :     log_clock (&quot;decryption start&quot;);</span>
+<span class="lineNum">     158 </span>            : 
+<span class="lineNum">     159 </span>            :   /* Get the keygrip.  */
+<span class="lineNum">     160 </span><span class="lineNoCov">          0 :   err = hexkeygrip_from_pk (sk, &amp;keygrip);</span>
+<span class="lineNum">     161 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     162 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     163 </span>            : 
+<span class="lineNum">     164 </span>            :   /* Convert the data to an S-expression.  */
+<span class="lineNum">     165 </span><span class="lineNoCov">          0 :   if (sk-&gt;pubkey_algo == PUBKEY_ALGO_ELGAMAL</span>
+<span class="lineNum">     166 </span><span class="lineNoCov">          0 :       || sk-&gt;pubkey_algo == PUBKEY_ALGO_ELGAMAL_E)</span>
+<span class="lineNum">     167 </span>            :     {
+<span class="lineNum">     168 </span><span class="lineNoCov">          0 :       if (!enc-&gt;data[0] || !enc-&gt;data[1])</span>
+<span class="lineNum">     169 </span><span class="lineNoCov">          0 :         err = gpg_error (GPG_ERR_BAD_MPI);</span>
+<span class="lineNum">     170 </span>            :       else
+<span class="lineNum">     171 </span><span class="lineNoCov">          0 :         err = gcry_sexp_build (&amp;s_data, NULL, &quot;(enc-val(elg(a%m)(b%m)))&quot;,</span>
+<span class="lineNum">     172 </span>            :                                enc-&gt;data[0], enc-&gt;data[1]);
+<span class="lineNum">     173 </span>            :     }
+<span class="lineNum">     174 </span><span class="lineNoCov">          0 :   else if (sk-&gt;pubkey_algo == PUBKEY_ALGO_RSA</span>
+<span class="lineNum">     175 </span><span class="lineNoCov">          0 :            || sk-&gt;pubkey_algo == PUBKEY_ALGO_RSA_E)</span>
+<span class="lineNum">     176 </span>            :     {
+<span class="lineNum">     177 </span><span class="lineNoCov">          0 :       if (!enc-&gt;data[0])</span>
+<span class="lineNum">     178 </span><span class="lineNoCov">          0 :         err = gpg_error (GPG_ERR_BAD_MPI);</span>
+<span class="lineNum">     179 </span>            :       else
+<span class="lineNum">     180 </span><span class="lineNoCov">          0 :         err = gcry_sexp_build (&amp;s_data, NULL, &quot;(enc-val(rsa(a%m)))&quot;,</span>
+<span class="lineNum">     181 </span>            :                                enc-&gt;data[0]);
+<span class="lineNum">     182 </span>            :     }
+<span class="lineNum">     183 </span><span class="lineNoCov">          0 :   else if (sk-&gt;pubkey_algo == PUBKEY_ALGO_ECDH)</span>
+<span class="lineNum">     184 </span>            :     {
+<span class="lineNum">     185 </span><span class="lineNoCov">          0 :       if (!enc-&gt;data[0] || !enc-&gt;data[1])</span>
+<span class="lineNum">     186 </span><span class="lineNoCov">          0 :         err = gpg_error (GPG_ERR_BAD_MPI);</span>
+<span class="lineNum">     187 </span>            :       else
+<span class="lineNum">     188 </span><span class="lineNoCov">          0 :         err = gcry_sexp_build (&amp;s_data, NULL, &quot;(enc-val(ecdh(s%m)(e%m)))&quot;,</span>
+<span class="lineNum">     189 </span>            :                                enc-&gt;data[1], enc-&gt;data[0]);
+<span class="lineNum">     190 </span>            :     }
+<span class="lineNum">     191 </span>            :   else
+<span class="lineNum">     192 </span><span class="lineNoCov">          0 :     err = gpg_error (GPG_ERR_BUG);</span>
+<span class="lineNum">     193 </span>            : 
+<span class="lineNum">     194 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     195 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     196 </span>            : 
+<span class="lineNum">     197 </span><span class="lineNoCov">          0 :   if (sk-&gt;pubkey_algo == PUBKEY_ALGO_ECDH)</span>
+<span class="lineNum">     198 </span>            :     {
+<span class="lineNum">     199 </span><span class="lineNoCov">          0 :       fingerprint_from_pk (sk, fp, &amp;fpn);</span>
+<span class="lineNum">     200 </span><span class="lineNoCov">          0 :       log_assert (fpn == 20);</span>
+<span class="lineNum">     201 </span>            :     }
+<span class="lineNum">     202 </span>            : 
+<span class="lineNum">     203 </span>            :   /* Decrypt. */
+<span class="lineNum">     204 </span><span class="lineNoCov">          0 :   desc = gpg_format_keydesc (ctrl, sk, FORMAT_KEYDESC_NORMAL, 1);</span>
+<span class="lineNum">     205 </span><span class="lineNoCov">          0 :   err = agent_pkdecrypt (NULL, keygrip,</span>
+<span class="lineNum">     206 </span><span class="lineNoCov">          0 :                          desc, sk-&gt;keyid, sk-&gt;main_keyid, sk-&gt;pubkey_algo,</span>
+<span class="lineNum">     207 </span>            :                          s_data, &amp;frame, &amp;nframe, &amp;padding);
+<span class="lineNum">     208 </span><span class="lineNoCov">          0 :   xfree (desc);</span>
+<span class="lineNum">     209 </span><span class="lineNoCov">          0 :   gcry_sexp_release (s_data);</span>
+<span class="lineNum">     210 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     211 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     212 </span>            : 
+<span class="lineNum">     213 </span>            :   /* Now get the DEK (data encryption key) from the frame
+<span class="lineNum">     214 </span>            :    *
+<span class="lineNum">     215 </span>            :    * Old versions encode the DEK in this format (msb is left):
+<span class="lineNum">     216 </span>            :    *
+<span class="lineNum">     217 </span>            :    *     0  1  DEK(16 bytes)  CSUM(2 bytes)  0  RND(n bytes) 2
+<span class="lineNum">     218 </span>            :    *
+<span class="lineNum">     219 </span>            :    * Later versions encode the DEK like this:
+<span class="lineNum">     220 </span>            :    *
+<span class="lineNum">     221 </span>            :    *     0  2  RND(n bytes)  0  A  DEK(k bytes)  CSUM(2 bytes)
+<span class="lineNum">     222 </span>            :    *
+<span class="lineNum">     223 </span>            :    * (mpi_get_buffer already removed the leading zero).
+<span class="lineNum">     224 </span>            :    *
+<span class="lineNum">     225 </span>            :    * RND are non-zero randow bytes.
+<span class="lineNum">     226 </span>            :    * A   is the cipher algorithm
+<span class="lineNum">     227 </span>            :    * DEK is the encryption key (session key) with length k
+<span class="lineNum">     228 </span>            :    * CSUM
+<span class="lineNum">     229 </span>            :    */
+<span class="lineNum">     230 </span><span class="lineNoCov">          0 :   if (DBG_CRYPTO)</span>
+<span class="lineNum">     231 </span><span class="lineNoCov">          0 :     log_printhex (&quot;DEK frame:&quot;, frame, nframe);</span>
+<span class="lineNum">     232 </span><span class="lineNoCov">          0 :   n = 0;</span>
+<span class="lineNum">     233 </span>            : 
+<span class="lineNum">     234 </span><span class="lineNoCov">          0 :   if (sk-&gt;pubkey_algo == PUBKEY_ALGO_ECDH)</span>
+<span class="lineNum">     235 </span>            :     {
+<span class="lineNum">     236 </span>            :       gcry_mpi_t shared_mpi;
+<span class="lineNum">     237 </span>            :       gcry_mpi_t decoded;
+<span class="lineNum">     238 </span>            : 
+<span class="lineNum">     239 </span>            :       /* At the beginning the frame are the bytes of shared point MPI.  */
+<span class="lineNum">     240 </span><span class="lineNoCov">          0 :       err = gcry_mpi_scan (&amp;shared_mpi, GCRYMPI_FMT_USG, frame, nframe, NULL);</span>
+<span class="lineNum">     241 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     242 </span>            :         {
+<span class="lineNum">     243 </span><span class="lineNoCov">          0 :           err = gpg_error (GPG_ERR_WRONG_SECKEY);</span>
+<span class="lineNum">     244 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     245 </span>            :         }
+<span class="lineNum">     246 </span>            : 
+<span class="lineNum">     247 </span><span class="lineNoCov">          0 :       err = pk_ecdh_decrypt (&amp;decoded, fp, enc-&gt;data[1]/*encr data as an MPI*/,</span>
+<span class="lineNum">     248 </span><span class="lineNoCov">          0 :                              shared_mpi, sk-&gt;pkey);</span>
+<span class="lineNum">     249 </span><span class="lineNoCov">          0 :       mpi_release (shared_mpi);</span>
+<span class="lineNum">     250 </span><span class="lineNoCov">          0 :       if(err)</span>
+<span class="lineNum">     251 </span><span class="lineNoCov">          0 :         goto leave;</span>
+<span class="lineNum">     252 </span>            : 
+<span class="lineNum">     253 </span><span class="lineNoCov">          0 :       xfree (frame);</span>
+<span class="lineNum">     254 </span><span class="lineNoCov">          0 :       err = gcry_mpi_aprint (GCRYMPI_FMT_USG, &amp;frame, &amp;nframe, decoded);</span>
+<span class="lineNum">     255 </span><span class="lineNoCov">          0 :       mpi_release (decoded);</span>
+<span class="lineNum">     256 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     257 </span><span class="lineNoCov">          0 :         goto leave;</span>
+<span class="lineNum">     258 </span>            : 
+<span class="lineNum">     259 </span>            :       /* Now the frame are the bytes decrypted but padded session key.  */
+<span class="lineNum">     260 </span>            : 
+<span class="lineNum">     261 </span>            :       /* Allow double padding for the benefit of DEK size concealment.
+<span class="lineNum">     262 </span>            :          Higher than this is wasteful. */
+<span class="lineNum">     263 </span><span class="lineNoCov">          0 :       if (!nframe || frame[nframe-1] &gt; 8*2 || nframe &lt;= 8</span>
+<span class="lineNum">     264 </span><span class="lineNoCov">          0 :           || frame[nframe-1] &gt; nframe)</span>
+<span class="lineNum">     265 </span>            :         {
+<span class="lineNum">     266 </span><span class="lineNoCov">          0 :           err = gpg_error (GPG_ERR_WRONG_SECKEY);</span>
+<span class="lineNum">     267 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     268 </span>            :         }
+<span class="lineNum">     269 </span><span class="lineNoCov">          0 :       nframe -= frame[nframe-1]; /* Remove padding.  */</span>
+<span class="lineNum">     270 </span><span class="lineNoCov">          0 :       log_assert (!n); /* (used just below) */</span>
+<span class="lineNum">     271 </span>            :     }
+<span class="lineNum">     272 </span>            :   else
+<span class="lineNum">     273 </span>            :     {
+<span class="lineNum">     274 </span><span class="lineNoCov">          0 :       if (padding)</span>
+<span class="lineNum">     275 </span>            :         {
+<span class="lineNum">     276 </span><span class="lineNoCov">          0 :           if (n + 7 &gt; nframe)</span>
+<span class="lineNum">     277 </span>            :             {
+<span class="lineNum">     278 </span><span class="lineNoCov">          0 :               err = gpg_error (GPG_ERR_WRONG_SECKEY);</span>
+<span class="lineNum">     279 </span><span class="lineNoCov">          0 :               goto leave;</span>
+<span class="lineNum">     280 </span>            :             }
+<span class="lineNum">     281 </span><span class="lineNoCov">          0 :           if (frame[n] == 1 &amp;&amp; frame[nframe - 1] == 2)</span>
+<span class="lineNum">     282 </span>            :             {
+<span class="lineNum">     283 </span><span class="lineNoCov">          0 :               log_info (_(&quot;old encoding of the DEK is not supported\n&quot;));</span>
+<span class="lineNum">     284 </span><span class="lineNoCov">          0 :               err = gpg_error (GPG_ERR_CIPHER_ALGO);</span>
+<span class="lineNum">     285 </span><span class="lineNoCov">          0 :               goto leave;</span>
+<span class="lineNum">     286 </span>            :             }
+<span class="lineNum">     287 </span><span class="lineNoCov">          0 :           if (frame[n] != 2) /* Something went wrong.  */</span>
+<span class="lineNum">     288 </span>            :             {
+<span class="lineNum">     289 </span><span class="lineNoCov">          0 :               err = gpg_error (GPG_ERR_WRONG_SECKEY);</span>
+<span class="lineNum">     290 </span><span class="lineNoCov">          0 :               goto leave;</span>
+<span class="lineNum">     291 </span>            :             }
+<span class="lineNum">     292 </span><span class="lineNoCov">          0 :           for (n++; n &lt; nframe &amp;&amp; frame[n]; n++) /* Skip the random bytes.  */</span>
+<span class="lineNum">     293 </span>            :             ;
+<span class="lineNum">     294 </span><span class="lineNoCov">          0 :           n++; /* Skip the zero byte.  */</span>
+<span class="lineNum">     295 </span>            :         }
+<span class="lineNum">     296 </span>            :     }
+<span class="lineNum">     297 </span>            : 
+<span class="lineNum">     298 </span><span class="lineNoCov">          0 :   if (n + 4 &gt; nframe)</span>
+<span class="lineNum">     299 </span>            :     {
+<span class="lineNum">     300 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_WRONG_SECKEY);</span>
+<span class="lineNum">     301 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     302 </span>            :     }
+<span class="lineNum">     303 </span>            : 
+<span class="lineNum">     304 </span><span class="lineNoCov">          0 :   dek-&gt;keylen = nframe - (n + 1) - 2;</span>
+<span class="lineNum">     305 </span><span class="lineNoCov">          0 :   dek-&gt;algo = frame[n++];</span>
+<span class="lineNum">     306 </span><span class="lineNoCov">          0 :   err = openpgp_cipher_test_algo (dek-&gt;algo);</span>
+<span class="lineNum">     307 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     308 </span>            :     {
+<span class="lineNum">     309 </span><span class="lineNoCov">          0 :       if (!opt.quiet &amp;&amp; gpg_err_code (err) == GPG_ERR_CIPHER_ALGO)</span>
+<span class="lineNum">     310 </span>            :         {
+<span class="lineNum">     311 </span><span class="lineNoCov">          0 :           log_info (_(&quot;cipher algorithm %d%s is unknown or disabled\n&quot;),</span>
+<span class="lineNum">     312 </span>            :                     dek-&gt;algo,
+<span class="lineNum">     313 </span><span class="lineNoCov">          0 :                     dek-&gt;algo == CIPHER_ALGO_IDEA ? &quot; (IDEA)&quot; : &quot;&quot;);</span>
+<span class="lineNum">     314 </span>            :         }
+<span class="lineNum">     315 </span><span class="lineNoCov">          0 :       dek-&gt;algo = 0;</span>
+<span class="lineNum">     316 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     317 </span>            :     }
+<span class="lineNum">     318 </span><span class="lineNoCov">          0 :   if (dek-&gt;keylen != openpgp_cipher_get_algo_keylen (dek-&gt;algo))</span>
+<span class="lineNum">     319 </span>            :     {
+<span class="lineNum">     320 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_WRONG_SECKEY);</span>
+<span class="lineNum">     321 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     322 </span>            :     }
+<span class="lineNum">     323 </span>            : 
+<span class="lineNum">     324 </span>            :   /* Copy the key to DEK and compare the checksum.  */
+<span class="lineNum">     325 </span><span class="lineNoCov">          0 :   csum = buf16_to_u16 (frame+nframe-2);</span>
+<span class="lineNum">     326 </span><span class="lineNoCov">          0 :   memcpy (dek-&gt;key, frame + n, dek-&gt;keylen);</span>
+<span class="lineNum">     327 </span><span class="lineNoCov">          0 :   for (csum2 = 0, n = 0; n &lt; dek-&gt;keylen; n++)</span>
+<span class="lineNum">     328 </span><span class="lineNoCov">          0 :     csum2 += dek-&gt;key[n];</span>
+<span class="lineNum">     329 </span><span class="lineNoCov">          0 :   if (csum != csum2)</span>
+<span class="lineNum">     330 </span>            :     {
+<span class="lineNum">     331 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_WRONG_SECKEY);</span>
+<span class="lineNum">     332 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     333 </span>            :     }
+<span class="lineNum">     334 </span><span class="lineNoCov">          0 :   if (DBG_CLOCK)</span>
+<span class="lineNum">     335 </span><span class="lineNoCov">          0 :     log_clock (&quot;decryption ready&quot;);</span>
+<span class="lineNum">     336 </span><span class="lineNoCov">          0 :   if (DBG_CRYPTO)</span>
+<span class="lineNum">     337 </span><span class="lineNoCov">          0 :     log_printhex (&quot;DEK is:&quot;, dek-&gt;key, dek-&gt;keylen);</span>
+<span class="lineNum">     338 </span>            : 
+<span class="lineNum">     339 </span>            :   /* Check that the algo is in the preferences and whether it has
+<span class="lineNum">     340 </span>            :    * expired.  Also print a status line with the key's fingerprint.  */
+<span class="lineNum">     341 </span>            :   {
+<span class="lineNum">     342 </span><span class="lineNoCov">          0 :     PKT_public_key *pk = NULL;</span>
+<span class="lineNum">     343 </span><span class="lineNoCov">          0 :     PKT_public_key *mainpk = NULL;</span>
+<span class="lineNum">     344 </span><span class="lineNoCov">          0 :     KBNODE pkb = get_pubkeyblock (ctrl, keyid);</span>
+<span class="lineNum">     345 </span>            : 
+<span class="lineNum">     346 </span><span class="lineNoCov">          0 :     if (!pkb)</span>
+<span class="lineNum">     347 </span>            :       {
+<span class="lineNum">     348 </span><span class="lineNoCov">          0 :         err = -1;</span>
+<span class="lineNum">     349 </span><span class="lineNoCov">          0 :         log_error (&quot;oops: public key not found for preference check\n&quot;);</span>
+<span class="lineNum">     350 </span>            :       }
+<span class="lineNum">     351 </span><span class="lineNoCov">          0 :     else if (pkb-&gt;pkt-&gt;pkt.public_key-&gt;selfsigversion &gt; 3</span>
+<span class="lineNum">     352 </span><span class="lineNoCov">          0 :              &amp;&amp; dek-&gt;algo != CIPHER_ALGO_3DES</span>
+<span class="lineNum">     353 </span><span class="lineNoCov">          0 :              &amp;&amp; !opt.quiet</span>
+<span class="lineNum">     354 </span><span class="lineNoCov">          0 :              &amp;&amp; !is_algo_in_prefs (pkb, PREFTYPE_SYM, dek-&gt;algo))</span>
+<span class="lineNum">     355 </span><span class="lineNoCov">          0 :       log_info (_(&quot;WARNING: cipher algorithm %s not found in recipient&quot;</span>
+<span class="lineNum">     356 </span><span class="lineNoCov">          0 :                   &quot; preferences\n&quot;), openpgp_cipher_algo_name (dek-&gt;algo));</span>
+<span class="lineNum">     357 </span>            : 
+<span class="lineNum">     358 </span><span class="lineNoCov">          0 :     if (!err)</span>
+<span class="lineNum">     359 </span>            :       {
+<span class="lineNum">     360 </span>            :         kbnode_t k;
+<span class="lineNum">     361 </span><span class="lineNoCov">          0 :         int first = 1;</span>
+<span class="lineNum">     362 </span>            : 
+<span class="lineNum">     363 </span><span class="lineNoCov">          0 :         for (k = pkb; k; k = k-&gt;next)</span>
+<span class="lineNum">     364 </span>            :           {
+<span class="lineNum">     365 </span><span class="lineNoCov">          0 :             if (k-&gt;pkt-&gt;pkttype == PKT_PUBLIC_KEY</span>
+<span class="lineNum">     366 </span><span class="lineNoCov">          0 :                 || k-&gt;pkt-&gt;pkttype == PKT_PUBLIC_SUBKEY)</span>
+<span class="lineNum">     367 </span>            :               {
+<span class="lineNum">     368 </span>            :                 u32 aki[2];
+<span class="lineNum">     369 </span>            : 
+<span class="lineNum">     370 </span><span class="lineNoCov">          0 :                 if (first)</span>
+<span class="lineNum">     371 </span>            :                   {
+<span class="lineNum">     372 </span><span class="lineNoCov">          0 :                     first = 0;</span>
+<span class="lineNum">     373 </span><span class="lineNoCov">          0 :                     mainpk = k-&gt;pkt-&gt;pkt.public_key;</span>
+<span class="lineNum">     374 </span>            :                   }
+<span class="lineNum">     375 </span>            : 
+<span class="lineNum">     376 </span><span class="lineNoCov">          0 :                 keyid_from_pk (k-&gt;pkt-&gt;pkt.public_key, aki);</span>
+<span class="lineNum">     377 </span><span class="lineNoCov">          0 :                 if (aki[0] == keyid[0] &amp;&amp; aki[1] == keyid[1])</span>
+<span class="lineNum">     378 </span>            :                   {
+<span class="lineNum">     379 </span><span class="lineNoCov">          0 :                     pk = k-&gt;pkt-&gt;pkt.public_key;</span>
+<span class="lineNum">     380 </span><span class="lineNoCov">          0 :                     break;</span>
+<span class="lineNum">     381 </span>            :                   }
+<span class="lineNum">     382 </span>            :               }
+<span class="lineNum">     383 </span>            :           }
+<span class="lineNum">     384 </span><span class="lineNoCov">          0 :         if (!pk)</span>
+<span class="lineNum">     385 </span><span class="lineNoCov">          0 :           BUG ();</span>
+<span class="lineNum">     386 </span><span class="lineNoCov">          0 :         if (pk-&gt;expiredate &amp;&amp; pk-&gt;expiredate &lt;= make_timestamp ())</span>
+<span class="lineNum">     387 </span>            :           {
+<span class="lineNum">     388 </span><span class="lineNoCov">          0 :             log_info (_(&quot;Note: secret key %s expired at %s\n&quot;),</span>
+<span class="lineNum">     389 </span>            :                       keystr (keyid), asctimestamp (pk-&gt;expiredate));
+<span class="lineNum">     390 </span>            :           }
+<span class="lineNum">     391 </span>            :       }
+<span class="lineNum">     392 </span>            : 
+<span class="lineNum">     393 </span><span class="lineNoCov">          0 :     if (pk &amp;&amp; pk-&gt;flags.revoked)</span>
+<span class="lineNum">     394 </span>            :       {
+<span class="lineNum">     395 </span><span class="lineNoCov">          0 :         log_info (_(&quot;Note: key has been revoked&quot;));</span>
+<span class="lineNum">     396 </span><span class="lineNoCov">          0 :         log_printf (&quot;\n&quot;);</span>
+<span class="lineNum">     397 </span><span class="lineNoCov">          0 :         show_revocation_reason (ctrl, pk, 1);</span>
+<span class="lineNum">     398 </span>            :       }
+<span class="lineNum">     399 </span>            : 
+<span class="lineNum">     400 </span><span class="lineNoCov">          0 :     if (is_status_enabled () &amp;&amp; pk &amp;&amp; mainpk)</span>
+<span class="lineNum">     401 </span>            :       {
+<span class="lineNum">     402 </span>            :         char pkhex[MAX_FINGERPRINT_LEN*2+1];
+<span class="lineNum">     403 </span>            :         char mainpkhex[MAX_FINGERPRINT_LEN*2+1];
+<span class="lineNum">     404 </span>            : 
+<span class="lineNum">     405 </span><span class="lineNoCov">          0 :         hexfingerprint (pk, pkhex, sizeof pkhex);</span>
+<span class="lineNum">     406 </span><span class="lineNoCov">          0 :         hexfingerprint (mainpk, mainpkhex, sizeof mainpkhex);</span>
+<span class="lineNum">     407 </span>            : 
+<span class="lineNum">     408 </span>            :         /* Note that we do not want to create a trustdb just for
+<span class="lineNum">     409 </span>            :          * getting the ownertrust: If there is no trustdb there can't
+<span class="lineNum">     410 </span>            :          * be ulitmately trusted key anyway and thus the ownertrust
+<span class="lineNum">     411 </span>            :          * value is irrelevant.  */
+<span class="lineNum">     412 </span><span class="lineNoCov">          0 :         write_status_printf (STATUS_DECRYPTION_KEY, &quot;%s %s %c&quot;,</span>
+<span class="lineNum">     413 </span>            :                              pkhex, mainpkhex,
+<span class="lineNum">     414 </span>            :                              get_ownertrust_info (ctrl, mainpk, 1));
+<span class="lineNum">     415 </span>            : 
+<span class="lineNum">     416 </span>            :       }
+<span class="lineNum">     417 </span>            : 
+<span class="lineNum">     418 </span><span class="lineNoCov">          0 :     release_kbnode (pkb);</span>
+<span class="lineNum">     419 </span><span class="lineNoCov">          0 :     err = 0;</span>
+<span class="lineNum">     420 </span>            :   }
+<span class="lineNum">     421 </span>            : 
+<span class="lineNum">     422 </span>            :  leave:
+<span class="lineNum">     423 </span><span class="lineNoCov">          0 :   xfree (frame);</span>
+<span class="lineNum">     424 </span><span class="lineNoCov">          0 :   xfree (keygrip);</span>
+<span class="lineNum">     425 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     426 </span>            : }
+<span class="lineNum">     427 </span>            : 
+<span class="lineNum">     428 </span>            : 
+<span class="lineNum">     429 </span>            : /*
+<span class="lineNum">     430 </span>            :  * Get the session key from the given string.
+<span class="lineNum">     431 </span>            :  * String is supposed to be formatted as this:
+<span class="lineNum">     432 </span>            :  *  &lt;algo-id&gt;:&lt;even-number-of-hex-digits&gt;
+<a name="433"><span class="lineNum">     433 </span>            :  */</a>
+<span class="lineNum">     434 </span>            : gpg_error_t
+<span class="lineNum">     435 </span><span class="lineNoCov">          0 : get_override_session_key (DEK *dek, const char *string)</span>
+<span class="lineNum">     436 </span>            : {
+<span class="lineNum">     437 </span>            :   const char *s;
+<span class="lineNum">     438 </span>            :   int i;
+<span class="lineNum">     439 </span>            : 
+<span class="lineNum">     440 </span><span class="lineNoCov">          0 :   if (!string)</span>
+<span class="lineNum">     441 </span><span class="lineNoCov">          0 :     return GPG_ERR_BAD_KEY;</span>
+<span class="lineNum">     442 </span><span class="lineNoCov">          0 :   dek-&gt;algo = atoi (string);</span>
+<span class="lineNum">     443 </span><span class="lineNoCov">          0 :   if (dek-&gt;algo &lt; 1)</span>
+<span class="lineNum">     444 </span><span class="lineNoCov">          0 :     return GPG_ERR_BAD_KEY;</span>
+<span class="lineNum">     445 </span><span class="lineNoCov">          0 :   if (!(s = strchr (string, ':')))</span>
+<span class="lineNum">     446 </span><span class="lineNoCov">          0 :     return GPG_ERR_BAD_KEY;</span>
+<span class="lineNum">     447 </span><span class="lineNoCov">          0 :   s++;</span>
+<span class="lineNum">     448 </span><span class="lineNoCov">          0 :   for (i = 0; i &lt; DIM (dek-&gt;key) &amp;&amp; *s; i++, s += 2)</span>
+<span class="lineNum">     449 </span>            :     {
+<span class="lineNum">     450 </span><span class="lineNoCov">          0 :       int c = hextobyte (s);</span>
+<span class="lineNum">     451 </span><span class="lineNoCov">          0 :       if (c == -1)</span>
+<span class="lineNum">     452 </span><span class="lineNoCov">          0 :         return GPG_ERR_BAD_KEY;</span>
+<span class="lineNum">     453 </span><span class="lineNoCov">          0 :       dek-&gt;key[i] = c;</span>
+<span class="lineNum">     454 </span>            :     }
+<span class="lineNum">     455 </span><span class="lineNoCov">          0 :   if (*s)</span>
+<span class="lineNum">     456 </span><span class="lineNoCov">          0 :     return GPG_ERR_BAD_KEY;</span>
+<span class="lineNum">     457 </span><span class="lineNoCov">          0 :   dek-&gt;keylen = i;</span>
+<span class="lineNum">     458 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     459 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

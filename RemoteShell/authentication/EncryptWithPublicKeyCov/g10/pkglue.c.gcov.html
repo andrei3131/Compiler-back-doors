@@ -1,0 +1,498 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - g10/pkglue.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">g10</a> - pkglue.c<span style="font-size: 80%;"> (source / <a href="pkglue.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">27</td>
+            <td class="headerCovTableEntry">189</td>
+            <td class="headerCovTableEntryLo">14.3 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 15:09:19</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">2</td>
+            <td class="headerCovTableEntry">4</td>
+            <td class="headerCovTableEntryLo">50.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* pkglue.c - public key operations glue code</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 2000, 2003, 2010 Free Software Foundation, Inc.
+<span class="lineNum">       3 </span>            :  * Copyright (C) 2014 Werner Koch
+<span class="lineNum">       4 </span>            :  *
+<span class="lineNum">       5 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       6 </span>            :  *
+<span class="lineNum">       7 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       8 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">       9 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">      10 </span>            :  * (at your option) any later version.
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      13 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      14 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      15 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      16 </span>            :  *
+<span class="lineNum">      17 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      18 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      19 </span>            :  */
+<span class="lineNum">      20 </span>            : 
+<span class="lineNum">      21 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      22 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      23 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      24 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      25 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      26 </span>            : 
+<span class="lineNum">      27 </span>            : #include &quot;gpg.h&quot;
+<span class="lineNum">      28 </span>            : #include &quot;../common/util.h&quot;
+<span class="lineNum">      29 </span>            : #include &quot;pkglue.h&quot;
+<span class="lineNum">      30 </span>            : #include &quot;main.h&quot;
+<span class="lineNum">      31 </span>            : #include &quot;options.h&quot;
+<span class="lineNum">      32 </span>            : 
+<span class="lineNum">      33 </span>            : /* FIXME: Better change the function name because mpi_ is used by
+<a name="34"><span class="lineNum">      34 </span>            :    gcrypt macros.  */</a>
+<span class="lineNum">      35 </span>            : gcry_mpi_t
+<span class="lineNum">      36 </span><span class="lineCov">          1 : get_mpi_from_sexp (gcry_sexp_t sexp, const char *item, int mpifmt)</span>
+<span class="lineNum">      37 </span>            : {
+<span class="lineNum">      38 </span>            :   gcry_sexp_t list;
+<span class="lineNum">      39 </span>            :   gcry_mpi_t data;
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span><span class="lineCov">          1 :   list = gcry_sexp_find_token (sexp, item, 0);</span>
+<span class="lineNum">      42 </span><span class="lineCov">          1 :   log_assert (list);</span>
+<span class="lineNum">      43 </span><span class="lineCov">          1 :   data = gcry_sexp_nth_mpi (list, 1, mpifmt);</span>
+<span class="lineNum">      44 </span><span class="lineCov">          1 :   log_assert (data);</span>
+<span class="lineNum">      45 </span><span class="lineCov">          1 :   gcry_sexp_release (list);</span>
+<span class="lineNum">      46 </span><span class="lineCov">          1 :   return data;</span>
+<span class="lineNum">      47 </span>            : }
+<span class="lineNum">      48 </span>            : 
+<span class="lineNum">      49 </span>            : 
+<span class="lineNum">      50 </span>            : 
+<span class="lineNum">      51 </span>            : /****************
+<span class="lineNum">      52 </span>            :  * Emulate our old PK interface here - sometime in the future we might
+<span class="lineNum">      53 </span>            :  * change the internal design to directly fit to libgcrypt.
+<a name="54"><span class="lineNum">      54 </span>            :  */</a>
+<span class="lineNum">      55 </span>            : int
+<span class="lineNum">      56 </span><span class="lineNoCov">          0 : pk_verify (pubkey_algo_t pkalgo, gcry_mpi_t hash,</span>
+<span class="lineNum">      57 </span>            :            gcry_mpi_t *data, gcry_mpi_t *pkey)
+<span class="lineNum">      58 </span>            : {
+<span class="lineNum">      59 </span>            :   gcry_sexp_t s_sig, s_hash, s_pkey;
+<span class="lineNum">      60 </span>            :   int rc;
+<span class="lineNum">      61 </span><span class="lineNoCov">          0 :   unsigned int neededfixedlen = 0;</span>
+<span class="lineNum">      62 </span>            : 
+<span class="lineNum">      63 </span>            :   /* Make a sexp from pkey.  */
+<span class="lineNum">      64 </span><span class="lineNoCov">          0 :   if (pkalgo == PUBKEY_ALGO_DSA)</span>
+<span class="lineNum">      65 </span>            :     {
+<span class="lineNum">      66 </span><span class="lineNoCov">          0 :       rc = gcry_sexp_build (&amp;s_pkey, NULL,</span>
+<span class="lineNum">      67 </span>            :                             &quot;(public-key(dsa(p%m)(q%m)(g%m)(y%m)))&quot;,
+<span class="lineNum">      68 </span><span class="lineNoCov">          0 :                             pkey[0], pkey[1], pkey[2], pkey[3]);</span>
+<span class="lineNum">      69 </span>            :     }
+<span class="lineNum">      70 </span><span class="lineNoCov">          0 :   else if (pkalgo == PUBKEY_ALGO_ELGAMAL_E || pkalgo == PUBKEY_ALGO_ELGAMAL)</span>
+<span class="lineNum">      71 </span>            :     {
+<span class="lineNum">      72 </span><span class="lineNoCov">          0 :       rc = gcry_sexp_build (&amp;s_pkey, NULL,</span>
+<span class="lineNum">      73 </span>            :                             &quot;(public-key(elg(p%m)(g%m)(y%m)))&quot;,
+<span class="lineNum">      74 </span><span class="lineNoCov">          0 :                             pkey[0], pkey[1], pkey[2]);</span>
+<span class="lineNum">      75 </span>            :     }
+<span class="lineNum">      76 </span><span class="lineNoCov">          0 :   else if (pkalgo == PUBKEY_ALGO_RSA || pkalgo == PUBKEY_ALGO_RSA_S)</span>
+<span class="lineNum">      77 </span>            :     {
+<span class="lineNum">      78 </span><span class="lineNoCov">          0 :       rc = gcry_sexp_build (&amp;s_pkey, NULL,</span>
+<span class="lineNum">      79 </span><span class="lineNoCov">          0 :                             &quot;(public-key(rsa(n%m)(e%m)))&quot;, pkey[0], pkey[1]);</span>
+<span class="lineNum">      80 </span>            :     }
+<span class="lineNum">      81 </span><span class="lineNoCov">          0 :   else if (pkalgo == PUBKEY_ALGO_ECDSA)</span>
+<span class="lineNum">      82 </span>            :     {
+<span class="lineNum">      83 </span><span class="lineNoCov">          0 :       char *curve = openpgp_oid_to_str (pkey[0]);</span>
+<span class="lineNum">      84 </span><span class="lineNoCov">          0 :       if (!curve)</span>
+<span class="lineNum">      85 </span><span class="lineNoCov">          0 :         rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">      86 </span>            :       else
+<span class="lineNum">      87 </span>            :         {
+<span class="lineNum">      88 </span><span class="lineNoCov">          0 :           rc = gcry_sexp_build (&amp;s_pkey, NULL,</span>
+<span class="lineNum">      89 </span>            :                                 &quot;(public-key(ecdsa(curve %s)(q%m)))&quot;,
+<span class="lineNum">      90 </span><span class="lineNoCov">          0 :                                 curve, pkey[1]);</span>
+<span class="lineNum">      91 </span><span class="lineNoCov">          0 :           xfree (curve);</span>
+<span class="lineNum">      92 </span>            :         }
+<span class="lineNum">      93 </span>            :     }
+<span class="lineNum">      94 </span><span class="lineNoCov">          0 :   else if (pkalgo == PUBKEY_ALGO_EDDSA)</span>
+<span class="lineNum">      95 </span>            :     {
+<span class="lineNum">      96 </span><span class="lineNoCov">          0 :       char *curve = openpgp_oid_to_str (pkey[0]);</span>
+<span class="lineNum">      97 </span><span class="lineNoCov">          0 :       if (!curve)</span>
+<span class="lineNum">      98 </span><span class="lineNoCov">          0 :         rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">      99 </span>            :       else
+<span class="lineNum">     100 </span>            :         {
+<span class="lineNum">     101 </span><span class="lineNoCov">          0 :           rc = gcry_sexp_build (&amp;s_pkey, NULL,</span>
+<span class="lineNum">     102 </span>            :                                 &quot;(public-key(ecc(curve %s)&quot;
+<span class="lineNum">     103 </span>            :                                 &quot;(flags eddsa)(q%m)))&quot;,
+<span class="lineNum">     104 </span><span class="lineNoCov">          0 :                                 curve, pkey[1]);</span>
+<span class="lineNum">     105 </span><span class="lineNoCov">          0 :           xfree (curve);</span>
+<span class="lineNum">     106 </span>            :         }
+<span class="lineNum">     107 </span>            : 
+<span class="lineNum">     108 </span><span class="lineNoCov">          0 :       if (openpgp_oid_is_ed25519 (pkey[0]))</span>
+<span class="lineNum">     109 </span><span class="lineNoCov">          0 :         neededfixedlen = 256 / 8;</span>
+<span class="lineNum">     110 </span>            :     }
+<span class="lineNum">     111 </span>            :   else
+<span class="lineNum">     112 </span><span class="lineNoCov">          0 :     return GPG_ERR_PUBKEY_ALGO;</span>
+<span class="lineNum">     113 </span>            : 
+<span class="lineNum">     114 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     115 </span><span class="lineNoCov">          0 :     BUG ();  /* gcry_sexp_build should never fail.  */</span>
+<span class="lineNum">     116 </span>            : 
+<span class="lineNum">     117 </span>            :   /* Put hash into a S-Exp s_hash. */
+<span class="lineNum">     118 </span><span class="lineNoCov">          0 :   if (pkalgo == PUBKEY_ALGO_EDDSA)</span>
+<span class="lineNum">     119 </span>            :     {
+<span class="lineNum">     120 </span><span class="lineNoCov">          0 :       if (gcry_sexp_build (&amp;s_hash, NULL,</span>
+<span class="lineNum">     121 </span>            :                            &quot;(data(flags eddsa)(hash-algo sha512)(value %m))&quot;,
+<span class="lineNum">     122 </span>            :                            hash))
+<span class="lineNum">     123 </span><span class="lineNoCov">          0 :         BUG (); /* gcry_sexp_build should never fail.  */</span>
+<span class="lineNum">     124 </span>            :     }
+<span class="lineNum">     125 </span>            :   else
+<span class="lineNum">     126 </span>            :     {
+<span class="lineNum">     127 </span><span class="lineNoCov">          0 :       if (gcry_sexp_build (&amp;s_hash, NULL, &quot;%m&quot;, hash))</span>
+<span class="lineNum">     128 </span><span class="lineNoCov">          0 :         BUG (); /* gcry_sexp_build should never fail.  */</span>
+<span class="lineNum">     129 </span>            :     }
+<span class="lineNum">     130 </span>            : 
+<span class="lineNum">     131 </span>            :   /* Put data into a S-Exp s_sig. */
+<span class="lineNum">     132 </span><span class="lineNoCov">          0 :   s_sig = NULL;</span>
+<span class="lineNum">     133 </span><span class="lineNoCov">          0 :   if (pkalgo == PUBKEY_ALGO_DSA)</span>
+<span class="lineNum">     134 </span>            :     {
+<span class="lineNum">     135 </span><span class="lineNoCov">          0 :       if (!data[0] || !data[1])</span>
+<span class="lineNum">     136 </span><span class="lineNoCov">          0 :         rc = gpg_error (GPG_ERR_BAD_MPI);</span>
+<span class="lineNum">     137 </span>            :       else
+<span class="lineNum">     138 </span><span class="lineNoCov">          0 :         rc = gcry_sexp_build (&amp;s_sig, NULL,</span>
+<span class="lineNum">     139 </span><span class="lineNoCov">          0 :                               &quot;(sig-val(dsa(r%m)(s%m)))&quot;, data[0], data[1]);</span>
+<span class="lineNum">     140 </span>            :     }
+<span class="lineNum">     141 </span><span class="lineNoCov">          0 :   else if (pkalgo == PUBKEY_ALGO_ECDSA)</span>
+<span class="lineNum">     142 </span>            :     {
+<span class="lineNum">     143 </span><span class="lineNoCov">          0 :       if (!data[0] || !data[1])</span>
+<span class="lineNum">     144 </span><span class="lineNoCov">          0 :         rc = gpg_error (GPG_ERR_BAD_MPI);</span>
+<span class="lineNum">     145 </span>            :       else
+<span class="lineNum">     146 </span><span class="lineNoCov">          0 :         rc = gcry_sexp_build (&amp;s_sig, NULL,</span>
+<span class="lineNum">     147 </span><span class="lineNoCov">          0 :                               &quot;(sig-val(ecdsa(r%m)(s%m)))&quot;, data[0], data[1]);</span>
+<span class="lineNum">     148 </span>            :     }
+<span class="lineNum">     149 </span><span class="lineNoCov">          0 :   else if (pkalgo == PUBKEY_ALGO_EDDSA)</span>
+<span class="lineNum">     150 </span>            :     {
+<span class="lineNum">     151 </span><span class="lineNoCov">          0 :       gcry_mpi_t r = data[0];</span>
+<span class="lineNum">     152 </span><span class="lineNoCov">          0 :       gcry_mpi_t s = data[1];</span>
+<span class="lineNum">     153 </span>            :       size_t rlen, slen, n;  /* (bytes) */
+<span class="lineNum">     154 </span>            :       char buf[64];
+<span class="lineNum">     155 </span>            : 
+<span class="lineNum">     156 </span><span class="lineNoCov">          0 :       log_assert (neededfixedlen &lt;= sizeof buf);</span>
+<span class="lineNum">     157 </span>            : 
+<span class="lineNum">     158 </span><span class="lineNoCov">          0 :       if (!r || !s)</span>
+<span class="lineNum">     159 </span><span class="lineNoCov">          0 :         rc = gpg_error (GPG_ERR_BAD_MPI);</span>
+<span class="lineNum">     160 </span><span class="lineNoCov">          0 :       else if ((rlen = (gcry_mpi_get_nbits (r)+7)/8) &gt; neededfixedlen || !rlen)</span>
+<span class="lineNum">     161 </span><span class="lineNoCov">          0 :         rc = gpg_error (GPG_ERR_BAD_MPI);</span>
+<span class="lineNum">     162 </span><span class="lineNoCov">          0 :       else if ((slen = (gcry_mpi_get_nbits (s)+7)/8) &gt; neededfixedlen || !slen)</span>
+<span class="lineNum">     163 </span><span class="lineNoCov">          0 :         rc = gpg_error (GPG_ERR_BAD_MPI);</span>
+<span class="lineNum">     164 </span>            :       else
+<span class="lineNum">     165 </span>            :         {
+<span class="lineNum">     166 </span>            :           /* We need to fixup the length in case of leading zeroes.
+<span class="lineNum">     167 </span>            :            * OpenPGP does not allow leading zeroes and the parser for
+<span class="lineNum">     168 </span>            :            * the signature packet has no information on the use curve,
+<span class="lineNum">     169 </span>            :            * thus we need to do it here.  We won't do it for opaque
+<span class="lineNum">     170 </span>            :            * MPIs under the assumption that they are known to be fine;
+<span class="lineNum">     171 </span>            :            * we won't see them here anyway but the check is anyway
+<span class="lineNum">     172 </span>            :            * required.  Fixme: A nifty feature for gcry_sexp_build
+<span class="lineNum">     173 </span>            :            * would be a format to left pad the value (e.g. &quot;%*M&quot;). */
+<span class="lineNum">     174 </span><span class="lineNoCov">          0 :           rc = 0;</span>
+<span class="lineNum">     175 </span>            : 
+<span class="lineNum">     176 </span><span class="lineNoCov">          0 :           if (rlen &lt; neededfixedlen</span>
+<span class="lineNum">     177 </span><span class="lineNoCov">          0 :               &amp;&amp; !gcry_mpi_get_flag (r, GCRYMPI_FLAG_OPAQUE)</span>
+<span class="lineNum">     178 </span><span class="lineNoCov">          0 :               &amp;&amp; !(rc=gcry_mpi_print (GCRYMPI_FMT_USG, buf, sizeof buf, &amp;n, r)))</span>
+<span class="lineNum">     179 </span>            :             {
+<span class="lineNum">     180 </span><span class="lineNoCov">          0 :               log_assert (n &lt; neededfixedlen);</span>
+<span class="lineNum">     181 </span><span class="lineNoCov">          0 :               memmove (buf + (neededfixedlen - n), buf, n);</span>
+<span class="lineNum">     182 </span><span class="lineNoCov">          0 :               memset (buf, 0, neededfixedlen - n);</span>
+<span class="lineNum">     183 </span><span class="lineNoCov">          0 :               r = gcry_mpi_set_opaque_copy (NULL, buf, neededfixedlen * 8);</span>
+<span class="lineNum">     184 </span>            :             }
+<span class="lineNum">     185 </span><span class="lineNoCov">          0 :           if (slen &lt; neededfixedlen</span>
+<span class="lineNum">     186 </span><span class="lineNoCov">          0 :               &amp;&amp; !gcry_mpi_get_flag (s, GCRYMPI_FLAG_OPAQUE)</span>
+<span class="lineNum">     187 </span><span class="lineNoCov">          0 :               &amp;&amp; !(rc=gcry_mpi_print (GCRYMPI_FMT_USG, buf, sizeof buf, &amp;n, s)))</span>
+<span class="lineNum">     188 </span>            :             {
+<span class="lineNum">     189 </span><span class="lineNoCov">          0 :               log_assert (n &lt; neededfixedlen);</span>
+<span class="lineNum">     190 </span><span class="lineNoCov">          0 :               memmove (buf + (neededfixedlen - n), buf, n);</span>
+<span class="lineNum">     191 </span><span class="lineNoCov">          0 :               memset (buf, 0, neededfixedlen - n);</span>
+<span class="lineNum">     192 </span><span class="lineNoCov">          0 :               s = gcry_mpi_set_opaque_copy (NULL, buf, neededfixedlen * 8);</span>
+<span class="lineNum">     193 </span>            :             }
+<span class="lineNum">     194 </span>            : 
+<span class="lineNum">     195 </span><span class="lineNoCov">          0 :           if (!rc)</span>
+<span class="lineNum">     196 </span><span class="lineNoCov">          0 :             rc = gcry_sexp_build (&amp;s_sig, NULL,</span>
+<span class="lineNum">     197 </span>            :                                   &quot;(sig-val(eddsa(r%M)(s%M)))&quot;, r, s);
+<span class="lineNum">     198 </span>            : 
+<span class="lineNum">     199 </span><span class="lineNoCov">          0 :           if (r != data[0])</span>
+<span class="lineNum">     200 </span><span class="lineNoCov">          0 :             gcry_mpi_release (r);</span>
+<span class="lineNum">     201 </span><span class="lineNoCov">          0 :           if (s != data[1])</span>
+<span class="lineNum">     202 </span><span class="lineNoCov">          0 :             gcry_mpi_release (s);</span>
+<span class="lineNum">     203 </span>            :         }
+<span class="lineNum">     204 </span>            :     }
+<span class="lineNum">     205 </span><span class="lineNoCov">          0 :   else if (pkalgo == PUBKEY_ALGO_ELGAMAL || pkalgo == PUBKEY_ALGO_ELGAMAL_E)</span>
+<span class="lineNum">     206 </span>            :     {
+<span class="lineNum">     207 </span><span class="lineNoCov">          0 :       if (!data[0] || !data[1])</span>
+<span class="lineNum">     208 </span><span class="lineNoCov">          0 :         rc = gpg_error (GPG_ERR_BAD_MPI);</span>
+<span class="lineNum">     209 </span>            :       else
+<span class="lineNum">     210 </span><span class="lineNoCov">          0 :         rc = gcry_sexp_build (&amp;s_sig, NULL,</span>
+<span class="lineNum">     211 </span><span class="lineNoCov">          0 :                               &quot;(sig-val(elg(r%m)(s%m)))&quot;, data[0], data[1]);</span>
+<span class="lineNum">     212 </span>            :     }
+<span class="lineNum">     213 </span><span class="lineNoCov">          0 :   else if (pkalgo == PUBKEY_ALGO_RSA || pkalgo == PUBKEY_ALGO_RSA_S)</span>
+<span class="lineNum">     214 </span>            :     {
+<span class="lineNum">     215 </span><span class="lineNoCov">          0 :       if (!data[0])</span>
+<span class="lineNum">     216 </span><span class="lineNoCov">          0 :         rc = gpg_error (GPG_ERR_BAD_MPI);</span>
+<span class="lineNum">     217 </span>            :       else
+<span class="lineNum">     218 </span><span class="lineNoCov">          0 :         rc = gcry_sexp_build (&amp;s_sig, NULL, &quot;(sig-val(rsa(s%m)))&quot;, data[0]);</span>
+<span class="lineNum">     219 </span>            :     }
+<span class="lineNum">     220 </span>            :   else
+<span class="lineNum">     221 </span><span class="lineNoCov">          0 :     BUG ();</span>
+<span class="lineNum">     222 </span>            : 
+<span class="lineNum">     223 </span><span class="lineNoCov">          0 :   if (!rc)</span>
+<span class="lineNum">     224 </span><span class="lineNoCov">          0 :     rc = gcry_pk_verify (s_sig, s_hash, s_pkey);</span>
+<span class="lineNum">     225 </span>            : 
+<span class="lineNum">     226 </span><span class="lineNoCov">          0 :   gcry_sexp_release (s_sig);</span>
+<span class="lineNum">     227 </span><span class="lineNoCov">          0 :   gcry_sexp_release (s_hash);</span>
+<span class="lineNum">     228 </span><span class="lineNoCov">          0 :   gcry_sexp_release (s_pkey);</span>
+<span class="lineNum">     229 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     230 </span>            : }
+<span class="lineNum">     231 </span>            : 
+<span class="lineNum">     232 </span>            : 
+<span class="lineNum">     233 </span>            : 
+<span class="lineNum">     234 </span>            : 
+<span class="lineNum">     235 </span>            : /****************
+<span class="lineNum">     236 </span>            :  * Emulate our old PK interface here - sometime in the future we might
+<span class="lineNum">     237 </span>            :  * change the internal design to directly fit to libgcrypt.
+<span class="lineNum">     238 </span>            :  * PK is only required to compute the fingerprint for ECDH.
+<a name="239"><span class="lineNum">     239 </span>            :  */</a>
+<span class="lineNum">     240 </span>            : int
+<span class="lineNum">     241 </span><span class="lineCov">          1 : pk_encrypt (pubkey_algo_t algo, gcry_mpi_t *resarr, gcry_mpi_t data,</span>
+<span class="lineNum">     242 </span>            :             PKT_public_key *pk, gcry_mpi_t *pkey)
+<span class="lineNum">     243 </span>            : {
+<span class="lineNum">     244 </span><span class="lineCov">          1 :   gcry_sexp_t s_ciph = NULL;</span>
+<span class="lineNum">     245 </span><span class="lineCov">          1 :   gcry_sexp_t s_data = NULL;</span>
+<span class="lineNum">     246 </span><span class="lineCov">          1 :   gcry_sexp_t s_pkey = NULL;</span>
+<span class="lineNum">     247 </span>            :   int rc;
+<span class="lineNum">     248 </span>            : 
+<span class="lineNum">     249 </span>            :   /* Make a sexp from pkey.  */
+<span class="lineNum">     250 </span><span class="lineCov">          1 :   if (algo == PUBKEY_ALGO_ELGAMAL || algo == PUBKEY_ALGO_ELGAMAL_E)</span>
+<span class="lineNum">     251 </span>            :     {
+<span class="lineNum">     252 </span><span class="lineNoCov">          0 :       rc = gcry_sexp_build (&amp;s_pkey, NULL,</span>
+<span class="lineNum">     253 </span>            :                             &quot;(public-key(elg(p%m)(g%m)(y%m)))&quot;,
+<span class="lineNum">     254 </span><span class="lineNoCov">          0 :                             pkey[0], pkey[1], pkey[2]);</span>
+<span class="lineNum">     255 </span>            :       /* Put DATA into a simplified S-expression.  */
+<span class="lineNum">     256 </span><span class="lineNoCov">          0 :       if (!rc)</span>
+<span class="lineNum">     257 </span><span class="lineNoCov">          0 :         rc = gcry_sexp_build (&amp;s_data, NULL, &quot;%m&quot;, data);</span>
+<span class="lineNum">     258 </span>            :     }
+<span class="lineNum">     259 </span><span class="lineCov">          1 :   else if (algo == PUBKEY_ALGO_RSA || algo == PUBKEY_ALGO_RSA_E)</span>
+<span class="lineNum">     260 </span>            :     {
+<span class="lineNum">     261 </span><span class="lineCov">          1 :       rc = gcry_sexp_build (&amp;s_pkey, NULL,</span>
+<span class="lineNum">     262 </span>            :                             &quot;(public-key(rsa(n%m)(e%m)))&quot;,
+<span class="lineNum">     263 </span><span class="lineCov">          1 :                             pkey[0], pkey[1]);</span>
+<span class="lineNum">     264 </span>            :       /* Put DATA into a simplified S-expression.  */
+<span class="lineNum">     265 </span><span class="lineCov">          2 :       if (!rc)</span>
+<span class="lineNum">     266 </span><span class="lineCov">          1 :         rc = gcry_sexp_build (&amp;s_data, NULL, &quot;%m&quot;, data);</span>
+<span class="lineNum">     267 </span>            :     }
+<span class="lineNum">     268 </span><span class="lineNoCov">          0 :   else if (algo == PUBKEY_ALGO_ECDH)</span>
+<span class="lineNum">     269 </span>            :     {
+<span class="lineNum">     270 </span>            :       gcry_mpi_t k;
+<span class="lineNum">     271 </span>            : 
+<span class="lineNum">     272 </span><span class="lineNoCov">          0 :       rc = pk_ecdh_generate_ephemeral_key (pkey, &amp;k);</span>
+<span class="lineNum">     273 </span><span class="lineNoCov">          0 :       if (!rc)</span>
+<span class="lineNum">     274 </span>            :         {
+<span class="lineNum">     275 </span>            :           char *curve;
+<span class="lineNum">     276 </span>            : 
+<span class="lineNum">     277 </span><span class="lineNoCov">          0 :           curve = openpgp_oid_to_str (pkey[0]);</span>
+<span class="lineNum">     278 </span><span class="lineNoCov">          0 :           if (!curve)</span>
+<span class="lineNum">     279 </span><span class="lineNoCov">          0 :             rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">     280 </span>            :           else
+<span class="lineNum">     281 </span>            :             {
+<span class="lineNum">     282 </span><span class="lineNoCov">          0 :               int with_djb_tweak_flag = openpgp_oid_is_cv25519 (pkey[0]);</span>
+<span class="lineNum">     283 </span>            : 
+<span class="lineNum">     284 </span>            :               /* Now use the ephemeral secret to compute the shared point.  */
+<span class="lineNum">     285 </span><span class="lineNoCov">          0 :               rc = gcry_sexp_build (&amp;s_pkey, NULL,</span>
+<span class="lineNum">     286 </span>            :                                     with_djb_tweak_flag ?
+<span class="lineNum">     287 </span>            :                                     &quot;(public-key(ecdh(curve%s)(flags djb-tweak)(q%m)))&quot;
+<span class="lineNum">     288 </span>            :                                     : &quot;(public-key(ecdh(curve%s)(q%m)))&quot;,
+<span class="lineNum">     289 </span><span class="lineNoCov">          0 :                                     curve, pkey[1]);</span>
+<span class="lineNum">     290 </span><span class="lineNoCov">          0 :               xfree (curve);</span>
+<span class="lineNum">     291 </span>            :               /* Put K into a simplified S-expression.  */
+<span class="lineNum">     292 </span><span class="lineNoCov">          0 :               if (!rc)</span>
+<span class="lineNum">     293 </span><span class="lineNoCov">          0 :                 rc = gcry_sexp_build (&amp;s_data, NULL, &quot;%m&quot;, k);</span>
+<span class="lineNum">     294 </span>            :             }
+<span class="lineNum">     295 </span><span class="lineNoCov">          0 :           gcry_mpi_release (k);</span>
+<span class="lineNum">     296 </span>            :         }
+<span class="lineNum">     297 </span>            :     }
+<span class="lineNum">     298 </span>            :   else
+<span class="lineNum">     299 </span><span class="lineNoCov">          0 :     rc = gpg_error (GPG_ERR_PUBKEY_ALGO);</span>
+<span class="lineNum">     300 </span>            : 
+<span class="lineNum">     301 </span>            :   /* Pass it to libgcrypt. */
+<span class="lineNum">     302 </span><span class="lineCov">          1 :   if (!rc)</span>
+<span class="lineNum">     303 </span><span class="lineCov">          1 :     rc = gcry_pk_encrypt (&amp;s_ciph, s_data, s_pkey);</span>
+<span class="lineNum">     304 </span>            : 
+<span class="lineNum">     305 </span><span class="lineCov">          1 :   gcry_sexp_release (s_data);</span>
+<span class="lineNum">     306 </span><span class="lineCov">          1 :   gcry_sexp_release (s_pkey);</span>
+<span class="lineNum">     307 </span>            : 
+<span class="lineNum">     308 </span><span class="lineCov">          1 :   if (rc)</span>
+<span class="lineNum">     309 </span>            :     ;
+<span class="lineNum">     310 </span><span class="lineCov">          1 :   else if (algo == PUBKEY_ALGO_ECDH)</span>
+<span class="lineNum">     311 </span>            :     {
+<span class="lineNum">     312 </span>            :       gcry_mpi_t shared, public, result;
+<span class="lineNum">     313 </span>            :       byte fp[MAX_FINGERPRINT_LEN];
+<span class="lineNum">     314 </span>            :       size_t fpn;
+<span class="lineNum">     315 </span>            : 
+<span class="lineNum">     316 </span>            :       /* Get the shared point and the ephemeral public key.  */
+<span class="lineNum">     317 </span><span class="lineNoCov">          0 :       shared = get_mpi_from_sexp (s_ciph, &quot;s&quot;, GCRYMPI_FMT_USG);</span>
+<span class="lineNum">     318 </span><span class="lineNoCov">          0 :       public = get_mpi_from_sexp (s_ciph, &quot;e&quot;, GCRYMPI_FMT_USG);</span>
+<span class="lineNum">     319 </span><span class="lineNoCov">          0 :       gcry_sexp_release (s_ciph);</span>
+<span class="lineNum">     320 </span><span class="lineNoCov">          0 :       s_ciph = NULL;</span>
+<span class="lineNum">     321 </span><span class="lineNoCov">          0 :       if (DBG_CRYPTO)</span>
+<span class="lineNum">     322 </span>            :         {
+<span class="lineNum">     323 </span><span class="lineNoCov">          0 :           log_debug (&quot;ECDH ephemeral key:&quot;);</span>
+<span class="lineNum">     324 </span><span class="lineNoCov">          0 :           gcry_mpi_dump (public);</span>
+<span class="lineNum">     325 </span><span class="lineNoCov">          0 :           log_printf (&quot;\n&quot;);</span>
+<span class="lineNum">     326 </span>            :         }
+<span class="lineNum">     327 </span>            : 
+<span class="lineNum">     328 </span><span class="lineNoCov">          0 :       result = NULL;</span>
+<span class="lineNum">     329 </span><span class="lineNoCov">          0 :       fingerprint_from_pk (pk, fp, &amp;fpn);</span>
+<span class="lineNum">     330 </span><span class="lineNoCov">          0 :       if (fpn != 20)</span>
+<span class="lineNum">     331 </span><span class="lineNoCov">          0 :         rc = gpg_error (GPG_ERR_INV_LENGTH);</span>
+<span class="lineNum">     332 </span>            :       else
+<span class="lineNum">     333 </span><span class="lineNoCov">          0 :         rc = pk_ecdh_encrypt_with_shared_point (1 /*=encrypton*/, shared,</span>
+<span class="lineNum">     334 </span>            :                                                 fp, data, pkey, &amp;result);
+<span class="lineNum">     335 </span><span class="lineNoCov">          0 :       gcry_mpi_release (shared);</span>
+<span class="lineNum">     336 </span><span class="lineNoCov">          0 :       if (!rc)</span>
+<span class="lineNum">     337 </span>            :         {
+<span class="lineNum">     338 </span><span class="lineNoCov">          0 :           resarr[0] = public;</span>
+<span class="lineNum">     339 </span><span class="lineNoCov">          0 :           resarr[1] = result;</span>
+<span class="lineNum">     340 </span>            :         }
+<span class="lineNum">     341 </span>            :       else
+<span class="lineNum">     342 </span>            :         {
+<span class="lineNum">     343 </span><span class="lineNoCov">          0 :           gcry_mpi_release (public);</span>
+<span class="lineNum">     344 </span><span class="lineNoCov">          0 :           gcry_mpi_release (result);</span>
+<span class="lineNum">     345 </span>            :         }
+<span class="lineNum">     346 </span>            :     }
+<span class="lineNum">     347 </span>            :   else /* Elgamal or RSA case.  */
+<span class="lineNum">     348 </span>            :     { /* Fixme: Add better error handling or make gnupg use
+<span class="lineNum">     349 </span>            :          S-expressions directly.  */
+<span class="lineNum">     350 </span><span class="lineCov">          1 :       resarr[0] = get_mpi_from_sexp (s_ciph, &quot;a&quot;, GCRYMPI_FMT_USG);</span>
+<span class="lineNum">     351 </span><span class="lineCov">          1 :       if (!is_RSA (algo))</span>
+<span class="lineNum">     352 </span><span class="lineNoCov">          0 :         resarr[1] = get_mpi_from_sexp (s_ciph, &quot;b&quot;, GCRYMPI_FMT_USG);</span>
+<span class="lineNum">     353 </span>            :     }
+<span class="lineNum">     354 </span>            : 
+<span class="lineNum">     355 </span><span class="lineCov">          1 :   gcry_sexp_release (s_ciph);</span>
+<span class="lineNum">     356 </span><span class="lineCov">          1 :   return rc;</span>
+<span class="lineNum">     357 </span>            : }
+<span class="lineNum">     358 </span>            : 
+<span class="lineNum">     359 </span>            : 
+<a name="360"><span class="lineNum">     360 </span>            : /* Check whether SKEY is a suitable secret key. */</a>
+<span class="lineNum">     361 </span>            : int
+<span class="lineNum">     362 </span><span class="lineNoCov">          0 : pk_check_secret_key (pubkey_algo_t pkalgo, gcry_mpi_t *skey)</span>
+<span class="lineNum">     363 </span>            : {
+<span class="lineNum">     364 </span>            :   gcry_sexp_t s_skey;
+<span class="lineNum">     365 </span>            :   int rc;
+<span class="lineNum">     366 </span>            : 
+<span class="lineNum">     367 </span><span class="lineNoCov">          0 :   if (pkalgo == PUBKEY_ALGO_DSA)</span>
+<span class="lineNum">     368 </span>            :     {
+<span class="lineNum">     369 </span><span class="lineNoCov">          0 :       rc = gcry_sexp_build (&amp;s_skey, NULL,</span>
+<span class="lineNum">     370 </span>            :                             &quot;(private-key(dsa(p%m)(q%m)(g%m)(y%m)(x%m)))&quot;,
+<span class="lineNum">     371 </span><span class="lineNoCov">          0 :                             skey[0], skey[1], skey[2], skey[3], skey[4]);</span>
+<span class="lineNum">     372 </span>            :     }
+<span class="lineNum">     373 </span><span class="lineNoCov">          0 :   else if (pkalgo == PUBKEY_ALGO_ELGAMAL || pkalgo == PUBKEY_ALGO_ELGAMAL_E)</span>
+<span class="lineNum">     374 </span>            :     {
+<span class="lineNum">     375 </span><span class="lineNoCov">          0 :       rc = gcry_sexp_build (&amp;s_skey, NULL,</span>
+<span class="lineNum">     376 </span>            :                             &quot;(private-key(elg(p%m)(g%m)(y%m)(x%m)))&quot;,
+<span class="lineNum">     377 </span><span class="lineNoCov">          0 :                             skey[0], skey[1], skey[2], skey[3]);</span>
+<span class="lineNum">     378 </span>            :     }
+<span class="lineNum">     379 </span><span class="lineNoCov">          0 :   else if (is_RSA (pkalgo))</span>
+<span class="lineNum">     380 </span>            :     {
+<span class="lineNum">     381 </span><span class="lineNoCov">          0 :       rc = gcry_sexp_build (&amp;s_skey, NULL,</span>
+<span class="lineNum">     382 </span>            :                             &quot;(private-key(rsa(n%m)(e%m)(d%m)(p%m)(q%m)(u%m)))&quot;,
+<span class="lineNum">     383 </span><span class="lineNoCov">          0 :                             skey[0], skey[1], skey[2], skey[3], skey[4],</span>
+<span class="lineNum">     384 </span><span class="lineNoCov">          0 :                             skey[5]);</span>
+<span class="lineNum">     385 </span>            :     }
+<span class="lineNum">     386 </span><span class="lineNoCov">          0 :   else if (pkalgo == PUBKEY_ALGO_ECDSA || pkalgo == PUBKEY_ALGO_ECDH)</span>
+<span class="lineNum">     387 </span><span class="lineNoCov">          0 :     {</span>
+<span class="lineNum">     388 </span><span class="lineNoCov">          0 :       char *curve = openpgp_oid_to_str (skey[0]);</span>
+<span class="lineNum">     389 </span><span class="lineNoCov">          0 :       if (!curve)</span>
+<span class="lineNum">     390 </span><span class="lineNoCov">          0 :         rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">     391 </span>            :       else
+<span class="lineNum">     392 </span>            :         {
+<span class="lineNum">     393 </span><span class="lineNoCov">          0 :           rc = gcry_sexp_build (&amp;s_skey, NULL,</span>
+<span class="lineNum">     394 </span>            :                                 &quot;(private-key(ecc(curve%s)(q%m)(d%m)))&quot;,
+<span class="lineNum">     395 </span><span class="lineNoCov">          0 :                                 curve, skey[1], skey[2]);</span>
+<span class="lineNum">     396 </span><span class="lineNoCov">          0 :           xfree (curve);</span>
+<span class="lineNum">     397 </span>            :         }
+<span class="lineNum">     398 </span>            :     }
+<span class="lineNum">     399 </span><span class="lineNoCov">          0 :   else if (pkalgo == PUBKEY_ALGO_EDDSA)</span>
+<span class="lineNum">     400 </span>            :     {
+<span class="lineNum">     401 </span><span class="lineNoCov">          0 :       char *curve = openpgp_oid_to_str (skey[0]);</span>
+<span class="lineNum">     402 </span><span class="lineNoCov">          0 :       if (!curve)</span>
+<span class="lineNum">     403 </span><span class="lineNoCov">          0 :         rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">     404 </span>            :       else
+<span class="lineNum">     405 </span>            :         {
+<span class="lineNum">     406 </span><span class="lineNoCov">          0 :           rc = gcry_sexp_build (&amp;s_skey, NULL,</span>
+<span class="lineNum">     407 </span>            :                                 &quot;(private-key(ecc(curve %s)&quot;
+<span class="lineNum">     408 </span>            :                                 &quot;(flags eddsa)(q%m)(d%m)))&quot;,
+<span class="lineNum">     409 </span><span class="lineNoCov">          0 :                                 curve, skey[1], skey[2]);</span>
+<span class="lineNum">     410 </span><span class="lineNoCov">          0 :           xfree (curve);</span>
+<span class="lineNum">     411 </span>            :         }
+<span class="lineNum">     412 </span>            :     }
+<span class="lineNum">     413 </span>            :   else
+<span class="lineNum">     414 </span><span class="lineNoCov">          0 :     return GPG_ERR_PUBKEY_ALGO;</span>
+<span class="lineNum">     415 </span>            : 
+<span class="lineNum">     416 </span><span class="lineNoCov">          0 :   if (!rc)</span>
+<span class="lineNum">     417 </span>            :     {
+<span class="lineNum">     418 </span><span class="lineNoCov">          0 :       rc = gcry_pk_testkey (s_skey);</span>
+<span class="lineNum">     419 </span><span class="lineNoCov">          0 :       gcry_sexp_release (s_skey);</span>
+<span class="lineNum">     420 </span>            :     }
+<span class="lineNum">     421 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     422 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

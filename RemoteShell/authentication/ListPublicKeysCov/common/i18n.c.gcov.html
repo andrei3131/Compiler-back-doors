@@ -1,0 +1,313 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - common/i18n.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">common</a> - i18n.c<span style="font-size: 80%;"> (source / <a href="i18n.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntry">67</td>
+            <td class="headerCovTableEntryLo">7.5 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 14:05:58</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntryLo">20.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* i18n.c - gettext initialization</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 2007, 2010 Free Software Foundation, Inc.
+<span class="lineNum">       3 </span>            :  * Copyright (C) 2015 g10 Code GmbH
+<span class="lineNum">       4 </span>            :  *
+<span class="lineNum">       5 </span>            :  * This file is free software; you can redistribute it and/or modify
+<span class="lineNum">       6 </span>            :  * it under the terms of either
+<span class="lineNum">       7 </span>            :  *
+<span class="lineNum">       8 </span>            :  *   - the GNU Lesser General Public License as published by the Free
+<span class="lineNum">       9 </span>            :  *     Software Foundation; either version 3 of the License, or (at
+<span class="lineNum">      10 </span>            :  *     your option) any later version.
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * or
+<span class="lineNum">      13 </span>            :  *
+<span class="lineNum">      14 </span>            :  *   - the GNU General Public License as published by the Free
+<span class="lineNum">      15 </span>            :  *     Software Foundation; either version 2 of the License, or (at
+<span class="lineNum">      16 </span>            :  *     your option) any later version.
+<span class="lineNum">      17 </span>            :  *
+<span class="lineNum">      18 </span>            :  * or both in parallel, as here.
+<span class="lineNum">      19 </span>            :  *
+<span class="lineNum">      20 </span>            :  * This file is distributed in the hope that it will be useful,
+<span class="lineNum">      21 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      22 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      23 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      24 </span>            :  *
+<span class="lineNum">      25 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      26 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      27 </span>            :  */
+<span class="lineNum">      28 </span>            : 
+<span class="lineNum">      29 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      30 </span>            : #ifdef HAVE_LOCALE_H
+<span class="lineNum">      31 </span>            : #include &lt;locale.h&gt;
+<span class="lineNum">      32 </span>            : #endif
+<span class="lineNum">      33 </span>            : #ifdef HAVE_LANGINFO_CODESET
+<span class="lineNum">      34 </span>            : #include &lt;langinfo.h&gt;
+<span class="lineNum">      35 </span>            : #endif
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span>            : #include &quot;util.h&quot;
+<span class="lineNum">      38 </span>            : #include &quot;i18n.h&quot;
+<span class="lineNum">      39 </span>            : 
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span>            : #undef USE_MSGCACHE
+<span class="lineNum">      42 </span>            : #if defined(HAVE_SETLOCALE) &amp;&amp; defined(LC_MESSAGES) \
+<span class="lineNum">      43 </span>            :    &amp;&amp; !defined(USE_SIMPLE_GETTEXT) &amp;&amp; defined(ENABLE_NLS)
+<span class="lineNum">      44 </span>            : # define USE_MSGCACHE 1
+<span class="lineNum">      45 </span>            : #endif
+<span class="lineNum">      46 </span>            : 
+<span class="lineNum">      47 </span>            : 
+<span class="lineNum">      48 </span>            : #ifdef USE_MSGCACHE
+<span class="lineNum">      49 </span>            : /* An object to store pointers to static strings and their static
+<span class="lineNum">      50 </span>            :    translations.  A linked list is not optimal but given that we only
+<span class="lineNum">      51 </span>            :    have a few dozen messages it should be acceptable. */
+<span class="lineNum">      52 </span>            : struct msg_cache_s
+<span class="lineNum">      53 </span>            : {
+<span class="lineNum">      54 </span>            :   struct msg_cache_s *next;
+<span class="lineNum">      55 </span>            :   const char *key;
+<span class="lineNum">      56 </span>            :   const char *value;
+<span class="lineNum">      57 </span>            : };
+<span class="lineNum">      58 </span>            : 
+<span class="lineNum">      59 </span>            : /* A object to store an lc_messages string and a link to the cache
+<span class="lineNum">      60 </span>            :    object.  */
+<span class="lineNum">      61 </span>            : struct msg_cache_heads_s
+<span class="lineNum">      62 </span>            : {
+<span class="lineNum">      63 </span>            :   struct msg_cache_heads_s *next;
+<span class="lineNum">      64 </span>            :   struct msg_cache_s *cache;
+<span class="lineNum">      65 </span>            :   char lc_messages[1];
+<span class="lineNum">      66 </span>            : };
+<span class="lineNum">      67 </span>            : 
+<span class="lineNum">      68 </span>            : /* Out static cache of translated messages.  We need this because
+<span class="lineNum">      69 </span>            :    there is no gettext API to return a translation depending on the
+<span class="lineNum">      70 </span>            :    locale.  Switching the locale for each access to a translatable
+<span class="lineNum">      71 </span>            :    string seems to be too expensive.  Note that this is used only for
+<span class="lineNum">      72 </span>            :    strings in gpg-agent which are passed to Pinentry.  All other
+<span class="lineNum">      73 </span>            :    strings are using the regular gettext interface.  Note that we can
+<span class="lineNum">      74 </span>            :    never release this memory because consumers take the result as
+<span class="lineNum">      75 </span>            :    static strings.  */
+<span class="lineNum">      76 </span>            : static struct msg_cache_heads_s *msgcache;
+<span class="lineNum">      77 </span>            : 
+<span class="lineNum">      78 </span>            : #endif /*USE_MSGCACHE*/
+<span class="lineNum">      79 </span>            : 
+<a name="80"><span class="lineNum">      80 </span>            : </a>
+<span class="lineNum">      81 </span>            : void
+<span class="lineNum">      82 </span><span class="lineCov">          1 : i18n_init (void)</span>
+<span class="lineNum">      83 </span>            : {
+<span class="lineNum">      84 </span>            : #ifdef USE_SIMPLE_GETTEXT
+<span class="lineNum">      85 </span>            :   bindtextdomain (PACKAGE_GT, gnupg_localedir ());
+<span class="lineNum">      86 </span>            :   textdomain (PACKAGE_GT);
+<span class="lineNum">      87 </span>            : #else
+<span class="lineNum">      88 </span>            : # ifdef ENABLE_NLS
+<span class="lineNum">      89 </span><span class="lineCov">          1 :   setlocale (LC_ALL, &quot;&quot; );</span>
+<span class="lineNum">      90 </span><span class="lineCov">          1 :   bindtextdomain (PACKAGE_GT, LOCALEDIR);</span>
+<span class="lineNum">      91 </span><span class="lineCov">          1 :   textdomain (PACKAGE_GT);</span>
+<span class="lineNum">      92 </span>            : # endif
+<span class="lineNum">      93 </span>            : #endif
+<span class="lineNum">      94 </span><span class="lineCov">          1 : }</span>
+<span class="lineNum">      95 </span>            : 
+<span class="lineNum">      96 </span>            : 
+<span class="lineNum">      97 </span>            : /* The Assuan agent protocol requires us to transmit utf-8 strings
+<span class="lineNum">      98 </span>            :    thus we need a way to temporary switch gettext from native to
+<a name="99"><span class="lineNum">      99 </span>            :    utf8.  */</a>
+<span class="lineNum">     100 </span>            : char *
+<span class="lineNum">     101 </span><span class="lineNoCov">          0 : i18n_switchto_utf8 (void)</span>
+<span class="lineNum">     102 </span>            : {
+<span class="lineNum">     103 </span>            : #ifdef USE_SIMPLE_GETTEXT
+<span class="lineNum">     104 </span>            :   /* Return an arbitrary pointer as true value.  */
+<span class="lineNum">     105 </span>            :   return gettext_use_utf8 (1) ? (char*)(-1) : NULL;
+<span class="lineNum">     106 </span>            : #elif defined(ENABLE_NLS)
+<span class="lineNum">     107 </span><span class="lineNoCov">          0 :   char *orig_codeset = bind_textdomain_codeset (PACKAGE_GT, NULL);</span>
+<span class="lineNum">     108 </span>            : # ifdef HAVE_LANGINFO_CODESET
+<span class="lineNum">     109 </span><span class="lineNoCov">          0 :   if (!orig_codeset)</span>
+<span class="lineNum">     110 </span><span class="lineNoCov">          0 :     orig_codeset = nl_langinfo (CODESET);</span>
+<span class="lineNum">     111 </span>            : # endif
+<span class="lineNum">     112 </span><span class="lineNoCov">          0 :   if (orig_codeset)</span>
+<span class="lineNum">     113 </span>            :     { /* We only switch when we are able to restore the codeset later.
+<span class="lineNum">     114 </span>            :          Note that bind_textdomain_codeset does only return on memory
+<span class="lineNum">     115 </span>            :          errors but not if a codeset is not available.  Thus we don't
+<span class="lineNum">     116 </span>            :          bother printing a diagnostic here. */
+<span class="lineNum">     117 </span><span class="lineNoCov">          0 :       orig_codeset = xstrdup (orig_codeset);</span>
+<span class="lineNum">     118 </span><span class="lineNoCov">          0 :       if (!bind_textdomain_codeset (PACKAGE_GT, &quot;utf-8&quot;))</span>
+<span class="lineNum">     119 </span>            :         {
+<span class="lineNum">     120 </span><span class="lineNoCov">          0 :           xfree (orig_codeset);</span>
+<span class="lineNum">     121 </span><span class="lineNoCov">          0 :           orig_codeset = NULL;</span>
+<span class="lineNum">     122 </span>            :         }
+<span class="lineNum">     123 </span>            :     }
+<span class="lineNum">     124 </span><span class="lineNoCov">          0 :   return orig_codeset;</span>
+<span class="lineNum">     125 </span>            : #else
+<span class="lineNum">     126 </span>            :   return NULL;
+<span class="lineNum">     127 </span>            : #endif
+<span class="lineNum">     128 </span>            : }
+<span class="lineNum">     129 </span>            : 
+<a name="130"><span class="lineNum">     130 </span>            : /* Switch back to the saved codeset.  */</a>
+<span class="lineNum">     131 </span>            : void
+<span class="lineNum">     132 </span><span class="lineNoCov">          0 : i18n_switchback (char *saved_codeset)</span>
+<span class="lineNum">     133 </span>            : {
+<span class="lineNum">     134 </span>            : #ifdef USE_SIMPLE_GETTEXT
+<span class="lineNum">     135 </span>            :   gettext_use_utf8 (!!saved_codeset);
+<span class="lineNum">     136 </span>            : #elif defined(ENABLE_NLS)
+<span class="lineNum">     137 </span><span class="lineNoCov">          0 :   if (saved_codeset)</span>
+<span class="lineNum">     138 </span>            :     {
+<span class="lineNum">     139 </span><span class="lineNoCov">          0 :       bind_textdomain_codeset (PACKAGE_GT, saved_codeset);</span>
+<span class="lineNum">     140 </span><span class="lineNoCov">          0 :       xfree (saved_codeset);</span>
+<span class="lineNum">     141 </span>            :     }
+<span class="lineNum">     142 </span>            : #else
+<span class="lineNum">     143 </span>            :   (void)saved_codeset;
+<span class="lineNum">     144 </span>            : #endif
+<span class="lineNum">     145 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     146 </span>            : 
+<span class="lineNum">     147 </span>            : 
+<a name="148"><span class="lineNum">     148 </span>            : /* Gettext variant which temporary switches to utf-8 for string. */</a>
+<span class="lineNum">     149 </span>            : const char *
+<span class="lineNum">     150 </span><span class="lineNoCov">          0 : i18n_utf8 (const char *string)</span>
+<span class="lineNum">     151 </span>            : {
+<span class="lineNum">     152 </span><span class="lineNoCov">          0 :   char *saved = i18n_switchto_utf8 ();</span>
+<span class="lineNum">     153 </span><span class="lineNoCov">          0 :   const char *result = _(string);</span>
+<span class="lineNum">     154 </span><span class="lineNoCov">          0 :   i18n_switchback (saved);</span>
+<span class="lineNum">     155 </span><span class="lineNoCov">          0 :   return result;</span>
+<span class="lineNum">     156 </span>            : }
+<span class="lineNum">     157 </span>            : 
+<span class="lineNum">     158 </span>            : 
+<span class="lineNum">     159 </span>            : /* A variant of gettext which allows the programmer to specify the
+<span class="lineNum">     160 </span>            :    locale to use for translating the message.  The function assumes
+<a name="161"><span class="lineNum">     161 </span>            :    that utf-8 is used for the encoding.  */</a>
+<span class="lineNum">     162 </span>            : const char *
+<span class="lineNum">     163 </span><span class="lineNoCov">          0 : i18n_localegettext (const char *lc_messages, const char *string)</span>
+<span class="lineNum">     164 </span>            : {
+<span class="lineNum">     165 </span>            : #if USE_MSGCACHE
+<span class="lineNum">     166 </span><span class="lineNoCov">          0 :   const char *result = NULL;</span>
+<span class="lineNum">     167 </span><span class="lineNoCov">          0 :   char *saved = NULL;</span>
+<span class="lineNum">     168 </span>            :   struct msg_cache_heads_s *mh;
+<span class="lineNum">     169 </span>            :   struct msg_cache_s *mc;
+<span class="lineNum">     170 </span>            : 
+<span class="lineNum">     171 </span><span class="lineNoCov">          0 :   if (!lc_messages)</span>
+<span class="lineNum">     172 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     173 </span>            : 
+<span class="lineNum">     174 </span>            :   /* Lookup in the cache.  */
+<span class="lineNum">     175 </span><span class="lineNoCov">          0 :   for (mh = msgcache; mh; mh = mh-&gt;next)</span>
+<span class="lineNum">     176 </span><span class="lineNoCov">          0 :     if (!strcmp (mh-&gt;lc_messages, lc_messages))</span>
+<span class="lineNum">     177 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     178 </span><span class="lineNoCov">          0 :   if (mh)</span>
+<span class="lineNum">     179 </span>            :     {
+<span class="lineNum">     180 </span>            :       /* A cache entry for this local exists - find the string.
+<span class="lineNum">     181 </span>            :          Because the system is designed for static strings it is
+<span class="lineNum">     182 </span>            :          sufficient to compare the pointers.  */
+<span class="lineNum">     183 </span><span class="lineNoCov">          0 :       for (mc = mh-&gt;cache; mc; mc = mc-&gt;next)</span>
+<span class="lineNum">     184 </span><span class="lineNoCov">          0 :         if (mc-&gt;key == string)</span>
+<span class="lineNum">     185 </span>            :           {
+<span class="lineNum">     186 </span>            :             /* Cache hit.  */
+<span class="lineNum">     187 </span><span class="lineNoCov">          0 :             result = mc-&gt;value;</span>
+<span class="lineNum">     188 </span><span class="lineNoCov">          0 :             goto leave;</span>
+<span class="lineNum">     189 </span>            :           }
+<span class="lineNum">     190 </span>            :     }
+<span class="lineNum">     191 </span>            : 
+<span class="lineNum">     192 </span>            :   /* Cached miss.  Change the locale, translate, reset locale.  */
+<span class="lineNum">     193 </span><span class="lineNoCov">          0 :   saved = setlocale (LC_MESSAGES, NULL);</span>
+<span class="lineNum">     194 </span><span class="lineNoCov">          0 :   if (!saved)</span>
+<span class="lineNum">     195 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     196 </span><span class="lineNoCov">          0 :   saved = xtrystrdup (saved);</span>
+<span class="lineNum">     197 </span><span class="lineNoCov">          0 :   if (!saved)</span>
+<span class="lineNum">     198 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     199 </span><span class="lineNoCov">          0 :   if (!setlocale (LC_MESSAGES, lc_messages))</span>
+<span class="lineNum">     200 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     201 </span>            : 
+<span class="lineNum">     202 </span><span class="lineNoCov">          0 :   bindtextdomain (PACKAGE_GT, LOCALEDIR);</span>
+<span class="lineNum">     203 </span><span class="lineNoCov">          0 :   result = gettext (string);</span>
+<span class="lineNum">     204 </span><span class="lineNoCov">          0 :   setlocale (LC_MESSAGES, saved);</span>
+<span class="lineNum">     205 </span><span class="lineNoCov">          0 :   bindtextdomain (PACKAGE_GT, LOCALEDIR);</span>
+<span class="lineNum">     206 </span>            : 
+<span class="lineNum">     207 </span>            :   /* Cache the result.  */
+<span class="lineNum">     208 </span><span class="lineNoCov">          0 :   if (!mh)</span>
+<span class="lineNum">     209 </span>            :     {
+<span class="lineNum">     210 </span>            :       /* First use of this locale - create an entry.  */
+<span class="lineNum">     211 </span><span class="lineNoCov">          0 :       mh = xtrymalloc (sizeof *mh + strlen (lc_messages));</span>
+<span class="lineNum">     212 </span><span class="lineNoCov">          0 :       if (!mh)</span>
+<span class="lineNum">     213 </span><span class="lineNoCov">          0 :         goto leave;</span>
+<span class="lineNum">     214 </span><span class="lineNoCov">          0 :       strcpy (mh-&gt;lc_messages, lc_messages);</span>
+<span class="lineNum">     215 </span><span class="lineNoCov">          0 :       mh-&gt;cache = NULL;</span>
+<span class="lineNum">     216 </span><span class="lineNoCov">          0 :       mh-&gt;next = msgcache;</span>
+<span class="lineNum">     217 </span><span class="lineNoCov">          0 :       msgcache = mh;</span>
+<span class="lineNum">     218 </span>            :     }
+<span class="lineNum">     219 </span><span class="lineNoCov">          0 :   mc = xtrymalloc (sizeof *mc);</span>
+<span class="lineNum">     220 </span><span class="lineNoCov">          0 :   if (!mc)</span>
+<span class="lineNum">     221 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     222 </span><span class="lineNoCov">          0 :   mc-&gt;key = string;</span>
+<span class="lineNum">     223 </span><span class="lineNoCov">          0 :   mc-&gt;value = result;</span>
+<span class="lineNum">     224 </span><span class="lineNoCov">          0 :   mc-&gt;next = mh-&gt;cache;</span>
+<span class="lineNum">     225 </span><span class="lineNoCov">          0 :   mh-&gt;cache = mc;</span>
+<span class="lineNum">     226 </span>            : 
+<span class="lineNum">     227 </span>            :  leave:
+<span class="lineNum">     228 </span><span class="lineNoCov">          0 :   xfree (saved);</span>
+<span class="lineNum">     229 </span><span class="lineNoCov">          0 :   return result? result : _(string);</span>
+<span class="lineNum">     230 </span>            : 
+<span class="lineNum">     231 </span>            : #else /*!USE_MSGCACHE*/
+<span class="lineNum">     232 </span>            : 
+<span class="lineNum">     233 </span>            :   (void)lc_messages;
+<span class="lineNum">     234 </span>            :   return _(string);
+<span class="lineNum">     235 </span>            : 
+<span class="lineNum">     236 </span>            : #endif /*!USE_MSGCACHE*/
+<span class="lineNum">     237 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

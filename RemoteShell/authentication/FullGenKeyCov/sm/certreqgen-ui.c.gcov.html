@@ -1,0 +1,507 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - sm/certreqgen-ui.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">sm</a> - certreqgen-ui.c<span style="font-size: 80%;"> (source / <a href="certreqgen-ui.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">231</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 12:47:41</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* certreqgen-ui.c - Simple user interface for certreqgen.c</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 2007, 2010, 2011 Free Software Foundation, Inc.
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       7 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">       8 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">       9 </span>            :  * (at your option) any later version.
+<span class="lineNum">      10 </span>            :  *
+<span class="lineNum">      11 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      12 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      13 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      14 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      15 </span>            :  *
+<span class="lineNum">      16 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      17 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      18 </span>            :  */
+<span class="lineNum">      19 </span>            : 
+<span class="lineNum">      20 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      21 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      22 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      23 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      24 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      25 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      26 </span>            : #include &lt;time.h&gt;
+<span class="lineNum">      27 </span>            : #include &lt;assert.h&gt;
+<span class="lineNum">      28 </span>            : 
+<span class="lineNum">      29 </span>            : #include &quot;gpgsm.h&quot;
+<span class="lineNum">      30 </span>            : #include &lt;gcrypt.h&gt;
+<span class="lineNum">      31 </span>            : 
+<span class="lineNum">      32 </span>            : #include &quot;../common/i18n.h&quot;
+<span class="lineNum">      33 </span>            : #include &quot;../common/ttyio.h&quot;
+<span class="lineNum">      34 </span>            : #include &quot;../common/membuf.h&quot;
+<span class="lineNum">      35 </span>            : 
+<span class="lineNum">      36 </span>            : 
+<a name="37"><span class="lineNum">      37 </span>            : /* Prompt for lines and append them to MB.  */</a>
+<span class="lineNum">      38 </span>            : static void
+<span class="lineNum">      39 </span><span class="lineNoCov">          0 : ask_mb_lines (membuf_t *mb, const char *prefix)</span>
+<span class="lineNum">      40 </span>            : {
+<span class="lineNum">      41 </span><span class="lineNoCov">          0 :   char *answer = NULL;</span>
+<span class="lineNum">      42 </span>            : 
+<span class="lineNum">      43 </span>            :   do
+<span class="lineNum">      44 </span>            :     {
+<span class="lineNum">      45 </span><span class="lineNoCov">          0 :       xfree (answer);</span>
+<span class="lineNum">      46 </span><span class="lineNoCov">          0 :       answer = tty_get (&quot;&gt; &quot;);</span>
+<span class="lineNum">      47 </span><span class="lineNoCov">          0 :       tty_kill_prompt ();</span>
+<span class="lineNum">      48 </span><span class="lineNoCov">          0 :       trim_spaces (answer);</span>
+<span class="lineNum">      49 </span><span class="lineNoCov">          0 :       if (*answer)</span>
+<span class="lineNum">      50 </span>            :         {
+<span class="lineNum">      51 </span><span class="lineNoCov">          0 :           put_membuf_str (mb, prefix);</span>
+<span class="lineNum">      52 </span><span class="lineNoCov">          0 :           put_membuf_str (mb, answer);</span>
+<span class="lineNum">      53 </span><span class="lineNoCov">          0 :           put_membuf (mb, &quot;\n&quot;, 1);</span>
+<span class="lineNum">      54 </span>            :         }
+<span class="lineNum">      55 </span>            :     }
+<span class="lineNum">      56 </span><span class="lineNoCov">          0 :   while (*answer);</span>
+<span class="lineNum">      57 </span><span class="lineNoCov">          0 :   xfree (answer);</span>
+<span class="lineNum">      58 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">      59 </span>            : 
+<a name="60"><span class="lineNum">      60 </span>            : /* Helper to store stuff in a membuf.  */</a>
+<span class="lineNum">      61 </span>            : void
+<span class="lineNum">      62 </span><span class="lineNoCov">          0 : store_key_value_lf (membuf_t *mb, const char *key, const char *value)</span>
+<span class="lineNum">      63 </span>            : {
+<span class="lineNum">      64 </span><span class="lineNoCov">          0 :   put_membuf_str (mb, key);</span>
+<span class="lineNum">      65 </span><span class="lineNoCov">          0 :   put_membuf_str (mb, value);</span>
+<span class="lineNum">      66 </span><span class="lineNoCov">          0 :   put_membuf (mb, &quot;\n&quot;, 1);</span>
+<span class="lineNum">      67 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">      68 </span>            : 
+<span class="lineNum">      69 </span>            : /* Helper tp store a membuf create by mb_ask_lines into MB.  Returns
+<a name="70"><span class="lineNum">      70 </span>            :    -1 on error. */</a>
+<span class="lineNum">      71 </span>            : int
+<span class="lineNum">      72 </span><span class="lineNoCov">          0 : store_mb_lines (membuf_t *mb, membuf_t *lines)</span>
+<span class="lineNum">      73 </span>            : {
+<span class="lineNum">      74 </span>            :   char *p;
+<span class="lineNum">      75 </span>            : 
+<span class="lineNum">      76 </span><span class="lineNoCov">          0 :   if (get_membuf_len (lines))</span>
+<span class="lineNum">      77 </span>            :     {
+<span class="lineNum">      78 </span><span class="lineNoCov">          0 :       put_membuf (lines, &quot;&quot;, 1);</span>
+<span class="lineNum">      79 </span><span class="lineNoCov">          0 :       p = get_membuf (lines, NULL);</span>
+<span class="lineNum">      80 </span><span class="lineNoCov">          0 :       if (!p)</span>
+<span class="lineNum">      81 </span><span class="lineNoCov">          0 :         return -1;</span>
+<span class="lineNum">      82 </span><span class="lineNoCov">          0 :       put_membuf_str (mb, p);</span>
+<span class="lineNum">      83 </span><span class="lineNoCov">          0 :       xfree (p);</span>
+<span class="lineNum">      84 </span>            :     }
+<span class="lineNum">      85 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">      86 </span>            : }
+<span class="lineNum">      87 </span>            : 
+<span class="lineNum">      88 </span>            : 
+<span class="lineNum">      89 </span>            : /* Chech whether we have a key for the key with HEXGRIP.  Returns NULL
+<span class="lineNum">      90 </span>            :    if not or a string describing the type of the key (RSA, ELG, DSA,
+<a name="91"><span class="lineNum">      91 </span>            :    etc..).  */</a>
+<span class="lineNum">      92 </span>            : static const char *
+<span class="lineNum">      93 </span><span class="lineNoCov">          0 : check_keygrip (ctrl_t ctrl, const char *hexgrip)</span>
+<span class="lineNum">      94 </span>            : {
+<span class="lineNum">      95 </span>            :   gpg_error_t err;
+<span class="lineNum">      96 </span>            :   ksba_sexp_t public;
+<span class="lineNum">      97 </span>            :   size_t publiclen;
+<span class="lineNum">      98 </span>            :   int algo;
+<span class="lineNum">      99 </span>            : 
+<span class="lineNum">     100 </span><span class="lineNoCov">          0 :   if (hexgrip[0] == '&amp;')</span>
+<span class="lineNum">     101 </span><span class="lineNoCov">          0 :     hexgrip++;</span>
+<span class="lineNum">     102 </span>            : 
+<span class="lineNum">     103 </span><span class="lineNoCov">          0 :   err = gpgsm_agent_readkey (ctrl, 0, hexgrip, &amp;public);</span>
+<span class="lineNum">     104 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     105 </span><span class="lineNoCov">          0 :     return NULL;</span>
+<span class="lineNum">     106 </span><span class="lineNoCov">          0 :   publiclen = gcry_sexp_canon_len (public, 0, NULL, NULL);</span>
+<span class="lineNum">     107 </span>            : 
+<span class="lineNum">     108 </span><span class="lineNoCov">          0 :   algo = get_pk_algo_from_canon_sexp (public, publiclen);</span>
+<span class="lineNum">     109 </span><span class="lineNoCov">          0 :   xfree (public);</span>
+<span class="lineNum">     110 </span>            : 
+<span class="lineNum">     111 </span><span class="lineNoCov">          0 :   switch (algo)</span>
+<span class="lineNum">     112 </span>            :     {
+<span class="lineNum">     113 </span><span class="lineNoCov">          0 :     case GCRY_PK_RSA:   return &quot;RSA&quot;;</span>
+<span class="lineNum">     114 </span><span class="lineNoCov">          0 :     case GCRY_PK_DSA:   return &quot;DSA&quot;;</span>
+<span class="lineNum">     115 </span><span class="lineNoCov">          0 :     case GCRY_PK_ELG:   return &quot;ELG&quot;;</span>
+<span class="lineNum">     116 </span><span class="lineNoCov">          0 :     case GCRY_PK_EDDSA: return &quot;ECDSA&quot;;</span>
+<span class="lineNum">     117 </span><span class="lineNoCov">          0 :     default: return NULL;</span>
+<span class="lineNum">     118 </span>            :     }
+<span class="lineNum">     119 </span>            : }
+<span class="lineNum">     120 </span>            : 
+<span class="lineNum">     121 </span>            : 
+<span class="lineNum">     122 </span>            : /* This function is used to create a certificate request from the
+<span class="lineNum">     123 </span>            :    command line.  In the past the similar gpgsm-gencert.sh script has
+<span class="lineNum">     124 </span>            :    been used for it; however that scripts requires a full Unix shell
+<span class="lineNum">     125 </span>            :    and thus is not suitable for the Windows port.  So here is the
+<a name="126"><span class="lineNum">     126 </span>            :    re-implementation.  */</a>
+<span class="lineNum">     127 </span>            : void
+<span class="lineNum">     128 </span><span class="lineNoCov">          0 : gpgsm_gencertreq_tty (ctrl_t ctrl, estream_t output_stream)</span>
+<span class="lineNum">     129 </span>            : {
+<span class="lineNum">     130 </span>            :   gpg_error_t err;
+<span class="lineNum">     131 </span>            :   char *answer;
+<span class="lineNum">     132 </span>            :   int selection;
+<span class="lineNum">     133 </span><span class="lineNoCov">          0 :   estream_t fp = NULL;</span>
+<span class="lineNum">     134 </span>            :   int method;
+<span class="lineNum">     135 </span><span class="lineNoCov">          0 :   char *keytype_buffer = NULL;</span>
+<span class="lineNum">     136 </span>            :   const char *keytype;
+<span class="lineNum">     137 </span><span class="lineNoCov">          0 :   char *keygrip = NULL;</span>
+<span class="lineNum">     138 </span>            :   unsigned int nbits;
+<span class="lineNum">     139 </span><span class="lineNoCov">          0 :   int minbits = 1024;</span>
+<span class="lineNum">     140 </span><span class="lineNoCov">          0 :   int maxbits = 4096;</span>
+<span class="lineNum">     141 </span><span class="lineNoCov">          0 :   int defbits = 2048;</span>
+<span class="lineNum">     142 </span>            :   const char *keyusage;
+<span class="lineNum">     143 </span>            :   char *subject_name;
+<span class="lineNum">     144 </span>            :   membuf_t mb_email, mb_dns, mb_uri, mb_result;
+<span class="lineNum">     145 </span><span class="lineNoCov">          0 :   char *result = NULL;</span>
+<span class="lineNum">     146 </span>            :   const char *s, *s2;
+<span class="lineNum">     147 </span>            :   int selfsigned;
+<span class="lineNum">     148 </span>            : 
+<span class="lineNum">     149 </span><span class="lineNoCov">          0 :   answer = NULL;</span>
+<span class="lineNum">     150 </span><span class="lineNoCov">          0 :   init_membuf (&amp;mb_email, 100);</span>
+<span class="lineNum">     151 </span><span class="lineNoCov">          0 :   init_membuf (&amp;mb_dns, 100);</span>
+<span class="lineNum">     152 </span><span class="lineNoCov">          0 :   init_membuf (&amp;mb_uri, 100);</span>
+<span class="lineNum">     153 </span><span class="lineNoCov">          0 :   init_membuf (&amp;mb_result, 512);</span>
+<span class="lineNum">     154 </span>            : 
+<span class="lineNum">     155 </span>            :  again:
+<span class="lineNum">     156 </span>            :   /* Get the type of the key.  */
+<span class="lineNum">     157 </span><span class="lineNoCov">          0 :   tty_printf (_(&quot;Please select what kind of key you want:\n&quot;));</span>
+<span class="lineNum">     158 </span><span class="lineNoCov">          0 :   tty_printf (_(&quot;   (%d) RSA\n&quot;), 1 );</span>
+<span class="lineNum">     159 </span><span class="lineNoCov">          0 :   tty_printf (_(&quot;   (%d) Existing key\n&quot;), 2 );</span>
+<span class="lineNum">     160 </span><span class="lineNoCov">          0 :   tty_printf (_(&quot;   (%d) Existing key from card\n&quot;), 3 );</span>
+<span class="lineNum">     161 </span>            : 
+<span class="lineNum">     162 </span>            :   do
+<span class="lineNum">     163 </span>            :     {
+<span class="lineNum">     164 </span><span class="lineNoCov">          0 :       xfree (answer);</span>
+<span class="lineNum">     165 </span><span class="lineNoCov">          0 :       answer = tty_get (_(&quot;Your selection? &quot;));</span>
+<span class="lineNum">     166 </span><span class="lineNoCov">          0 :       tty_kill_prompt ();</span>
+<span class="lineNum">     167 </span><span class="lineNoCov">          0 :       selection = *answer? atoi (answer): 1;</span>
+<span class="lineNum">     168 </span>            :     }
+<span class="lineNum">     169 </span><span class="lineNoCov">          0 :   while (!(selection &gt;= 1 &amp;&amp; selection &lt;= 3));</span>
+<span class="lineNum">     170 </span><span class="lineNoCov">          0 :   method = selection;</span>
+<span class="lineNum">     171 </span>            : 
+<span class="lineNum">     172 </span>            :   /* Get  size of the key.  */
+<span class="lineNum">     173 </span><span class="lineNoCov">          0 :   if (method == 1)</span>
+<span class="lineNum">     174 </span>            :     {
+<span class="lineNum">     175 </span><span class="lineNoCov">          0 :       keytype = &quot;RSA&quot;;</span>
+<span class="lineNum">     176 </span>            :       for (;;)
+<span class="lineNum">     177 </span>            :         {
+<span class="lineNum">     178 </span><span class="lineNoCov">          0 :           xfree (answer);</span>
+<span class="lineNum">     179 </span><span class="lineNoCov">          0 :           answer = tty_getf (_(&quot;What keysize do you want? (%u) &quot;), defbits);</span>
+<span class="lineNum">     180 </span><span class="lineNoCov">          0 :           tty_kill_prompt ();</span>
+<span class="lineNum">     181 </span><span class="lineNoCov">          0 :           trim_spaces (answer);</span>
+<span class="lineNum">     182 </span><span class="lineNoCov">          0 :           nbits = *answer? atoi (answer): defbits;</span>
+<span class="lineNum">     183 </span><span class="lineNoCov">          0 :           if (nbits &lt; minbits || nbits &gt; maxbits)</span>
+<span class="lineNum">     184 </span><span class="lineNoCov">          0 :             tty_printf(_(&quot;%s keysizes must be in the range %u-%u\n&quot;),</span>
+<span class="lineNum">     185 </span>            :                          &quot;RSA&quot;, minbits, maxbits);
+<span class="lineNum">     186 </span>            :           else
+<span class="lineNum">     187 </span>            :             break; /* Okay.  */
+<span class="lineNum">     188 </span><span class="lineNoCov">          0 :         }</span>
+<span class="lineNum">     189 </span><span class="lineNoCov">          0 :       tty_printf (_(&quot;Requested keysize is %u bits\n&quot;), nbits);</span>
+<span class="lineNum">     190 </span>            :       /* We round it up so that it better matches the word size.  */
+<span class="lineNum">     191 </span><span class="lineNoCov">          0 :       if (( nbits % 64))</span>
+<span class="lineNum">     192 </span>            :         {
+<span class="lineNum">     193 </span><span class="lineNoCov">          0 :           nbits = ((nbits + 63) / 64) * 64;</span>
+<span class="lineNum">     194 </span><span class="lineNoCov">          0 :           tty_printf (_(&quot;rounded up to %u bits\n&quot;), nbits);</span>
+<span class="lineNum">     195 </span>            :         }
+<span class="lineNum">     196 </span>            :     }
+<span class="lineNum">     197 </span><span class="lineNoCov">          0 :   else if (method == 2)</span>
+<span class="lineNum">     198 </span>            :     {
+<span class="lineNum">     199 </span>            :       for (;;)
+<span class="lineNum">     200 </span>            :         {
+<span class="lineNum">     201 </span><span class="lineNoCov">          0 :           xfree (answer);</span>
+<span class="lineNum">     202 </span><span class="lineNoCov">          0 :           answer = tty_get (_(&quot;Enter the keygrip: &quot;));</span>
+<span class="lineNum">     203 </span><span class="lineNoCov">          0 :           tty_kill_prompt ();</span>
+<span class="lineNum">     204 </span><span class="lineNoCov">          0 :           trim_spaces (answer);</span>
+<span class="lineNum">     205 </span>            : 
+<span class="lineNum">     206 </span><span class="lineNoCov">          0 :           if (!*answer)</span>
+<span class="lineNum">     207 </span><span class="lineNoCov">          0 :             goto again;</span>
+<span class="lineNum">     208 </span><span class="lineNoCov">          0 :           else if (strlen (answer) != 40 &amp;&amp;</span>
+<span class="lineNum">     209 </span><span class="lineNoCov">          0 :                    !(answer[0] == '&amp;' &amp;&amp; strlen (answer+1) == 40))</span>
+<span class="lineNum">     210 </span><span class="lineNoCov">          0 :             tty_printf (_(&quot;Not a valid keygrip (expecting 40 hex digits)\n&quot;));</span>
+<span class="lineNum">     211 </span><span class="lineNoCov">          0 :           else if (!(keytype = check_keygrip (ctrl, answer)) )</span>
+<span class="lineNum">     212 </span><span class="lineNoCov">          0 :             tty_printf (_(&quot;No key with this keygrip\n&quot;));</span>
+<span class="lineNum">     213 </span>            :           else
+<span class="lineNum">     214 </span><span class="lineNoCov">          0 :             break; /* Okay.  */</span>
+<span class="lineNum">     215 </span><span class="lineNoCov">          0 :         }</span>
+<span class="lineNum">     216 </span><span class="lineNoCov">          0 :       xfree (keygrip);</span>
+<span class="lineNum">     217 </span><span class="lineNoCov">          0 :       keygrip = answer;</span>
+<span class="lineNum">     218 </span><span class="lineNoCov">          0 :       answer = NULL;</span>
+<span class="lineNum">     219 </span><span class="lineNoCov">          0 :       nbits = 1024; /* A dummy value is sufficient.  */</span>
+<span class="lineNum">     220 </span>            :     }
+<span class="lineNum">     221 </span>            :   else /* method == 3 */
+<span class="lineNum">     222 </span>            :     {
+<span class="lineNum">     223 </span>            :       char *serialno;
+<span class="lineNum">     224 </span>            :       strlist_t keypairlist, sl;
+<span class="lineNum">     225 </span>            :       int count;
+<span class="lineNum">     226 </span>            : 
+<span class="lineNum">     227 </span><span class="lineNoCov">          0 :       err = gpgsm_agent_scd_serialno (ctrl, &amp;serialno);</span>
+<span class="lineNum">     228 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     229 </span>            :         {
+<span class="lineNum">     230 </span><span class="lineNoCov">          0 :           tty_printf (_(&quot;error reading the card: %s\n&quot;), gpg_strerror (err));</span>
+<span class="lineNum">     231 </span><span class="lineNoCov">          0 :           goto again;</span>
+<span class="lineNum">     232 </span>            :         }
+<span class="lineNum">     233 </span><span class="lineNoCov">          0 :       tty_printf (_(&quot;Serial number of the card: %s\n&quot;), serialno);</span>
+<span class="lineNum">     234 </span><span class="lineNoCov">          0 :       xfree (serialno);</span>
+<span class="lineNum">     235 </span>            : 
+<span class="lineNum">     236 </span><span class="lineNoCov">          0 :       err = gpgsm_agent_scd_keypairinfo (ctrl, &amp;keypairlist);</span>
+<span class="lineNum">     237 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     238 </span>            :         {
+<span class="lineNum">     239 </span><span class="lineNoCov">          0 :           tty_printf (_(&quot;error reading the card: %s\n&quot;), gpg_strerror (err));</span>
+<span class="lineNum">     240 </span><span class="lineNoCov">          0 :           goto again;</span>
+<span class="lineNum">     241 </span>            :         }
+<span class="lineNum">     242 </span>            : 
+<span class="lineNum">     243 </span>            :       do
+<span class="lineNum">     244 </span>            :         {
+<span class="lineNum">     245 </span><span class="lineNoCov">          0 :           tty_printf (_(&quot;Available keys:\n&quot;));</span>
+<span class="lineNum">     246 </span><span class="lineNoCov">          0 :           for (count=1,sl=keypairlist; sl; sl = sl-&gt;next, count++)</span>
+<span class="lineNum">     247 </span><span class="lineNoCov">          0 :             tty_printf (&quot;   (%d) %s\n&quot;, count, sl-&gt;d);</span>
+<span class="lineNum">     248 </span><span class="lineNoCov">          0 :           xfree (answer);</span>
+<span class="lineNum">     249 </span><span class="lineNoCov">          0 :           answer = tty_get (_(&quot;Your selection? &quot;));</span>
+<span class="lineNum">     250 </span><span class="lineNoCov">          0 :           tty_kill_prompt ();</span>
+<span class="lineNum">     251 </span><span class="lineNoCov">          0 :           trim_spaces (answer);</span>
+<span class="lineNum">     252 </span><span class="lineNoCov">          0 :           selection = atoi (answer);</span>
+<span class="lineNum">     253 </span>            :         }
+<span class="lineNum">     254 </span><span class="lineNoCov">          0 :       while (!(selection &gt; 0 &amp;&amp; selection &lt; count));</span>
+<span class="lineNum">     255 </span>            : 
+<span class="lineNum">     256 </span><span class="lineNoCov">          0 :       for (count=1,sl=keypairlist; sl; sl = sl-&gt;next, count++)</span>
+<span class="lineNum">     257 </span><span class="lineNoCov">          0 :         if (count == selection)</span>
+<span class="lineNum">     258 </span><span class="lineNoCov">          0 :           break;</span>
+<span class="lineNum">     259 </span>            : 
+<span class="lineNum">     260 </span><span class="lineNoCov">          0 :       s = sl-&gt;d;</span>
+<span class="lineNum">     261 </span><span class="lineNoCov">          0 :       while (*s &amp;&amp; !spacep (s))</span>
+<span class="lineNum">     262 </span><span class="lineNoCov">          0 :         s++;</span>
+<span class="lineNum">     263 </span><span class="lineNoCov">          0 :       while (spacep (s))</span>
+<span class="lineNum">     264 </span><span class="lineNoCov">          0 :         s++;</span>
+<span class="lineNum">     265 </span>            : 
+<span class="lineNum">     266 </span><span class="lineNoCov">          0 :       xfree (keygrip);</span>
+<span class="lineNum">     267 </span><span class="lineNoCov">          0 :       keygrip = NULL;</span>
+<span class="lineNum">     268 </span><span class="lineNoCov">          0 :       xfree (keytype_buffer);</span>
+<span class="lineNum">     269 </span><span class="lineNoCov">          0 :       keytype_buffer = xasprintf (&quot;card:%s&quot;, s);</span>
+<span class="lineNum">     270 </span><span class="lineNoCov">          0 :       free_strlist (keypairlist);</span>
+<span class="lineNum">     271 </span><span class="lineNoCov">          0 :       keytype = keytype_buffer;</span>
+<span class="lineNum">     272 </span><span class="lineNoCov">          0 :       nbits = 1024; /* A dummy value is sufficient.  */</span>
+<span class="lineNum">     273 </span>            :     }
+<span class="lineNum">     274 </span>            : 
+<span class="lineNum">     275 </span>            :   /* Ask for the key usage.  */
+<span class="lineNum">     276 </span><span class="lineNoCov">          0 :   tty_printf (_(&quot;Possible actions for a %s key:\n&quot;), &quot;RSA&quot;);</span>
+<span class="lineNum">     277 </span><span class="lineNoCov">          0 :   tty_printf (_(&quot;   (%d) sign, encrypt\n&quot;), 1 );</span>
+<span class="lineNum">     278 </span><span class="lineNoCov">          0 :   tty_printf (_(&quot;   (%d) sign\n&quot;), 2 );</span>
+<span class="lineNum">     279 </span><span class="lineNoCov">          0 :   tty_printf (_(&quot;   (%d) encrypt\n&quot;), 3 );</span>
+<span class="lineNum">     280 </span>            :   do
+<span class="lineNum">     281 </span>            :     {
+<span class="lineNum">     282 </span><span class="lineNoCov">          0 :       xfree (answer);</span>
+<span class="lineNum">     283 </span><span class="lineNoCov">          0 :       answer = tty_get (_(&quot;Your selection? &quot;));</span>
+<span class="lineNum">     284 </span><span class="lineNoCov">          0 :       tty_kill_prompt ();</span>
+<span class="lineNum">     285 </span><span class="lineNoCov">          0 :       trim_spaces (answer);</span>
+<span class="lineNum">     286 </span><span class="lineNoCov">          0 :       selection = *answer? atoi (answer): 1;</span>
+<span class="lineNum">     287 </span><span class="lineNoCov">          0 :       switch (selection)</span>
+<span class="lineNum">     288 </span>            :         {
+<span class="lineNum">     289 </span><span class="lineNoCov">          0 :         case 1: keyusage = &quot;sign, encrypt&quot;; break;</span>
+<span class="lineNum">     290 </span><span class="lineNoCov">          0 :         case 2: keyusage = &quot;sign&quot;; break;</span>
+<span class="lineNum">     291 </span><span class="lineNoCov">          0 :         case 3: keyusage = &quot;encrypt&quot;; break;</span>
+<span class="lineNum">     292 </span><span class="lineNoCov">          0 :         default: keyusage = NULL; break;</span>
+<span class="lineNum">     293 </span>            :         }
+<span class="lineNum">     294 </span>            :     }
+<span class="lineNum">     295 </span><span class="lineNoCov">          0 :   while (!keyusage);</span>
+<span class="lineNum">     296 </span>            : 
+<span class="lineNum">     297 </span>            :   /* Get the subject name.  */
+<span class="lineNum">     298 </span>            :   do
+<span class="lineNum">     299 </span>            :     {
+<span class="lineNum">     300 </span>            :       size_t erroff, errlen;
+<span class="lineNum">     301 </span>            : 
+<span class="lineNum">     302 </span><span class="lineNoCov">          0 :       xfree (answer);</span>
+<span class="lineNum">     303 </span><span class="lineNoCov">          0 :       answer = tty_get (_(&quot;Enter the X.509 subject name: &quot;));</span>
+<span class="lineNum">     304 </span><span class="lineNoCov">          0 :       tty_kill_prompt ();</span>
+<span class="lineNum">     305 </span><span class="lineNoCov">          0 :       trim_spaces (answer);</span>
+<span class="lineNum">     306 </span><span class="lineNoCov">          0 :       if (!*answer)</span>
+<span class="lineNum">     307 </span><span class="lineNoCov">          0 :         tty_printf (_(&quot;No subject name given\n&quot;));</span>
+<span class="lineNum">     308 </span><span class="lineNoCov">          0 :       else if ( (err = ksba_dn_teststr (answer, 0, &amp;erroff, &amp;errlen)) )</span>
+<span class="lineNum">     309 </span>            :         {
+<span class="lineNum">     310 </span><span class="lineNoCov">          0 :           if (gpg_err_code (err) == GPG_ERR_UNKNOWN_NAME)</span>
+<span class="lineNum">     311 </span><span class="lineNoCov">          0 :             tty_printf (_(&quot;Invalid subject name label '%.*s'\n&quot;),</span>
+<span class="lineNum">     312 </span>            :                         (int)errlen, answer+erroff);
+<span class="lineNum">     313 </span>            :           else
+<span class="lineNum">     314 </span>            :             {
+<span class="lineNum">     315 </span>            :               /* TRANSLATORS: The 22 in the second string is the
+<span class="lineNum">     316 </span>            :                  length of the first string up to the &quot;%s&quot;.  Please
+<span class="lineNum">     317 </span>            :                  adjust it do the length of your translation.  The
+<span class="lineNum">     318 </span>            :                  second string is merely passed to atoi so you can
+<span class="lineNum">     319 </span>            :                  drop everything after the number.  */
+<span class="lineNum">     320 </span><span class="lineNoCov">          0 :               tty_printf (_(&quot;Invalid subject name '%s'\n&quot;), answer);</span>
+<span class="lineNum">     321 </span><span class="lineNoCov">          0 :               tty_printf (&quot;%*s^\n&quot;,</span>
+<span class="lineNum">     322 </span><span class="lineNoCov">          0 :                           atoi (_(&quot;22 translator: see &quot;</span>
+<span class="lineNum">     323 </span>            :                                   &quot;certreg-ui.c:gpgsm_gencertreq_tty&quot;))
+<span class="lineNum">     324 </span><span class="lineNoCov">          0 :                           + (int)erroff, &quot;&quot;);</span>
+<span class="lineNum">     325 </span>            :             }
+<span class="lineNum">     326 </span><span class="lineNoCov">          0 :           *answer = 0;</span>
+<span class="lineNum">     327 </span>            :         }
+<span class="lineNum">     328 </span>            :     }
+<span class="lineNum">     329 </span><span class="lineNoCov">          0 :   while (!*answer);</span>
+<span class="lineNum">     330 </span><span class="lineNoCov">          0 :   subject_name = answer;</span>
+<span class="lineNum">     331 </span><span class="lineNoCov">          0 :   answer = NULL;</span>
+<span class="lineNum">     332 </span>            : 
+<span class="lineNum">     333 </span>            :   /* Get the email addresses. */
+<span class="lineNum">     334 </span><span class="lineNoCov">          0 :   tty_printf (_(&quot;Enter email addresses&quot;));</span>
+<span class="lineNum">     335 </span><span class="lineNoCov">          0 :   tty_printf (_(&quot; (end with an empty line):\n&quot;));</span>
+<span class="lineNum">     336 </span><span class="lineNoCov">          0 :   ask_mb_lines (&amp;mb_email, &quot;Name-Email: &quot;);</span>
+<span class="lineNum">     337 </span>            : 
+<span class="lineNum">     338 </span>            :   /* DNS names.  */
+<span class="lineNum">     339 </span><span class="lineNoCov">          0 :   tty_printf (_(&quot;Enter DNS names&quot;));</span>
+<span class="lineNum">     340 </span><span class="lineNoCov">          0 :   tty_printf (_(&quot; (optional; end with an empty line):\n&quot;));</span>
+<span class="lineNum">     341 </span><span class="lineNoCov">          0 :   ask_mb_lines (&amp;mb_dns, &quot;Name-DNS: &quot;);</span>
+<span class="lineNum">     342 </span>            : 
+<span class="lineNum">     343 </span>            :   /* URIs.  */
+<span class="lineNum">     344 </span><span class="lineNoCov">          0 :   tty_printf (_(&quot;Enter URIs&quot;));</span>
+<span class="lineNum">     345 </span><span class="lineNoCov">          0 :   tty_printf (_(&quot; (optional; end with an empty line):\n&quot;));</span>
+<span class="lineNum">     346 </span><span class="lineNoCov">          0 :   ask_mb_lines (&amp;mb_uri, &quot;Name-URI: &quot;);</span>
+<span class="lineNum">     347 </span>            : 
+<span class="lineNum">     348 </span>            : 
+<span class="lineNum">     349 </span>            :   /* Want a self-signed certificate?  */
+<span class="lineNum">     350 </span><span class="lineNoCov">          0 :   selfsigned = tty_get_answer_is_yes</span>
+<span class="lineNum">     351 </span><span class="lineNoCov">          0 :     (_(&quot;Create self-signed certificate? (y/N) &quot;));</span>
+<span class="lineNum">     352 </span>            : 
+<span class="lineNum">     353 </span>            : 
+<span class="lineNum">     354 </span>            :   /* Put it all together.  */
+<span class="lineNum">     355 </span><span class="lineNoCov">          0 :   store_key_value_lf (&amp;mb_result, &quot;Key-Type: &quot;, keytype);</span>
+<span class="lineNum">     356 </span>            :   {
+<span class="lineNum">     357 </span>            :     char numbuf[30];
+<span class="lineNum">     358 </span><span class="lineNoCov">          0 :     snprintf (numbuf, sizeof numbuf, &quot;%u&quot;, nbits);</span>
+<span class="lineNum">     359 </span><span class="lineNoCov">          0 :     store_key_value_lf (&amp;mb_result, &quot;Key-Length: &quot;, numbuf);</span>
+<span class="lineNum">     360 </span>            :   }
+<span class="lineNum">     361 </span><span class="lineNoCov">          0 :   if (keygrip)</span>
+<span class="lineNum">     362 </span><span class="lineNoCov">          0 :     store_key_value_lf (&amp;mb_result, &quot;Key-Grip: &quot;, keygrip);</span>
+<span class="lineNum">     363 </span><span class="lineNoCov">          0 :   store_key_value_lf (&amp;mb_result, &quot;Key-Usage: &quot;, keyusage);</span>
+<span class="lineNum">     364 </span><span class="lineNoCov">          0 :   if (selfsigned)</span>
+<span class="lineNum">     365 </span><span class="lineNoCov">          0 :     store_key_value_lf (&amp;mb_result, &quot;Serial: &quot;, &quot;random&quot;);</span>
+<span class="lineNum">     366 </span><span class="lineNoCov">          0 :   store_key_value_lf (&amp;mb_result, &quot;Name-DN: &quot;, subject_name);</span>
+<span class="lineNum">     367 </span><span class="lineNoCov">          0 :   if (store_mb_lines (&amp;mb_result, &amp;mb_email))</span>
+<span class="lineNum">     368 </span><span class="lineNoCov">          0 :     goto mem_error;</span>
+<span class="lineNum">     369 </span><span class="lineNoCov">          0 :   if (store_mb_lines (&amp;mb_result, &amp;mb_dns))</span>
+<span class="lineNum">     370 </span><span class="lineNoCov">          0 :     goto mem_error;</span>
+<span class="lineNum">     371 </span><span class="lineNoCov">          0 :   if (store_mb_lines (&amp;mb_result, &amp;mb_uri))</span>
+<span class="lineNum">     372 </span><span class="lineNoCov">          0 :     goto mem_error;</span>
+<span class="lineNum">     373 </span><span class="lineNoCov">          0 :   put_membuf (&amp;mb_result, &quot;&quot;, 1);</span>
+<span class="lineNum">     374 </span><span class="lineNoCov">          0 :   result = get_membuf (&amp;mb_result, NULL);</span>
+<span class="lineNum">     375 </span><span class="lineNoCov">          0 :   if (!result)</span>
+<span class="lineNum">     376 </span><span class="lineNoCov">          0 :     goto mem_error;</span>
+<span class="lineNum">     377 </span>            : 
+<span class="lineNum">     378 </span><span class="lineNoCov">          0 :   tty_printf (_(&quot;These parameters are used:\n&quot;));</span>
+<span class="lineNum">     379 </span><span class="lineNoCov">          0 :   for (s=result; (s2 = strchr (s, '\n')); s = s2+1)</span>
+<span class="lineNum">     380 </span><span class="lineNoCov">          0 :     tty_printf (&quot;    %.*s\n&quot;, (int)(s2-s), s);</span>
+<span class="lineNum">     381 </span><span class="lineNoCov">          0 :   tty_printf (&quot;\n&quot;);</span>
+<span class="lineNum">     382 </span>            : 
+<span class="lineNum">     383 </span><span class="lineNoCov">          0 :   if (!tty_get_answer_is_yes (&quot;Proceed with creation? (y/N) &quot;))</span>
+<span class="lineNum">     384 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">     385 </span>            : 
+<span class="lineNum">     386 </span>            :   /* Now create a parameter file and generate the key.  */
+<span class="lineNum">     387 </span><span class="lineNoCov">          0 :   fp = es_fopenmem (0, &quot;w+&quot;);</span>
+<span class="lineNum">     388 </span><span class="lineNoCov">          0 :   if (!fp)</span>
+<span class="lineNum">     389 </span>            :     {
+<span class="lineNum">     390 </span><span class="lineNoCov">          0 :       log_error (_(&quot;error creating temporary file: %s\n&quot;), strerror (errno));</span>
+<span class="lineNum">     391 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     392 </span>            :     }
+<span class="lineNum">     393 </span><span class="lineNoCov">          0 :   es_fputs (result, fp);</span>
+<span class="lineNum">     394 </span><span class="lineNoCov">          0 :   es_rewind (fp);</span>
+<span class="lineNum">     395 </span><span class="lineNoCov">          0 :   if (selfsigned)</span>
+<span class="lineNum">     396 </span><span class="lineNoCov">          0 :     tty_printf (&quot;%s&quot;, _(&quot;Now creating self-signed certificate.  &quot;));</span>
+<span class="lineNum">     397 </span>            :   else
+<span class="lineNum">     398 </span><span class="lineNoCov">          0 :     tty_printf (&quot;%s&quot;, _(&quot;Now creating certificate request.  &quot;));</span>
+<span class="lineNum">     399 </span><span class="lineNoCov">          0 :   tty_printf (&quot;%s&quot;, _(&quot;This may take a while ...\n&quot;));</span>
+<span class="lineNum">     400 </span>            : 
+<span class="lineNum">     401 </span>            :   {
+<span class="lineNum">     402 </span><span class="lineNoCov">          0 :     int save_pem = ctrl-&gt;create_pem;</span>
+<span class="lineNum">     403 </span><span class="lineNoCov">          0 :     ctrl-&gt;create_pem = 1; /* Force creation of PEM. */</span>
+<span class="lineNum">     404 </span><span class="lineNoCov">          0 :     err = gpgsm_genkey (ctrl, fp, output_stream);</span>
+<span class="lineNum">     405 </span><span class="lineNoCov">          0 :     ctrl-&gt;create_pem = save_pem;</span>
+<span class="lineNum">     406 </span>            :   }
+<span class="lineNum">     407 </span><span class="lineNoCov">          0 :   if (!err)</span>
+<span class="lineNum">     408 </span>            :     {
+<span class="lineNum">     409 </span><span class="lineNoCov">          0 :       if (selfsigned)</span>
+<span class="lineNum">     410 </span><span class="lineNoCov">          0 :         tty_printf (_(&quot;Ready.\n&quot;));</span>
+<span class="lineNum">     411 </span>            :       else
+<span class="lineNum">     412 </span><span class="lineNoCov">          0 :         tty_printf</span>
+<span class="lineNum">     413 </span><span class="lineNoCov">          0 :           (_(&quot;Ready.  You should now send this request to your CA.\n&quot;));</span>
+<span class="lineNum">     414 </span>            :     }
+<span class="lineNum">     415 </span>            : 
+<span class="lineNum">     416 </span>            : 
+<span class="lineNum">     417 </span><span class="lineNoCov">          0 :   goto leave;</span>
+<span class="lineNum">     418 </span>            :  mem_error:
+<span class="lineNum">     419 </span><span class="lineNoCov">          0 :   log_error (_(&quot;resource problem: out of core\n&quot;));</span>
+<span class="lineNum">     420 </span>            :  leave:
+<span class="lineNum">     421 </span><span class="lineNoCov">          0 :   es_fclose (fp);</span>
+<span class="lineNum">     422 </span><span class="lineNoCov">          0 :   xfree (answer);</span>
+<span class="lineNum">     423 </span><span class="lineNoCov">          0 :   xfree (subject_name);</span>
+<span class="lineNum">     424 </span><span class="lineNoCov">          0 :   xfree (keytype_buffer);</span>
+<span class="lineNum">     425 </span><span class="lineNoCov">          0 :   xfree (keygrip);</span>
+<span class="lineNum">     426 </span><span class="lineNoCov">          0 :   xfree (get_membuf (&amp;mb_email, NULL));</span>
+<span class="lineNum">     427 </span><span class="lineNoCov">          0 :   xfree (get_membuf (&amp;mb_dns, NULL));</span>
+<span class="lineNum">     428 </span><span class="lineNoCov">          0 :   xfree (get_membuf (&amp;mb_uri, NULL));</span>
+<span class="lineNum">     429 </span><span class="lineNoCov">          0 :   xfree (get_membuf (&amp;mb_result, NULL));</span>
+<span class="lineNum">     430 </span><span class="lineNoCov">          0 :   xfree (result);</span>
+<span class="lineNum">     431 </span><span class="lineNoCov">          0 : }</span>
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

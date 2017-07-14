@@ -1,0 +1,568 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - g10/keydb.h</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">g10</a> - keydb.h<span style="font-size: 80%;"> (source / <a href="keydb.h.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">12</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 14:21:11</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">2</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* keydb.h - Key database</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+<span class="lineNum">       3 </span>            :  *               2006, 2010 Free Software Foundation, Inc.
+<span class="lineNum">       4 </span>            :  * Copyright (C) 2015, 2016 g10 Code GmbH
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       7 </span>            :  *
+<span class="lineNum">       8 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       9 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">      10 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">      11 </span>            :  * (at your option) any later version.
+<span class="lineNum">      12 </span>            :  *
+<span class="lineNum">      13 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      14 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      15 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      16 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      17 </span>            :  *
+<span class="lineNum">      18 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      19 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      20 </span>            :  */
+<span class="lineNum">      21 </span>            : 
+<span class="lineNum">      22 </span>            : #ifndef G10_KEYDB_H
+<span class="lineNum">      23 </span>            : #define G10_KEYDB_H
+<span class="lineNum">      24 </span>            : 
+<span class="lineNum">      25 </span>            : #include &quot;../common/types.h&quot;
+<span class="lineNum">      26 </span>            : #include &quot;../common/util.h&quot;
+<span class="lineNum">      27 </span>            : #include &quot;packet.h&quot;
+<span class="lineNum">      28 </span>            : 
+<span class="lineNum">      29 </span>            : /* What qualifies as a certification (rather than a signature?) */
+<span class="lineNum">      30 </span>            : #define IS_CERT(s)       (IS_KEY_SIG(s) || IS_UID_SIG(s) || IS_SUBKEY_SIG(s) \
+<span class="lineNum">      31 </span>            :                          || IS_KEY_REV(s) || IS_UID_REV(s) || IS_SUBKEY_REV(s))
+<span class="lineNum">      32 </span>            : #define IS_SIG(s)        (!IS_CERT(s))
+<span class="lineNum">      33 </span>            : #define IS_KEY_SIG(s)    ((s)-&gt;sig_class == 0x1f)
+<span class="lineNum">      34 </span>            : #define IS_UID_SIG(s)    (((s)-&gt;sig_class &amp; ~3) == 0x10)
+<span class="lineNum">      35 </span>            : #define IS_SUBKEY_SIG(s) ((s)-&gt;sig_class == 0x18)
+<span class="lineNum">      36 </span>            : #define IS_KEY_REV(s)    ((s)-&gt;sig_class == 0x20)
+<span class="lineNum">      37 </span>            : #define IS_UID_REV(s)    ((s)-&gt;sig_class == 0x30)
+<span class="lineNum">      38 </span>            : #define IS_SUBKEY_REV(s) ((s)-&gt;sig_class == 0x28)
+<span class="lineNum">      39 </span>            : 
+<span class="lineNum">      40 </span>            : struct getkey_ctx_s;
+<span class="lineNum">      41 </span>            : typedef struct getkey_ctx_s *GETKEY_CTX;
+<span class="lineNum">      42 </span>            : typedef struct getkey_ctx_s *getkey_ctx_t;
+<span class="lineNum">      43 </span>            : 
+<span class="lineNum">      44 </span>            : /****************
+<span class="lineNum">      45 </span>            :  * A Keyblock is all packets which form an entire certificate;
+<span class="lineNum">      46 </span>            :  * i.e. the public key, certificate, trust packets, user ids,
+<span class="lineNum">      47 </span>            :  * signatures, and subkey.
+<span class="lineNum">      48 </span>            :  *
+<span class="lineNum">      49 </span>            :  * This structure is also used to bind arbitrary packets together.
+<span class="lineNum">      50 </span>            :  */
+<span class="lineNum">      51 </span>            : 
+<span class="lineNum">      52 </span>            : struct kbnode_struct {
+<span class="lineNum">      53 </span>            :     KBNODE next;
+<span class="lineNum">      54 </span>            :     PACKET *pkt;
+<span class="lineNum">      55 </span>            :     int flag;
+<span class="lineNum">      56 </span>            :     int private_flag;
+<span class="lineNum">      57 </span>            :     ulong recno;  /* used while updating the trustdb */
+<span class="lineNum">      58 </span>            : };
+<span class="lineNum">      59 </span>            : 
+<span class="lineNum">      60 </span>            : #define is_deleted_kbnode(a)  ((a)-&gt;private_flag &amp; 1)
+<span class="lineNum">      61 </span>            : #define is_cloned_kbnode(a)   ((a)-&gt;private_flag &amp; 2)
+<span class="lineNum">      62 </span>            : 
+<span class="lineNum">      63 </span>            : 
+<span class="lineNum">      64 </span>            : /* Bit flags used with build_pk_list.  */
+<span class="lineNum">      65 </span>            : enum
+<span class="lineNum">      66 </span>            :   {
+<span class="lineNum">      67 </span>            :     PK_LIST_ENCRYPT_TO = 1, /* This is an encrypt-to recipient.    */
+<span class="lineNum">      68 </span>            :     PK_LIST_HIDDEN     = 2, /* This is a hidden recipient.         */
+<span class="lineNum">      69 </span>            :     PK_LIST_CONFIG     = 4, /* Specified via config file.          */
+<span class="lineNum">      70 </span>            :     PK_LIST_FROM_FILE  = 8  /* Take key from file with that name.  */
+<span class="lineNum">      71 </span>            :   };
+<span class="lineNum">      72 </span>            : 
+<span class="lineNum">      73 </span>            : /* To store private data in the flags the private data must be left
+<span class="lineNum">      74 </span>            :  * shifted by this value.  */
+<span class="lineNum">      75 </span>            : enum
+<span class="lineNum">      76 </span>            :   {
+<span class="lineNum">      77 </span>            :     PK_LIST_SHIFT = 4
+<span class="lineNum">      78 </span>            :   };
+<span class="lineNum">      79 </span>            : 
+<span class="lineNum">      80 </span>            : 
+<span class="lineNum">      81 </span>            : /* Structure to hold a couple of public key certificates. */
+<span class="lineNum">      82 </span>            : typedef struct pk_list *PK_LIST;  /* Deprecated. */
+<span class="lineNum">      83 </span>            : typedef struct pk_list *pk_list_t;
+<span class="lineNum">      84 </span>            : struct pk_list
+<span class="lineNum">      85 </span>            : {
+<span class="lineNum">      86 </span>            :   PK_LIST next;
+<span class="lineNum">      87 </span>            :   PKT_public_key *pk;
+<span class="lineNum">      88 </span>            :   int flags;           /* See PK_LIST_ constants. */
+<span class="lineNum">      89 </span>            : };
+<span class="lineNum">      90 </span>            : 
+<span class="lineNum">      91 </span>            : /* Structure to hold a list of secret key certificates.  */
+<span class="lineNum">      92 </span>            : typedef struct sk_list *SK_LIST;
+<span class="lineNum">      93 </span>            : struct sk_list
+<span class="lineNum">      94 </span>            : {
+<span class="lineNum">      95 </span>            :   SK_LIST next;
+<span class="lineNum">      96 </span>            :   PKT_public_key *pk;
+<span class="lineNum">      97 </span>            :   int mark; /* not used */
+<span class="lineNum">      98 </span>            : };
+<span class="lineNum">      99 </span>            : 
+<span class="lineNum">     100 </span>            : /* structure to collect all information which can be used to
+<span class="lineNum">     101 </span>            :  * identify a public key */
+<span class="lineNum">     102 </span>            : typedef struct pubkey_find_info *PUBKEY_FIND_INFO;
+<span class="lineNum">     103 </span>            : struct pubkey_find_info {
+<span class="lineNum">     104 </span>            :     u32  keyid[2];
+<span class="lineNum">     105 </span>            :     unsigned nbits;
+<span class="lineNum">     106 </span>            :     byte pubkey_algo;
+<span class="lineNum">     107 </span>            :     byte fingerprint[MAX_FINGERPRINT_LEN];
+<span class="lineNum">     108 </span>            :     char userid[1];
+<span class="lineNum">     109 </span>            : };
+<span class="lineNum">     110 </span>            : 
+<span class="lineNum">     111 </span>            : 
+<span class="lineNum">     112 </span>            : /* Helper type for preference functions. */
+<span class="lineNum">     113 </span>            : union pref_hint
+<span class="lineNum">     114 </span>            : {
+<span class="lineNum">     115 </span>            :   int digest_length;
+<span class="lineNum">     116 </span>            : };
+<span class="lineNum">     117 </span>            : 
+<span class="lineNum">     118 </span>            : 
+<span class="lineNum">     119 </span>            : /* Constants to describe from where a key was fetched or updated.  */
+<span class="lineNum">     120 </span>            : enum
+<span class="lineNum">     121 </span>            :   {
+<span class="lineNum">     122 </span>            :     KEYSRC_UNKNOWN = 0,
+<span class="lineNum">     123 </span>            :     KEYSRC_FILE    = 1, /* Direct import from a file.  */
+<span class="lineNum">     124 </span>            :     KEYSRC_KS      = 2, /* Public keyserver.    */
+<span class="lineNum">     125 </span>            :     KEYSRC_PREF_KS = 3, /* Preferred keysrver.  */
+<span class="lineNum">     126 </span>            :     KEYSRC_WKD     = 4, /* Web Key Directory.   */
+<span class="lineNum">     127 </span>            :     KEYSRC_WKD_SD  = 5, /* Web Key Directory but from a sub domain.  */
+<span class="lineNum">     128 </span>            :     KEYSRC_DANE    = 6  /* OpenPGP DANE.  */
+<span class="lineNum">     129 </span>            :   };
+<span class="lineNum">     130 </span>            : 
+<span class="lineNum">     131 </span>            : 
+<span class="lineNum">     132 </span>            : /*-- keydb.c --*/
+<span class="lineNum">     133 </span>            : 
+<span class="lineNum">     134 </span>            : #define KEYDB_RESOURCE_FLAG_PRIMARY  2  /* The primary resource.  */
+<span class="lineNum">     135 </span>            : #define KEYDB_RESOURCE_FLAG_DEFAULT  4  /* The default one.  */
+<span class="lineNum">     136 </span>            : #define KEYDB_RESOURCE_FLAG_READONLY 8  /* Open in read only mode.  */
+<span class="lineNum">     137 </span>            : #define KEYDB_RESOURCE_FLAG_GPGVDEF 16  /* Default file for gpgv.  */
+<span class="lineNum">     138 </span>            : 
+<span class="lineNum">     139 </span>            : /* Format a search term for debugging output.  The caller must free
+<span class="lineNum">     140 </span>            :    the result.  */
+<span class="lineNum">     141 </span>            : char *keydb_search_desc_dump (struct keydb_search_desc *desc);
+<span class="lineNum">     142 </span>            : 
+<span class="lineNum">     143 </span>            : /* Register a resource (keyring or keybox).  */
+<span class="lineNum">     144 </span>            : gpg_error_t keydb_add_resource (const char *url, unsigned int flags);
+<span class="lineNum">     145 </span>            : 
+<span class="lineNum">     146 </span>            : /* Dump some statistics to the log.  */
+<span class="lineNum">     147 </span>            : void keydb_dump_stats (void);
+<span class="lineNum">     148 </span>            : 
+<span class="lineNum">     149 </span>            : /* Create a new database handle.  Returns NULL on error, sets ERRNO,
+<span class="lineNum">     150 </span>            :    and prints an error diagnostic. */
+<span class="lineNum">     151 </span>            : KEYDB_HANDLE keydb_new (void);
+<span class="lineNum">     152 </span>            : 
+<span class="lineNum">     153 </span>            : /* Free all resources owned by the database handle.  */
+<span class="lineNum">     154 </span>            : void keydb_release (KEYDB_HANDLE hd);
+<span class="lineNum">     155 </span>            : 
+<span class="lineNum">     156 </span>            : /* Set a flag on the handle to suppress use of cached results.  This
+<span class="lineNum">     157 </span>            :    is required for updating a keyring and for key listings.  Fixme:
+<span class="lineNum">     158 </span>            :    Using a new parameter for keydb_new might be a better solution.  */
+<span class="lineNum">     159 </span>            : void keydb_disable_caching (KEYDB_HANDLE hd);
+<span class="lineNum">     160 </span>            : 
+<span class="lineNum">     161 </span>            : /* Save the last found state and invalidate the current selection.  */
+<span class="lineNum">     162 </span>            : void keydb_push_found_state (KEYDB_HANDLE hd);
+<span class="lineNum">     163 </span>            : 
+<span class="lineNum">     164 </span>            : /* Restore the previous save state.  */
+<span class="lineNum">     165 </span>            : void keydb_pop_found_state (KEYDB_HANDLE hd);
+<span class="lineNum">     166 </span>            : 
+<span class="lineNum">     167 </span>            : /* Return the file name of the resource.  */
+<span class="lineNum">     168 </span>            : const char *keydb_get_resource_name (KEYDB_HANDLE hd);
+<span class="lineNum">     169 </span>            : 
+<span class="lineNum">     170 </span>            : /* Return the keyblock last found by keydb_search.  */
+<span class="lineNum">     171 </span>            : gpg_error_t keydb_get_keyblock (KEYDB_HANDLE hd, KBNODE *ret_kb);
+<span class="lineNum">     172 </span>            : 
+<span class="lineNum">     173 </span>            : /* Update the keyblock KB.  */
+<span class="lineNum">     174 </span>            : gpg_error_t keydb_update_keyblock (ctrl_t ctrl, KEYDB_HANDLE hd, kbnode_t kb);
+<span class="lineNum">     175 </span>            : 
+<span class="lineNum">     176 </span>            : /* Insert a keyblock into one of the underlying keyrings or keyboxes.  */
+<span class="lineNum">     177 </span>            : gpg_error_t keydb_insert_keyblock (KEYDB_HANDLE hd, kbnode_t kb);
+<span class="lineNum">     178 </span>            : 
+<span class="lineNum">     179 </span>            : /* Delete the currently selected keyblock.  */
+<span class="lineNum">     180 </span>            : gpg_error_t keydb_delete_keyblock (KEYDB_HANDLE hd);
+<span class="lineNum">     181 </span>            : 
+<span class="lineNum">     182 </span>            : /* Find the first writable resource.  */
+<span class="lineNum">     183 </span>            : gpg_error_t keydb_locate_writable (KEYDB_HANDLE hd);
+<span class="lineNum">     184 </span>            : 
+<span class="lineNum">     185 </span>            : /* Rebuild the on-disk caches of all key resources.  */
+<span class="lineNum">     186 </span>            : void keydb_rebuild_caches (ctrl_t ctrl, int noisy);
+<span class="lineNum">     187 </span>            : 
+<span class="lineNum">     188 </span>            : /* Return the number of skipped blocks (because they were to large to
+<span class="lineNum">     189 </span>            :    read from a keybox) since the last search reset.  */
+<span class="lineNum">     190 </span>            : unsigned long keydb_get_skipped_counter (KEYDB_HANDLE hd);
+<span class="lineNum">     191 </span>            : 
+<span class="lineNum">     192 </span>            : /* Clears the current search result and resets the handle's position.  */
+<span class="lineNum">     193 </span>            : gpg_error_t keydb_search_reset (KEYDB_HANDLE hd);
+<span class="lineNum">     194 </span>            : 
+<span class="lineNum">     195 </span>            : /* Search the database for keys matching the search description.  */
+<span class="lineNum">     196 </span>            : gpg_error_t keydb_search (KEYDB_HANDLE hd, KEYDB_SEARCH_DESC *desc,
+<span class="lineNum">     197 </span>            :                           size_t ndesc, size_t *descindex);
+<span class="lineNum">     198 </span>            : 
+<span class="lineNum">     199 </span>            : /* Return the first non-legacy key in the database.  */
+<span class="lineNum">     200 </span>            : gpg_error_t keydb_search_first (KEYDB_HANDLE hd);
+<span class="lineNum">     201 </span>            : 
+<span class="lineNum">     202 </span>            : /* Return the next key (not the next matching key!).  */
+<span class="lineNum">     203 </span>            : gpg_error_t keydb_search_next (KEYDB_HANDLE hd);
+<span class="lineNum">     204 </span>            : 
+<span class="lineNum">     205 </span>            : /* This is a convenience function for searching for keys with a long
+<span class="lineNum">     206 </span>            :    key id.  */
+<span class="lineNum">     207 </span>            : gpg_error_t keydb_search_kid (KEYDB_HANDLE hd, u32 *kid);
+<span class="lineNum">     208 </span>            : 
+<span class="lineNum">     209 </span>            : /* This is a convenience function for searching for keys with a long
+<span class="lineNum">     210 </span>            :    (20 byte) fingerprint.  */
+<span class="lineNum">     211 </span>            : gpg_error_t keydb_search_fpr (KEYDB_HANDLE hd, const byte *fpr);
+<span class="lineNum">     212 </span>            : 
+<span class="lineNum">     213 </span>            : 
+<span class="lineNum">     214 </span>            : /*-- pkclist.c --*/
+<span class="lineNum">     215 </span>            : void show_revocation_reason (ctrl_t ctrl, PKT_public_key *pk, int mode );
+<span class="lineNum">     216 </span>            : int  check_signatures_trust (ctrl_t ctrl, PKT_signature *sig);
+<span class="lineNum">     217 </span>            : 
+<span class="lineNum">     218 </span>            : void release_pk_list (PK_LIST pk_list);
+<span class="lineNum">     219 </span>            : int  build_pk_list (ctrl_t ctrl, strlist_t rcpts, PK_LIST *ret_pk_list);
+<span class="lineNum">     220 </span>            : gpg_error_t find_and_check_key (ctrl_t ctrl,
+<span class="lineNum">     221 </span>            :                                 const char *name, unsigned int use,
+<span class="lineNum">     222 </span>            :                                 int mark_hidden, int from_file,
+<span class="lineNum">     223 </span>            :                                 pk_list_t *pk_list_addr);
+<span class="lineNum">     224 </span>            : 
+<span class="lineNum">     225 </span>            : int  algo_available( preftype_t preftype, int algo,
+<span class="lineNum">     226 </span>            :                      const union pref_hint *hint );
+<span class="lineNum">     227 </span>            : int  select_algo_from_prefs( PK_LIST pk_list, int preftype,
+<span class="lineNum">     228 </span>            :                              int request, const union pref_hint *hint);
+<span class="lineNum">     229 </span>            : int  select_mdc_from_pklist (PK_LIST pk_list);
+<span class="lineNum">     230 </span>            : void warn_missing_mdc_from_pklist (PK_LIST pk_list);
+<span class="lineNum">     231 </span>            : void warn_missing_aes_from_pklist (PK_LIST pk_list);
+<span class="lineNum">     232 </span>            : 
+<span class="lineNum">     233 </span>            : /*-- skclist.c --*/
+<span class="lineNum">     234 </span>            : int  random_is_faked (void);
+<span class="lineNum">     235 </span>            : void release_sk_list( SK_LIST sk_list );
+<span class="lineNum">     236 </span>            : gpg_error_t build_sk_list (ctrl_t ctrl, strlist_t locusr,
+<span class="lineNum">     237 </span>            :                            SK_LIST *ret_sk_list, unsigned use);
+<span class="lineNum">     238 </span>            : 
+<span class="lineNum">     239 </span>            : /*-- passphrase.h --*/
+<span class="lineNum">     240 </span>            : unsigned char encode_s2k_iterations (int iterations);
+<span class="lineNum">     241 </span>            : int  have_static_passphrase(void);
+<span class="lineNum">     242 </span>            : const char *get_static_passphrase (void);
+<span class="lineNum">     243 </span>            : void set_passphrase_from_string(const char *pass);
+<span class="lineNum">     244 </span>            : void read_passphrase_from_fd( int fd );
+<span class="lineNum">     245 </span>            : void passphrase_clear_cache (const char *cacheid);
+<span class="lineNum">     246 </span>            : DEK *passphrase_to_dek_ext(u32 *keyid, int pubkey_algo,
+<span class="lineNum">     247 </span>            :                            int cipher_algo, STRING2KEY *s2k, int mode,
+<span class="lineNum">     248 </span>            :                            const char *tryagain_text,
+<span class="lineNum">     249 </span>            :                            const char *custdesc, const char *custprompt,
+<span class="lineNum">     250 </span>            :                            int *canceled);
+<span class="lineNum">     251 </span>            : DEK *passphrase_to_dek (int cipher_algo, STRING2KEY *s2k,
+<span class="lineNum">     252 </span>            :                         int create, int nocache,
+<span class="lineNum">     253 </span>            :                         const char *tryagain_text, int *canceled);
+<span class="lineNum">     254 </span>            : void set_next_passphrase( const char *s );
+<span class="lineNum">     255 </span>            : char *get_last_passphrase(void);
+<span class="lineNum">     256 </span>            : void next_to_last_passphrase(void);
+<span class="lineNum">     257 </span>            : 
+<span class="lineNum">     258 </span>            : void emit_status_need_passphrase (ctrl_t ctrl, u32 *keyid,
+<span class="lineNum">     259 </span>            :                                   u32 *mainkeyid, int pubkey_algo);
+<span class="lineNum">     260 </span>            : 
+<span class="lineNum">     261 </span>            : #define FORMAT_KEYDESC_NORMAL  0
+<span class="lineNum">     262 </span>            : #define FORMAT_KEYDESC_IMPORT  1
+<span class="lineNum">     263 </span>            : #define FORMAT_KEYDESC_EXPORT  2
+<span class="lineNum">     264 </span>            : #define FORMAT_KEYDESC_DELKEY  3
+<span class="lineNum">     265 </span>            : char *gpg_format_keydesc (ctrl_t ctrl,
+<span class="lineNum">     266 </span>            :                           PKT_public_key *pk, int mode, int escaped);
+<span class="lineNum">     267 </span>            : 
+<span class="lineNum">     268 </span>            : 
+<span class="lineNum">     269 </span>            : /*-- getkey.c --*/
+<span class="lineNum">     270 </span>            : 
+<span class="lineNum">     271 </span>            : /* Cache a copy of a public key in the public key cache.  */
+<span class="lineNum">     272 </span>            : void cache_public_key( PKT_public_key *pk );
+<span class="lineNum">     273 </span>            : 
+<span class="lineNum">     274 </span>            : /* Disable and drop the public key cache.  */
+<span class="lineNum">     275 </span>            : void getkey_disable_caches(void);
+<span class="lineNum">     276 </span>            : 
+<span class="lineNum">     277 </span>            : /* Return the public key with the key id KEYID and store it at PK.  */
+<span class="lineNum">     278 </span>            : int get_pubkey (ctrl_t ctrl, PKT_public_key *pk, u32 *keyid);
+<span class="lineNum">     279 </span>            : 
+<span class="lineNum">     280 </span>            : /* Similar to get_pubkey, but it does not take PK-&gt;REQ_USAGE into
+<span class="lineNum">     281 </span>            :    account nor does it merge in the self-signed data.  This function
+<span class="lineNum">     282 </span>            :    also only considers primary keys.  */
+<span class="lineNum">     283 </span>            : int get_pubkey_fast (PKT_public_key *pk, u32 *keyid);
+<span class="lineNum">     284 </span>            : 
+<span class="lineNum">     285 </span>            : /* Return the key block for the key with KEYID.  */
+<span class="lineNum">     286 </span>            : kbnode_t get_pubkeyblock (ctrl_t ctrl, u32 *keyid);
+<span class="lineNum">     287 </span>            : 
+<span class="lineNum">     288 </span>            : /* A list used by get_pubkeys to gather all of the matches.  */
+<span class="lineNum">     289 </span>            : struct pubkey_s
+<span class="lineNum">     290 </span>            : {
+<span class="lineNum">     291 </span>            :   struct pubkey_s *next;
+<span class="lineNum">     292 </span>            :   /* The key to use (either the public key or the subkey).  */
+<span class="lineNum">     293 </span>            :   PKT_public_key *pk;
+<span class="lineNum">     294 </span>            :   kbnode_t keyblock;
+<span class="lineNum">     295 </span>            : };
+<span class="lineNum">     296 </span>            : typedef struct pubkey_s *pubkey_t;
+<span class="lineNum">     297 </span>            : 
+<span class="lineNum">     298 </span>            : /* Free a single key.  This does not remove key from any list!  */
+<span class="lineNum">     299 </span>            : void pubkey_free (pubkey_t key);
+<span class="lineNum">     300 </span>            : 
+<span class="lineNum">     301 </span>            : /* Free a list of public keys.  */
+<span class="lineNum">     302 </span>            : void pubkeys_free (pubkey_t keys);
+<span class="lineNum">     303 </span>            : 
+<span class="lineNum">     304 </span>            : /* Returns all keys that match the search specification SEARCH_TERMS.
+<span class="lineNum">     305 </span>            :    The returned keys should be freed using pubkeys_free.  */
+<span class="lineNum">     306 </span>            : gpg_error_t
+<span class="lineNum">     307 </span>            : get_pubkeys (ctrl_t ctrl,
+<span class="lineNum">     308 </span>            :              char *search_terms, int use, int include_unusable, char *source,
+<span class="lineNum">     309 </span>            :              int warn_possibly_ambiguous,
+<span class="lineNum">     310 </span>            :              pubkey_t *r_keys);
+<span class="lineNum">     311 </span>            : 
+<span class="lineNum">     312 </span>            : /* Find a public key identified by NAME.  */
+<span class="lineNum">     313 </span>            : int get_pubkey_byname (ctrl_t ctrl,
+<span class="lineNum">     314 </span>            :                        GETKEY_CTX *retctx, PKT_public_key *pk,
+<span class="lineNum">     315 </span>            :                        const char *name,
+<span class="lineNum">     316 </span>            :                        KBNODE *ret_keyblock, KEYDB_HANDLE *ret_kdbhd,
+<span class="lineNum">     317 </span>            :                        int include_unusable, int no_akl );
+<span class="lineNum">     318 </span>            : 
+<span class="lineNum">     319 </span>            : /* Likewise, but only return the best match if NAME resembles a mail
+<span class="lineNum">     320 </span>            :  * address.  */
+<span class="lineNum">     321 </span>            : int get_best_pubkey_byname (ctrl_t ctrl,
+<span class="lineNum">     322 </span>            :                             GETKEY_CTX *retctx, PKT_public_key *pk,
+<span class="lineNum">     323 </span>            :                             const char *name, KBNODE *ret_keyblock,
+<span class="lineNum">     324 </span>            :                             int include_unusable, int no_akl);
+<span class="lineNum">     325 </span>            : 
+<span class="lineNum">     326 </span>            : /* Get a public key directly from file FNAME.  */
+<span class="lineNum">     327 </span>            : gpg_error_t get_pubkey_fromfile (ctrl_t ctrl,
+<span class="lineNum">     328 </span>            :                                  PKT_public_key *pk, const char *fname);
+<span class="lineNum">     329 </span>            : 
+<span class="lineNum">     330 </span>            : /* Return the public key with the key id KEYID iff the secret key is
+<span class="lineNum">     331 </span>            :  * available and store it at PK.  */
+<span class="lineNum">     332 </span>            : gpg_error_t get_seckey (ctrl_t ctrl, PKT_public_key *pk, u32 *keyid);
+<span class="lineNum">     333 </span>            : 
+<span class="lineNum">     334 </span>            : /* Lookup a key with the specified fingerprint.  */
+<span class="lineNum">     335 </span>            : int get_pubkey_byfprint (ctrl_t ctrl, PKT_public_key *pk, kbnode_t *r_keyblock,
+<span class="lineNum">     336 </span>            :                          const byte *fprint, size_t fprint_len);
+<span class="lineNum">     337 </span>            : 
+<span class="lineNum">     338 </span>            : /* This function is similar to get_pubkey_byfprint, but it doesn't
+<span class="lineNum">     339 </span>            :    merge the self-signed data into the public key and subkeys or into
+<span class="lineNum">     340 </span>            :    the user ids.  */
+<span class="lineNum">     341 </span>            : int get_pubkey_byfprint_fast (PKT_public_key *pk,
+<span class="lineNum">     342 </span>            :                               const byte *fprint, size_t fprint_len);
+<span class="lineNum">     343 </span>            : 
+<span class="lineNum">     344 </span>            : /* Returns true if a secret key is available for the public key with
+<span class="lineNum">     345 </span>            :    key id KEYID.  */
+<span class="lineNum">     346 </span>            : int have_secret_key_with_kid (u32 *keyid);
+<span class="lineNum">     347 </span>            : 
+<span class="lineNum">     348 </span>            : /* Parse the --default-key parameter.  Returns the last key (in terms
+<span class="lineNum">     349 </span>            :    of when the option is given) that is available.  */
+<span class="lineNum">     350 </span>            : const char *parse_def_secret_key (ctrl_t ctrl);
+<span class="lineNum">     351 </span>            : 
+<span class="lineNum">     352 </span>            : /* Look up a secret key.  */
+<span class="lineNum">     353 </span>            : gpg_error_t get_seckey_default (ctrl_t ctrl, PKT_public_key *pk);
+<span class="lineNum">     354 </span>            : 
+<span class="lineNum">     355 </span>            : /* Search for keys matching some criteria.  */
+<span class="lineNum">     356 </span>            : gpg_error_t getkey_bynames (ctrl_t ctrl,
+<span class="lineNum">     357 </span>            :                             getkey_ctx_t *retctx, PKT_public_key *pk,
+<span class="lineNum">     358 </span>            :                             strlist_t names, int want_secret,
+<span class="lineNum">     359 </span>            :                             kbnode_t *ret_keyblock);
+<span class="lineNum">     360 </span>            : 
+<span class="lineNum">     361 </span>            : /* Search for one key matching some criteria.  */
+<span class="lineNum">     362 </span>            : gpg_error_t getkey_byname (ctrl_t ctrl,
+<span class="lineNum">     363 </span>            :                            getkey_ctx_t *retctx, PKT_public_key *pk,
+<span class="lineNum">     364 </span>            :                            const char *name, int want_secret,
+<span class="lineNum">     365 </span>            :                            kbnode_t *ret_keyblock);
+<span class="lineNum">     366 </span>            : 
+<span class="lineNum">     367 </span>            : /* Return the next search result.  */
+<span class="lineNum">     368 </span>            : gpg_error_t getkey_next (ctrl_t ctrl, getkey_ctx_t ctx,
+<span class="lineNum">     369 </span>            :                          PKT_public_key *pk, kbnode_t *ret_keyblock);
+<span class="lineNum">     370 </span>            : 
+<span class="lineNum">     371 </span>            : /* Release any resources used by a key listing context.  */
+<span class="lineNum">     372 </span>            : void getkey_end (ctrl_t ctrl, getkey_ctx_t ctx);
+<span class="lineNum">     373 </span>            : 
+<span class="lineNum">     374 </span>            : /* Return the database handle used by this context.  The context still
+<span class="lineNum">     375 </span>            :    owns the handle.  */
+<span class="lineNum">     376 </span>            : KEYDB_HANDLE get_ctx_handle(GETKEY_CTX ctx);
+<span class="lineNum">     377 </span>            : 
+<span class="lineNum">     378 </span>            : /* Enumerate some secret keys.  */
+<span class="lineNum">     379 </span>            : gpg_error_t enum_secret_keys (ctrl_t ctrl, void **context, PKT_public_key *pk);
+<span class="lineNum">     380 </span>            : 
+<span class="lineNum">     381 </span>            : /* Set the mainkey_id fields for all keys in KEYBLOCK.  */
+<span class="lineNum">     382 </span>            : void setup_main_keyids (kbnode_t keyblock);
+<span class="lineNum">     383 </span>            : 
+<span class="lineNum">     384 </span>            : /* This function merges information from the self-signed data into the
+<span class="lineNum">     385 </span>            :    data structures.  */
+<span class="lineNum">     386 </span>            : void merge_keys_and_selfsig (ctrl_t ctrl, kbnode_t keyblock);
+<span class="lineNum">     387 </span>            : 
+<span class="lineNum">     388 </span>            : char*get_user_id_string_native (ctrl_t ctrl, u32 *keyid);
+<span class="lineNum">     389 </span>            : char*get_long_user_id_string (ctrl_t ctrl, u32 *keyid);
+<span class="lineNum">     390 </span>            : char*get_user_id (ctrl_t ctrl, u32 *keyid, size_t *rn);
+<span class="lineNum">     391 </span>            : char*get_user_id_native (ctrl_t ctrl, u32 *keyid);
+<span class="lineNum">     392 </span>            : char *get_user_id_byfpr (ctrl_t ctrl, const byte *fpr, size_t *rn);
+<span class="lineNum">     393 </span>            : char *get_user_id_byfpr_native (ctrl_t ctrl, const byte *fpr);
+<span class="lineNum">     394 </span>            : 
+<span class="lineNum">     395 </span>            : void release_akl(void);
+<span class="lineNum">     396 </span>            : int parse_auto_key_locate(char *options);
+<span class="lineNum">     397 </span>            : 
+<span class="lineNum">     398 </span>            : /*-- keyid.c --*/
+<span class="lineNum">     399 </span>            : int pubkey_letter( int algo );
+<span class="lineNum">     400 </span>            : char *pubkey_string (PKT_public_key *pk, char *buffer, size_t bufsize);
+<span class="lineNum">     401 </span>            : #define PUBKEY_STRING_SIZE 32
+<span class="lineNum">     402 </span>            : u32 v3_keyid (gcry_mpi_t a, u32 *ki);
+<span class="lineNum">     403 </span>            : void hash_public_key( gcry_md_hd_t md, PKT_public_key *pk );
+<span class="lineNum">     404 </span>            : char *format_keyid (u32 *keyid, int format, char *buffer, int len);
+<span class="lineNum">     405 </span>            : 
+<span class="lineNum">     406 </span>            : /* Return PK's keyid.  The memory is owned by PK.  */
+<span class="lineNum">     407 </span>            : u32 *pk_keyid (PKT_public_key *pk);
+<span class="lineNum">     408 </span>            : 
+<span class="lineNum">     409 </span>            : /* Return the keyid of the primary key associated with PK.  The memory
+<span class="lineNum">     410 </span>            :    is owned by PK.  */
+<span class="lineNum">     411 </span>            : u32 *pk_main_keyid (PKT_public_key *pk);
+<span class="lineNum">     412 </span>            : 
+<span class="lineNum">     413 </span>            : /* Order A and B.  If A &lt; B then return -1, if A == B then return 0,
+<a name="414"><span class="lineNum">     414 </span>            :    and if A &gt; B then return 1.  */</a>
+<span class="lineNum">     415 </span>            : static int GPGRT_ATTR_UNUSED
+<span class="lineNum">     416 </span><span class="lineNoCov">          0 : keyid_cmp (const u32 *a, const u32 *b)</span>
+<span class="lineNum">     417 </span>            : {
+<span class="lineNum">     418 </span><span class="lineNoCov">          0 :   if (a[0] &lt; b[0])</span>
+<span class="lineNum">     419 </span><span class="lineNoCov">          0 :     return -1;</span>
+<span class="lineNum">     420 </span><span class="lineNoCov">          0 :   if (a[0] &gt; b[0])</span>
+<span class="lineNum">     421 </span><span class="lineNoCov">          0 :     return 1;</span>
+<span class="lineNum">     422 </span><span class="lineNoCov">          0 :   if (a[1] &lt; b[1])</span>
+<span class="lineNum">     423 </span><span class="lineNoCov">          0 :     return -1;</span>
+<span class="lineNum">     424 </span><span class="lineNoCov">          0 :   if (a[1] &gt; b[1])</span>
+<span class="lineNum">     425 </span><span class="lineNoCov">          0 :     return 1;</span>
+<span class="lineNum">     426 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     427 </span>            : }
+<span class="lineNum">     428 </span>            : 
+<a name="429"><span class="lineNum">     429 </span>            : /* Return whether PK is a primary key.  */</a>
+<span class="lineNum">     430 </span>            : static int GPGRT_ATTR_UNUSED
+<span class="lineNum">     431 </span><span class="lineNoCov">          0 : pk_is_primary (PKT_public_key *pk)</span>
+<span class="lineNum">     432 </span>            : {
+<span class="lineNum">     433 </span><span class="lineNoCov">          0 :   return keyid_cmp (pk_keyid (pk), pk_main_keyid (pk)) == 0;</span>
+<span class="lineNum">     434 </span>            : }
+<span class="lineNum">     435 </span>            : 
+<span class="lineNum">     436 </span>            : /* Copy the keyid in SRC to DEST and return DEST.  */
+<span class="lineNum">     437 </span>            : u32 *keyid_copy (u32 *dest, const u32 *src);
+<span class="lineNum">     438 </span>            : 
+<span class="lineNum">     439 </span>            : size_t keystrlen(void);
+<span class="lineNum">     440 </span>            : const char *keystr(u32 *keyid);
+<span class="lineNum">     441 </span>            : const char *keystr_with_sub (u32 *main_kid, u32 *sub_kid);
+<span class="lineNum">     442 </span>            : const char *keystr_from_pk(PKT_public_key *pk);
+<span class="lineNum">     443 </span>            : const char *keystr_from_pk_with_sub (PKT_public_key *main_pk,
+<span class="lineNum">     444 </span>            :                                      PKT_public_key *sub_pk);
+<span class="lineNum">     445 </span>            : 
+<span class="lineNum">     446 </span>            : /* Return PK's key id as a string using the default format.  PK owns
+<span class="lineNum">     447 </span>            :    the storage.  */
+<span class="lineNum">     448 </span>            : const char *pk_keyid_str (PKT_public_key *pk);
+<span class="lineNum">     449 </span>            : 
+<span class="lineNum">     450 </span>            : const char *keystr_from_desc(KEYDB_SEARCH_DESC *desc);
+<span class="lineNum">     451 </span>            : u32 keyid_from_pk( PKT_public_key *pk, u32 *keyid );
+<span class="lineNum">     452 </span>            : u32 keyid_from_sig (PKT_signature *sig, u32 *keyid );
+<span class="lineNum">     453 </span>            : u32 keyid_from_fingerprint (ctrl_t ctrl, const byte *fprint, size_t fprint_len,
+<span class="lineNum">     454 </span>            :                             u32 *keyid);
+<span class="lineNum">     455 </span>            : byte *namehash_from_uid(PKT_user_id *uid);
+<span class="lineNum">     456 </span>            : unsigned nbits_from_pk( PKT_public_key *pk );
+<span class="lineNum">     457 </span>            : const char *datestr_from_pk( PKT_public_key *pk );
+<span class="lineNum">     458 </span>            : const char *datestr_from_sig( PKT_signature *sig );
+<span class="lineNum">     459 </span>            : const char *expirestr_from_pk( PKT_public_key *pk );
+<span class="lineNum">     460 </span>            : const char *expirestr_from_sig( PKT_signature *sig );
+<span class="lineNum">     461 </span>            : const char *revokestr_from_pk( PKT_public_key *pk );
+<span class="lineNum">     462 </span>            : const char *usagestr_from_pk (PKT_public_key *pk, int fill);
+<span class="lineNum">     463 </span>            : const char *colon_strtime (u32 t);
+<span class="lineNum">     464 </span>            : const char *colon_datestr_from_pk (PKT_public_key *pk);
+<span class="lineNum">     465 </span>            : const char *colon_datestr_from_sig (PKT_signature *sig);
+<span class="lineNum">     466 </span>            : const char *colon_expirestr_from_sig (PKT_signature *sig);
+<span class="lineNum">     467 </span>            : byte *fingerprint_from_pk( PKT_public_key *pk, byte *buf, size_t *ret_len );
+<span class="lineNum">     468 </span>            : char *hexfingerprint (PKT_public_key *pk, char *buffer, size_t buflen);
+<span class="lineNum">     469 </span>            : char *format_hexfingerprint (const char *fingerprint,
+<span class="lineNum">     470 </span>            :                              char *buffer, size_t buflen);
+<span class="lineNum">     471 </span>            : gpg_error_t keygrip_from_pk (PKT_public_key *pk, unsigned char *array);
+<span class="lineNum">     472 </span>            : gpg_error_t hexkeygrip_from_pk (PKT_public_key *pk, char **r_grip);
+<span class="lineNum">     473 </span>            : 
+<span class="lineNum">     474 </span>            : 
+<span class="lineNum">     475 </span>            : /*-- kbnode.c --*/
+<span class="lineNum">     476 </span>            : KBNODE new_kbnode( PACKET *pkt );
+<span class="lineNum">     477 </span>            : KBNODE clone_kbnode( KBNODE node );
+<span class="lineNum">     478 </span>            : void release_kbnode( KBNODE n );
+<span class="lineNum">     479 </span>            : void delete_kbnode( KBNODE node );
+<span class="lineNum">     480 </span>            : void add_kbnode( KBNODE root, KBNODE node );
+<span class="lineNum">     481 </span>            : void insert_kbnode( KBNODE root, KBNODE node, int pkttype );
+<span class="lineNum">     482 </span>            : void move_kbnode( KBNODE *root, KBNODE node, KBNODE where );
+<span class="lineNum">     483 </span>            : void remove_kbnode( KBNODE *root, KBNODE node );
+<span class="lineNum">     484 </span>            : KBNODE find_prev_kbnode( KBNODE root, KBNODE node, int pkttype );
+<span class="lineNum">     485 </span>            : KBNODE find_next_kbnode( KBNODE node, int pkttype );
+<span class="lineNum">     486 </span>            : KBNODE find_kbnode( KBNODE node, int pkttype );
+<span class="lineNum">     487 </span>            : KBNODE walk_kbnode( KBNODE root, KBNODE *context, int all );
+<span class="lineNum">     488 </span>            : void clear_kbnode_flags( KBNODE n );
+<span class="lineNum">     489 </span>            : int  commit_kbnode( KBNODE *root );
+<span class="lineNum">     490 </span>            : void dump_kbnode( KBNODE node );
+<span class="lineNum">     491 </span>            : 
+<span class="lineNum">     492 </span>            : #endif /*G10_KEYDB_H*/
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

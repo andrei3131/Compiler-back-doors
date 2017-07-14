@@ -1,0 +1,1946 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - g10/tdbio.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">g10</a> - tdbio.c<span style="font-size: 80%;"> (source / <a href="tdbio.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">766</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 15:14:00</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">32</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* tdbio.c - trust database I/O operations</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 1998-2002, 2012 Free Software Foundation, Inc.
+<span class="lineNum">       3 </span>            :  * Copyright (C) 1998-2015 Werner Koch
+<span class="lineNum">       4 </span>            :  *
+<span class="lineNum">       5 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       6 </span>            :  *
+<span class="lineNum">       7 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       8 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">       9 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">      10 </span>            :  * (at your option) any later version.
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      13 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      14 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      15 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      16 </span>            :  *
+<span class="lineNum">      17 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      18 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      19 </span>            :  */
+<span class="lineNum">      20 </span>            : 
+<span class="lineNum">      21 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      22 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      23 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      24 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      25 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      26 </span>            : #include &lt;sys/types.h&gt;
+<span class="lineNum">      27 </span>            : #include &lt;sys/stat.h&gt;
+<span class="lineNum">      28 </span>            : #include &lt;fcntl.h&gt;
+<span class="lineNum">      29 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span>            : #include &quot;gpg.h&quot;
+<span class="lineNum">      32 </span>            : #include &quot;../common/status.h&quot;
+<span class="lineNum">      33 </span>            : #include &quot;../common/iobuf.h&quot;
+<span class="lineNum">      34 </span>            : #include &quot;../common/util.h&quot;
+<span class="lineNum">      35 </span>            : #include &quot;options.h&quot;
+<span class="lineNum">      36 </span>            : #include &quot;main.h&quot;
+<span class="lineNum">      37 </span>            : #include &quot;../common/i18n.h&quot;
+<span class="lineNum">      38 </span>            : #include &quot;trustdb.h&quot;
+<span class="lineNum">      39 </span>            : #include &quot;tdbio.h&quot;
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span>            : #if defined(HAVE_DOSISH_SYSTEM) &amp;&amp; !defined(ftruncate)
+<span class="lineNum">      42 </span>            : #define ftruncate chsize
+<span class="lineNum">      43 </span>            : #endif
+<span class="lineNum">      44 </span>            : 
+<span class="lineNum">      45 </span>            : #if defined(HAVE_DOSISH_SYSTEM) || defined(__CYGWIN__)
+<span class="lineNum">      46 </span>            : #define MY_O_BINARY  O_BINARY
+<span class="lineNum">      47 </span>            : #else
+<span class="lineNum">      48 </span>            : #define MY_O_BINARY  0
+<span class="lineNum">      49 </span>            : #endif
+<span class="lineNum">      50 </span>            : 
+<span class="lineNum">      51 </span>            : /* We use ERRNO despite that the cegcc provided open/read/write
+<span class="lineNum">      52 </span>            :    functions don't set ERRNO - at least show that ERRNO does not make
+<span class="lineNum">      53 </span>            :    sense.  */
+<span class="lineNum">      54 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">      55 </span>            : #undef strerror
+<span class="lineNum">      56 </span>            : #define strerror(a) (&quot;[errno not available]&quot;)
+<span class="lineNum">      57 </span>            : #endif
+<span class="lineNum">      58 </span>            : 
+<span class="lineNum">      59 </span>            : /*
+<span class="lineNum">      60 </span>            :  * Yes, this is a very simple implementation. We should really
+<span class="lineNum">      61 </span>            :  * use a page aligned buffer and read complete pages.
+<span class="lineNum">      62 </span>            :  * To implement a simple trannsaction system, this is sufficient.
+<span class="lineNum">      63 </span>            :  */
+<span class="lineNum">      64 </span>            : typedef struct cache_ctrl_struct *CACHE_CTRL;
+<span class="lineNum">      65 </span>            : struct cache_ctrl_struct
+<span class="lineNum">      66 </span>            : {
+<span class="lineNum">      67 </span>            :   CACHE_CTRL next;
+<span class="lineNum">      68 </span>            :   struct {
+<span class="lineNum">      69 </span>            :     unsigned used:1;
+<span class="lineNum">      70 </span>            :     unsigned dirty:1;
+<span class="lineNum">      71 </span>            :   } flags;
+<span class="lineNum">      72 </span>            :   ulong recno;
+<span class="lineNum">      73 </span>            :   char data[TRUST_RECORD_LEN];
+<span class="lineNum">      74 </span>            : };
+<span class="lineNum">      75 </span>            : 
+<span class="lineNum">      76 </span>            : /* Size of the cache.  The SOFT value is the general one.  While in a
+<span class="lineNum">      77 </span>            :    transaction this may not be sufficient and thus we may increase it
+<span class="lineNum">      78 </span>            :    then up to the HARD limit.  */
+<span class="lineNum">      79 </span>            : #define MAX_CACHE_ENTRIES_SOFT  200
+<span class="lineNum">      80 </span>            : #define MAX_CACHE_ENTRIES_HARD  10000
+<span class="lineNum">      81 </span>            : 
+<span class="lineNum">      82 </span>            : 
+<span class="lineNum">      83 </span>            : /* The cache is controlled by these variables.  */
+<span class="lineNum">      84 </span>            : static CACHE_CTRL cache_list;
+<span class="lineNum">      85 </span>            : static int cache_entries;
+<span class="lineNum">      86 </span>            : static int cache_is_dirty;
+<span class="lineNum">      87 </span>            : 
+<span class="lineNum">      88 </span>            : 
+<span class="lineNum">      89 </span>            : /* An object to pass information to cmp_krec_fpr. */
+<span class="lineNum">      90 </span>            : struct cmp_krec_fpr_struct
+<span class="lineNum">      91 </span>            : {
+<span class="lineNum">      92 </span>            :   int pubkey_algo;
+<span class="lineNum">      93 </span>            :   const char *fpr;
+<span class="lineNum">      94 </span>            :   int fprlen;
+<span class="lineNum">      95 </span>            : };
+<span class="lineNum">      96 </span>            : 
+<span class="lineNum">      97 </span>            : /* An object used to pass information to cmp_[s]dir. */
+<span class="lineNum">      98 </span>            : struct cmp_xdir_struct
+<span class="lineNum">      99 </span>            : {
+<span class="lineNum">     100 </span>            :   int pubkey_algo;
+<span class="lineNum">     101 </span>            :   u32 keyid[2];
+<span class="lineNum">     102 </span>            : };
+<span class="lineNum">     103 </span>            : 
+<span class="lineNum">     104 </span>            : 
+<span class="lineNum">     105 </span>            : /* The name of the trustdb file.  */
+<span class="lineNum">     106 </span>            : static char *db_name;
+<span class="lineNum">     107 </span>            : 
+<span class="lineNum">     108 </span>            : /* The handle for locking the trustdb file and a flag to record
+<span class="lineNum">     109 </span>            :    whether a lock has been taken.  */
+<span class="lineNum">     110 </span>            : static dotlock_t lockhandle;
+<span class="lineNum">     111 </span>            : static int is_locked;
+<span class="lineNum">     112 </span>            : 
+<span class="lineNum">     113 </span>            : /* The file descriptor of the trustdb.  */
+<span class="lineNum">     114 </span>            : static int  db_fd = -1;
+<span class="lineNum">     115 </span>            : 
+<span class="lineNum">     116 </span>            : /* A flag indicating that a transaction is active.  */
+<span class="lineNum">     117 </span>            : static int in_transaction;
+<span class="lineNum">     118 </span>            : 
+<span class="lineNum">     119 </span>            : 
+<span class="lineNum">     120 </span>            : 
+<span class="lineNum">     121 </span>            : static void open_db (void);
+<span class="lineNum">     122 </span>            : static void create_hashtable (ctrl_t ctrl, TRUSTREC *vr, int type);
+<span class="lineNum">     123 </span>            : 
+<span class="lineNum">     124 </span>            : 
+<span class="lineNum">     125 </span>            : 
+<span class="lineNum">     126 </span>            : /*
+<span class="lineNum">     127 </span>            :  * Take a lock on the trustdb file name.  I a lock file can't be
+<span class="lineNum">     128 </span>            :  * created the function terminates the process.  Excvept for a
+<span class="lineNum">     129 </span>            :  * different return code the function does nothing if the lock has
+<span class="lineNum">     130 </span>            :  * already been taken.
+<span class="lineNum">     131 </span>            :  *
+<span class="lineNum">     132 </span>            :  * Returns: True if lock already exists, False if the lock has
+<span class="lineNum">     133 </span>            :  *          actually been taken.
+<a name="134"><span class="lineNum">     134 </span>            :  */</a>
+<span class="lineNum">     135 </span>            : static int
+<span class="lineNum">     136 </span><span class="lineNoCov">          0 : take_write_lock (void)</span>
+<span class="lineNum">     137 </span>            : {
+<span class="lineNum">     138 </span><span class="lineNoCov">          0 :   if (!lockhandle)</span>
+<span class="lineNum">     139 </span><span class="lineNoCov">          0 :     lockhandle = dotlock_create (db_name, 0);</span>
+<span class="lineNum">     140 </span><span class="lineNoCov">          0 :   if (!lockhandle)</span>
+<span class="lineNum">     141 </span><span class="lineNoCov">          0 :     log_fatal ( _(&quot;can't create lock for '%s'\n&quot;), db_name );</span>
+<span class="lineNum">     142 </span>            : 
+<span class="lineNum">     143 </span><span class="lineNoCov">          0 :   if (!is_locked)</span>
+<span class="lineNum">     144 </span>            :     {
+<span class="lineNum">     145 </span><span class="lineNoCov">          0 :       if (dotlock_take (lockhandle, -1) )</span>
+<span class="lineNum">     146 </span><span class="lineNoCov">          0 :         log_fatal ( _(&quot;can't lock '%s'\n&quot;), db_name );</span>
+<span class="lineNum">     147 </span>            :       else
+<span class="lineNum">     148 </span><span class="lineNoCov">          0 :         is_locked = 1;</span>
+<span class="lineNum">     149 </span><span class="lineNoCov">          0 :       return 0;</span>
+<span class="lineNum">     150 </span>            :     }
+<span class="lineNum">     151 </span>            :   else
+<span class="lineNum">     152 </span><span class="lineNoCov">          0 :     return 1;</span>
+<span class="lineNum">     153 </span>            : }
+<span class="lineNum">     154 </span>            : 
+<span class="lineNum">     155 </span>            : 
+<span class="lineNum">     156 </span>            : /*
+<span class="lineNum">     157 </span>            :  * Release a lock from the trustdb file unless the global option
+<span class="lineNum">     158 </span>            :  * --lock-once has been used.
+<a name="159"><span class="lineNum">     159 </span>            :  */</a>
+<span class="lineNum">     160 </span>            : static void
+<span class="lineNum">     161 </span><span class="lineNoCov">          0 : release_write_lock (void)</span>
+<span class="lineNum">     162 </span>            : {
+<span class="lineNum">     163 </span><span class="lineNoCov">          0 :   if (!opt.lock_once)</span>
+<span class="lineNum">     164 </span><span class="lineNoCov">          0 :     if (!dotlock_release (lockhandle))</span>
+<span class="lineNum">     165 </span><span class="lineNoCov">          0 :       is_locked = 0;</span>
+<span class="lineNum">     166 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     167 </span>            : 
+<span class="lineNum">     168 </span>            : /*************************************
+<span class="lineNum">     169 </span>            :  ************* record cache **********
+<span class="lineNum">     170 </span>            :  *************************************/
+<span class="lineNum">     171 </span>            : 
+<span class="lineNum">     172 </span>            : /*
+<span class="lineNum">     173 </span>            :  * Get the data from the record cache and return a pointer into that
+<span class="lineNum">     174 </span>            :  * cache.  Caller should copy the returned data.  NULL is returned on
+<span class="lineNum">     175 </span>            :  * a cache miss.
+<a name="176"><span class="lineNum">     176 </span>            :  */</a>
+<span class="lineNum">     177 </span>            : static const char *
+<span class="lineNum">     178 </span><span class="lineNoCov">          0 : get_record_from_cache (ulong recno)</span>
+<span class="lineNum">     179 </span>            : {
+<span class="lineNum">     180 </span>            :   CACHE_CTRL r;
+<span class="lineNum">     181 </span>            : 
+<span class="lineNum">     182 </span><span class="lineNoCov">          0 :   for (r = cache_list; r; r = r-&gt;next)</span>
+<span class="lineNum">     183 </span>            :     {
+<span class="lineNum">     184 </span><span class="lineNoCov">          0 :       if (r-&gt;flags.used &amp;&amp; r-&gt;recno == recno)</span>
+<span class="lineNum">     185 </span><span class="lineNoCov">          0 :         return r-&gt;data;</span>
+<span class="lineNum">     186 </span>            :     }
+<span class="lineNum">     187 </span><span class="lineNoCov">          0 :   return NULL;</span>
+<span class="lineNum">     188 </span>            : }
+<span class="lineNum">     189 </span>            : 
+<span class="lineNum">     190 </span>            : 
+<span class="lineNum">     191 </span>            : /*
+<span class="lineNum">     192 </span>            :  * Write a cached item back to the trustdb file.
+<span class="lineNum">     193 </span>            :  *
+<span class="lineNum">     194 </span>            :  * Returns: 0 on success or an error code.
+<a name="195"><span class="lineNum">     195 </span>            :  */</a>
+<span class="lineNum">     196 </span>            : static int
+<span class="lineNum">     197 </span><span class="lineNoCov">          0 : write_cache_item (CACHE_CTRL r)</span>
+<span class="lineNum">     198 </span>            : {
+<span class="lineNum">     199 </span>            :   gpg_error_t err;
+<span class="lineNum">     200 </span>            :   int n;
+<span class="lineNum">     201 </span>            : 
+<span class="lineNum">     202 </span><span class="lineNoCov">          0 :   if (lseek (db_fd, r-&gt;recno * TRUST_RECORD_LEN, SEEK_SET) == -1)</span>
+<span class="lineNum">     203 </span>            :     {
+<span class="lineNum">     204 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     205 </span><span class="lineNoCov">          0 :       log_error (_(&quot;trustdb rec %lu: lseek failed: %s\n&quot;),</span>
+<span class="lineNum">     206 </span><span class="lineNoCov">          0 :                  r-&gt;recno, strerror (errno));</span>
+<span class="lineNum">     207 </span><span class="lineNoCov">          0 :       return err;</span>
+<span class="lineNum">     208 </span>            :     }
+<span class="lineNum">     209 </span><span class="lineNoCov">          0 :   n = write (db_fd, r-&gt;data, TRUST_RECORD_LEN);</span>
+<span class="lineNum">     210 </span><span class="lineNoCov">          0 :   if (n != TRUST_RECORD_LEN)</span>
+<span class="lineNum">     211 </span>            :     {
+<span class="lineNum">     212 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     213 </span><span class="lineNoCov">          0 :       log_error (_(&quot;trustdb rec %lu: write failed (n=%d): %s\n&quot;),</span>
+<span class="lineNum">     214 </span><span class="lineNoCov">          0 :                  r-&gt;recno, n, strerror (errno) );</span>
+<span class="lineNum">     215 </span><span class="lineNoCov">          0 :       return err;</span>
+<span class="lineNum">     216 </span>            :     }
+<span class="lineNum">     217 </span><span class="lineNoCov">          0 :   r-&gt;flags.dirty = 0;</span>
+<span class="lineNum">     218 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     219 </span>            : }
+<span class="lineNum">     220 </span>            : 
+<span class="lineNum">     221 </span>            : 
+<span class="lineNum">     222 </span>            : /*
+<span class="lineNum">     223 </span>            :  * Put data into the cache.  This function may flush
+<span class="lineNum">     224 </span>            :  * some cache entries if the cache is filled up.
+<span class="lineNum">     225 </span>            :  *
+<span class="lineNum">     226 </span>            :  * Returns: 0 on success or an error code.
+<a name="227"><span class="lineNum">     227 </span>            :  */</a>
+<span class="lineNum">     228 </span>            : static int
+<span class="lineNum">     229 </span><span class="lineNoCov">          0 : put_record_into_cache (ulong recno, const char *data)</span>
+<span class="lineNum">     230 </span>            : {
+<span class="lineNum">     231 </span>            :   CACHE_CTRL r, unused;
+<span class="lineNum">     232 </span><span class="lineNoCov">          0 :   int dirty_count = 0;</span>
+<span class="lineNum">     233 </span><span class="lineNoCov">          0 :   int clean_count = 0;</span>
+<span class="lineNum">     234 </span>            : 
+<span class="lineNum">     235 </span>            :   /* See whether we already cached this one.  */
+<span class="lineNum">     236 </span><span class="lineNoCov">          0 :   for (unused = NULL, r = cache_list; r; r = r-&gt;next)</span>
+<span class="lineNum">     237 </span>            :     {
+<span class="lineNum">     238 </span><span class="lineNoCov">          0 :       if (!r-&gt;flags.used)</span>
+<span class="lineNum">     239 </span>            :         {
+<span class="lineNum">     240 </span><span class="lineNoCov">          0 :           if (!unused)</span>
+<span class="lineNum">     241 </span><span class="lineNoCov">          0 :             unused = r;</span>
+<span class="lineNum">     242 </span>            :         }
+<span class="lineNum">     243 </span><span class="lineNoCov">          0 :       else if (r-&gt;recno == recno)</span>
+<span class="lineNum">     244 </span>            :         {
+<span class="lineNum">     245 </span><span class="lineNoCov">          0 :           if (!r-&gt;flags.dirty)</span>
+<span class="lineNum">     246 </span>            :             {
+<span class="lineNum">     247 </span>            :               /* Hmmm: should we use a copy and compare? */
+<span class="lineNum">     248 </span><span class="lineNoCov">          0 :               if (memcmp (r-&gt;data, data, TRUST_RECORD_LEN))</span>
+<span class="lineNum">     249 </span>            :                 {
+<span class="lineNum">     250 </span><span class="lineNoCov">          0 :                   r-&gt;flags.dirty = 1;</span>
+<span class="lineNum">     251 </span><span class="lineNoCov">          0 :                   cache_is_dirty = 1;</span>
+<span class="lineNum">     252 </span>            :                 }
+<span class="lineNum">     253 </span>            :             }
+<span class="lineNum">     254 </span><span class="lineNoCov">          0 :           memcpy (r-&gt;data, data, TRUST_RECORD_LEN);</span>
+<span class="lineNum">     255 </span><span class="lineNoCov">          0 :           return 0;</span>
+<span class="lineNum">     256 </span>            :         }
+<span class="lineNum">     257 </span><span class="lineNoCov">          0 :       if (r-&gt;flags.used)</span>
+<span class="lineNum">     258 </span>            :         {
+<span class="lineNum">     259 </span><span class="lineNoCov">          0 :           if (r-&gt;flags.dirty)</span>
+<span class="lineNum">     260 </span><span class="lineNoCov">          0 :             dirty_count++;</span>
+<span class="lineNum">     261 </span>            :           else
+<span class="lineNum">     262 </span><span class="lineNoCov">          0 :             clean_count++;</span>
+<span class="lineNum">     263 </span>            :         }
+<span class="lineNum">     264 </span>            :     }
+<span class="lineNum">     265 </span>            : 
+<span class="lineNum">     266 </span>            :   /* Not in the cache: add a new entry. */
+<span class="lineNum">     267 </span><span class="lineNoCov">          0 :   if (unused)</span>
+<span class="lineNum">     268 </span>            :     {
+<span class="lineNum">     269 </span>            :       /* Reuse this entry. */
+<span class="lineNum">     270 </span><span class="lineNoCov">          0 :       r = unused;</span>
+<span class="lineNum">     271 </span><span class="lineNoCov">          0 :       r-&gt;flags.used = 1;</span>
+<span class="lineNum">     272 </span><span class="lineNoCov">          0 :       r-&gt;recno = recno;</span>
+<span class="lineNum">     273 </span><span class="lineNoCov">          0 :       memcpy (r-&gt;data, data, TRUST_RECORD_LEN);</span>
+<span class="lineNum">     274 </span><span class="lineNoCov">          0 :       r-&gt;flags.dirty = 1;</span>
+<span class="lineNum">     275 </span><span class="lineNoCov">          0 :       cache_is_dirty = 1;</span>
+<span class="lineNum">     276 </span><span class="lineNoCov">          0 :       cache_entries++;</span>
+<span class="lineNum">     277 </span><span class="lineNoCov">          0 :       return 0;</span>
+<span class="lineNum">     278 </span>            :     }
+<span class="lineNum">     279 </span>            : 
+<span class="lineNum">     280 </span>            :   /* See whether we reached the limit. */
+<span class="lineNum">     281 </span><span class="lineNoCov">          0 :   if (cache_entries &lt; MAX_CACHE_ENTRIES_SOFT)</span>
+<span class="lineNum">     282 </span>            :     {
+<span class="lineNum">     283 </span>            :       /* No: Put into cache.  */
+<span class="lineNum">     284 </span><span class="lineNoCov">          0 :       r = xmalloc (sizeof *r);</span>
+<span class="lineNum">     285 </span><span class="lineNoCov">          0 :       r-&gt;flags.used = 1;</span>
+<span class="lineNum">     286 </span><span class="lineNoCov">          0 :       r-&gt;recno = recno;</span>
+<span class="lineNum">     287 </span><span class="lineNoCov">          0 :       memcpy (r-&gt;data, data, TRUST_RECORD_LEN);</span>
+<span class="lineNum">     288 </span><span class="lineNoCov">          0 :       r-&gt;flags.dirty = 1;</span>
+<span class="lineNum">     289 </span><span class="lineNoCov">          0 :       r-&gt;next = cache_list;</span>
+<span class="lineNum">     290 </span><span class="lineNoCov">          0 :       cache_list = r;</span>
+<span class="lineNum">     291 </span><span class="lineNoCov">          0 :       cache_is_dirty = 1;</span>
+<span class="lineNum">     292 </span><span class="lineNoCov">          0 :       cache_entries++;</span>
+<span class="lineNum">     293 </span><span class="lineNoCov">          0 :       return 0;</span>
+<span class="lineNum">     294 </span>            :     }
+<span class="lineNum">     295 </span>            : 
+<span class="lineNum">     296 </span>            :   /* Cache is full: discard some clean entries.  */
+<span class="lineNum">     297 </span><span class="lineNoCov">          0 :   if (clean_count)</span>
+<span class="lineNum">     298 </span>            :     {
+<span class="lineNum">     299 </span>            :       int n;
+<span class="lineNum">     300 </span>            : 
+<span class="lineNum">     301 </span>            :       /* We discard a third of the clean entries.  */
+<span class="lineNum">     302 </span><span class="lineNoCov">          0 :       n = clean_count / 3;</span>
+<span class="lineNum">     303 </span><span class="lineNoCov">          0 :       if (!n)</span>
+<span class="lineNum">     304 </span><span class="lineNoCov">          0 :         n = 1;</span>
+<span class="lineNum">     305 </span>            : 
+<span class="lineNum">     306 </span><span class="lineNoCov">          0 :       for (unused = NULL, r = cache_list; r; r = r-&gt;next)</span>
+<span class="lineNum">     307 </span>            :         {
+<span class="lineNum">     308 </span><span class="lineNoCov">          0 :           if (r-&gt;flags.used &amp;&amp; !r-&gt;flags.dirty)</span>
+<span class="lineNum">     309 </span>            :             {
+<span class="lineNum">     310 </span><span class="lineNoCov">          0 :               if (!unused)</span>
+<span class="lineNum">     311 </span><span class="lineNoCov">          0 :                 unused = r;</span>
+<span class="lineNum">     312 </span><span class="lineNoCov">          0 :               r-&gt;flags.used = 0;</span>
+<span class="lineNum">     313 </span><span class="lineNoCov">          0 :               cache_entries--;</span>
+<span class="lineNum">     314 </span><span class="lineNoCov">          0 :               if (!--n)</span>
+<span class="lineNum">     315 </span><span class="lineNoCov">          0 :                 break;</span>
+<span class="lineNum">     316 </span>            :             }
+<span class="lineNum">     317 </span>            :         }
+<span class="lineNum">     318 </span>            : 
+<span class="lineNum">     319 </span>            :       /* Now put into the cache.  */
+<span class="lineNum">     320 </span><span class="lineNoCov">          0 :       log_assert (unused);</span>
+<span class="lineNum">     321 </span><span class="lineNoCov">          0 :       r = unused;</span>
+<span class="lineNum">     322 </span><span class="lineNoCov">          0 :       r-&gt;flags.used = 1;</span>
+<span class="lineNum">     323 </span><span class="lineNoCov">          0 :       r-&gt;recno = recno;</span>
+<span class="lineNum">     324 </span><span class="lineNoCov">          0 :       memcpy (r-&gt;data, data, TRUST_RECORD_LEN);</span>
+<span class="lineNum">     325 </span><span class="lineNoCov">          0 :       r-&gt;flags.dirty = 1;</span>
+<span class="lineNum">     326 </span><span class="lineNoCov">          0 :       cache_is_dirty = 1;</span>
+<span class="lineNum">     327 </span><span class="lineNoCov">          0 :       cache_entries++;</span>
+<span class="lineNum">     328 </span><span class="lineNoCov">          0 :       return 0;</span>
+<span class="lineNum">     329 </span>            :     }
+<span class="lineNum">     330 </span>            : 
+<span class="lineNum">     331 </span>            :   /* No clean entries: We have to flush some dirty entries.  */
+<span class="lineNum">     332 </span><span class="lineNoCov">          0 :   if (in_transaction)</span>
+<span class="lineNum">     333 </span>            :     {
+<span class="lineNum">     334 </span>            :       /* But we can't do this while in a transaction.  Thus we
+<span class="lineNum">     335 </span>            :        * increase the cache size instead.  */
+<span class="lineNum">     336 </span><span class="lineNoCov">          0 :       if (cache_entries &lt; MAX_CACHE_ENTRIES_HARD)</span>
+<span class="lineNum">     337 </span>            :         {
+<span class="lineNum">     338 </span><span class="lineNoCov">          0 :           if (opt.debug &amp;&amp; !(cache_entries % 100))</span>
+<span class="lineNum">     339 </span><span class="lineNoCov">          0 :             log_debug (&quot;increasing tdbio cache size\n&quot;);</span>
+<span class="lineNum">     340 </span><span class="lineNoCov">          0 :           r = xmalloc (sizeof *r);</span>
+<span class="lineNum">     341 </span><span class="lineNoCov">          0 :           r-&gt;flags.used = 1;</span>
+<span class="lineNum">     342 </span><span class="lineNoCov">          0 :           r-&gt;recno = recno;</span>
+<span class="lineNum">     343 </span><span class="lineNoCov">          0 :           memcpy (r-&gt;data, data, TRUST_RECORD_LEN);</span>
+<span class="lineNum">     344 </span><span class="lineNoCov">          0 :           r-&gt;flags.dirty = 1;</span>
+<span class="lineNum">     345 </span><span class="lineNoCov">          0 :           r-&gt;next = cache_list;</span>
+<span class="lineNum">     346 </span><span class="lineNoCov">          0 :           cache_list = r;</span>
+<span class="lineNum">     347 </span><span class="lineNoCov">          0 :           cache_is_dirty = 1;</span>
+<span class="lineNum">     348 </span><span class="lineNoCov">          0 :           cache_entries++;</span>
+<span class="lineNum">     349 </span><span class="lineNoCov">          0 :           return 0;</span>
+<span class="lineNum">     350 </span>            :         }
+<span class="lineNum">     351 </span>            :       /* Hard limit for the cache size reached.  */
+<span class="lineNum">     352 </span><span class="lineNoCov">          0 :       log_info (_(&quot;trustdb transaction too large\n&quot;));</span>
+<span class="lineNum">     353 </span><span class="lineNoCov">          0 :       return GPG_ERR_RESOURCE_LIMIT;</span>
+<span class="lineNum">     354 </span>            :     }
+<span class="lineNum">     355 </span>            : 
+<span class="lineNum">     356 </span><span class="lineNoCov">          0 :   if (dirty_count)</span>
+<span class="lineNum">     357 </span>            :     {
+<span class="lineNum">     358 </span>            :       int n;
+<span class="lineNum">     359 </span>            : 
+<span class="lineNum">     360 </span>            :       /* Discard some dirty entries. */
+<span class="lineNum">     361 </span><span class="lineNoCov">          0 :       n = dirty_count / 5;</span>
+<span class="lineNum">     362 </span><span class="lineNoCov">          0 :       if (!n)</span>
+<span class="lineNum">     363 </span><span class="lineNoCov">          0 :         n = 1;</span>
+<span class="lineNum">     364 </span>            : 
+<span class="lineNum">     365 </span><span class="lineNoCov">          0 :       take_write_lock ();</span>
+<span class="lineNum">     366 </span><span class="lineNoCov">          0 :       for (unused = NULL, r = cache_list; r; r = r-&gt;next)</span>
+<span class="lineNum">     367 </span>            :         {
+<span class="lineNum">     368 </span><span class="lineNoCov">          0 :           if (r-&gt;flags.used &amp;&amp; r-&gt;flags.dirty)</span>
+<span class="lineNum">     369 </span>            :             {
+<span class="lineNum">     370 </span>            :               int rc;
+<span class="lineNum">     371 </span>            : 
+<span class="lineNum">     372 </span><span class="lineNoCov">          0 :               rc = write_cache_item (r);</span>
+<span class="lineNum">     373 </span><span class="lineNoCov">          0 :               if (rc)</span>
+<span class="lineNum">     374 </span><span class="lineNoCov">          0 :                 return rc;</span>
+<span class="lineNum">     375 </span><span class="lineNoCov">          0 :               if (!unused)</span>
+<span class="lineNum">     376 </span><span class="lineNoCov">          0 :                 unused = r;</span>
+<span class="lineNum">     377 </span><span class="lineNoCov">          0 :               r-&gt;flags.used = 0;</span>
+<span class="lineNum">     378 </span><span class="lineNoCov">          0 :               cache_entries--;</span>
+<span class="lineNum">     379 </span><span class="lineNoCov">          0 :               if (!--n)</span>
+<span class="lineNum">     380 </span><span class="lineNoCov">          0 :                 break;</span>
+<span class="lineNum">     381 </span>            :             }
+<span class="lineNum">     382 </span>            :         }
+<span class="lineNum">     383 </span><span class="lineNoCov">          0 :       release_write_lock ();</span>
+<span class="lineNum">     384 </span>            : 
+<span class="lineNum">     385 </span>            :       /* Now put into the cache.  */
+<span class="lineNum">     386 </span><span class="lineNoCov">          0 :       log_assert (unused);</span>
+<span class="lineNum">     387 </span><span class="lineNoCov">          0 :       r = unused;</span>
+<span class="lineNum">     388 </span><span class="lineNoCov">          0 :       r-&gt;flags.used = 1;</span>
+<span class="lineNum">     389 </span><span class="lineNoCov">          0 :       r-&gt;recno = recno;</span>
+<span class="lineNum">     390 </span><span class="lineNoCov">          0 :       memcpy (r-&gt;data, data, TRUST_RECORD_LEN);</span>
+<span class="lineNum">     391 </span><span class="lineNoCov">          0 :       r-&gt;flags.dirty = 1;</span>
+<span class="lineNum">     392 </span><span class="lineNoCov">          0 :       cache_is_dirty = 1;</span>
+<span class="lineNum">     393 </span><span class="lineNoCov">          0 :       cache_entries++;</span>
+<span class="lineNum">     394 </span><span class="lineNoCov">          0 :       return 0;</span>
+<span class="lineNum">     395 </span>            :     }
+<span class="lineNum">     396 </span>            : 
+<span class="lineNum">     397 </span>            :   /* We should never reach this.  */
+<span class="lineNum">     398 </span><span class="lineNoCov">          0 :   BUG();</span>
+<span class="lineNum">     399 </span>            : }
+<span class="lineNum">     400 </span>            : 
+<span class="lineNum">     401 </span>            : 
+<a name="402"><span class="lineNum">     402 </span>            : /* Return true if the cache is dirty.  */</a>
+<span class="lineNum">     403 </span>            : int
+<span class="lineNum">     404 </span><span class="lineNoCov">          0 : tdbio_is_dirty()</span>
+<span class="lineNum">     405 </span>            : {
+<span class="lineNum">     406 </span><span class="lineNoCov">          0 :   return cache_is_dirty;</span>
+<span class="lineNum">     407 </span>            : }
+<span class="lineNum">     408 </span>            : 
+<span class="lineNum">     409 </span>            : 
+<span class="lineNum">     410 </span>            : /*
+<span class="lineNum">     411 </span>            :  * Flush the cache.  This cannot be used while in a transaction.
+<a name="412"><span class="lineNum">     412 </span>            :  */</a>
+<span class="lineNum">     413 </span>            : int
+<span class="lineNum">     414 </span><span class="lineNoCov">          0 : tdbio_sync()</span>
+<span class="lineNum">     415 </span>            : {
+<span class="lineNum">     416 </span>            :     CACHE_CTRL r;
+<span class="lineNum">     417 </span><span class="lineNoCov">          0 :     int did_lock = 0;</span>
+<span class="lineNum">     418 </span>            : 
+<span class="lineNum">     419 </span><span class="lineNoCov">          0 :     if( db_fd == -1 )</span>
+<span class="lineNum">     420 </span><span class="lineNoCov">          0 :         open_db();</span>
+<span class="lineNum">     421 </span><span class="lineNoCov">          0 :     if( in_transaction )</span>
+<span class="lineNum">     422 </span><span class="lineNoCov">          0 :         log_bug(&quot;tdbio: syncing while in transaction\n&quot;);</span>
+<span class="lineNum">     423 </span>            : 
+<span class="lineNum">     424 </span><span class="lineNoCov">          0 :     if( !cache_is_dirty )</span>
+<span class="lineNum">     425 </span><span class="lineNoCov">          0 :         return 0;</span>
+<span class="lineNum">     426 </span>            : 
+<span class="lineNum">     427 </span><span class="lineNoCov">          0 :     if (!take_write_lock ())</span>
+<span class="lineNum">     428 </span><span class="lineNoCov">          0 :         did_lock = 1;</span>
+<span class="lineNum">     429 </span>            : 
+<span class="lineNum">     430 </span><span class="lineNoCov">          0 :     for( r = cache_list; r; r = r-&gt;next ) {</span>
+<span class="lineNum">     431 </span><span class="lineNoCov">          0 :         if( r-&gt;flags.used &amp;&amp; r-&gt;flags.dirty ) {</span>
+<span class="lineNum">     432 </span><span class="lineNoCov">          0 :             int rc = write_cache_item( r );</span>
+<span class="lineNum">     433 </span><span class="lineNoCov">          0 :             if( rc )</span>
+<span class="lineNum">     434 </span><span class="lineNoCov">          0 :                 return rc;</span>
+<span class="lineNum">     435 </span>            :         }
+<span class="lineNum">     436 </span>            :     }
+<span class="lineNum">     437 </span><span class="lineNoCov">          0 :     cache_is_dirty = 0;</span>
+<span class="lineNum">     438 </span><span class="lineNoCov">          0 :     if (did_lock)</span>
+<span class="lineNum">     439 </span><span class="lineNoCov">          0 :         release_write_lock ();</span>
+<span class="lineNum">     440 </span>            : 
+<span class="lineNum">     441 </span><span class="lineNoCov">          0 :     return 0;</span>
+<span class="lineNum">     442 </span>            : }
+<span class="lineNum">     443 </span>            : 
+<span class="lineNum">     444 </span>            : 
+<span class="lineNum">     445 </span>            : #if 0  /* Not yet used.  */
+<span class="lineNum">     446 </span>            : /*
+<span class="lineNum">     447 </span>            :  * Simple transactions system:
+<span class="lineNum">     448 </span>            :  * Everything between begin_transaction and end/cancel_transaction
+<span class="lineNum">     449 </span>            :  * is not immediately written but at the time of end_transaction.
+<span class="lineNum">     450 </span>            :  *
+<span class="lineNum">     451 </span>            :  * NOTE: The transaction code is disabled in the 1.2 branch, as it is
+<span class="lineNum">     452 </span>            :  * not yet used.
+<span class="lineNum">     453 </span>            :  */
+<span class="lineNum">     454 </span>            : int
+<span class="lineNum">     455 </span>            : tdbio_begin_transaction ()  /* Not yet used.  */
+<span class="lineNum">     456 </span>            : {
+<span class="lineNum">     457 </span>            :   int rc;
+<span class="lineNum">     458 </span>            : 
+<span class="lineNum">     459 </span>            :   if (in_transaction)
+<span class="lineNum">     460 </span>            :     log_bug (&quot;tdbio: nested transactions\n&quot;);
+<span class="lineNum">     461 </span>            :   /* Flush everything out. */
+<span class="lineNum">     462 </span>            :   rc = tdbio_sync();
+<span class="lineNum">     463 </span>            :   if (rc)
+<span class="lineNum">     464 </span>            :     return rc;
+<span class="lineNum">     465 </span>            :   in_transaction = 1;
+<span class="lineNum">     466 </span>            :   return 0;
+<span class="lineNum">     467 </span>            : }
+<span class="lineNum">     468 </span>            : 
+<span class="lineNum">     469 </span>            : int
+<span class="lineNum">     470 </span>            : tdbio_end_transaction ()  /* Not yet used.  */
+<span class="lineNum">     471 </span>            : {
+<span class="lineNum">     472 </span>            :   int rc;
+<span class="lineNum">     473 </span>            : 
+<span class="lineNum">     474 </span>            :   if (!in_transaction)
+<span class="lineNum">     475 </span>            :     log_bug (&quot;tdbio: no active transaction\n&quot;);
+<span class="lineNum">     476 </span>            :   take_write_lock ();
+<span class="lineNum">     477 </span>            :   gnupg_block_all_signals ();
+<span class="lineNum">     478 </span>            :   in_transaction = 0;
+<span class="lineNum">     479 </span>            :   rc = tdbio_sync();
+<span class="lineNum">     480 </span>            :   gnupg_unblock_all_signals();
+<span class="lineNum">     481 </span>            :   release_write_lock ();
+<span class="lineNum">     482 </span>            :   return rc;
+<span class="lineNum">     483 </span>            : }
+<span class="lineNum">     484 </span>            : 
+<span class="lineNum">     485 </span>            : int
+<span class="lineNum">     486 </span>            : tdbio_cancel_transaction () /* Not yet used.  */
+<span class="lineNum">     487 </span>            : {
+<span class="lineNum">     488 </span>            :   CACHE_CTRL r;
+<span class="lineNum">     489 </span>            : 
+<span class="lineNum">     490 </span>            :   if (!in_transaction)
+<span class="lineNum">     491 </span>            :     log_bug (&quot;tdbio: no active transaction\n&quot;);
+<span class="lineNum">     492 </span>            : 
+<span class="lineNum">     493 </span>            :   /* Remove all dirty marked entries, so that the original ones are
+<span class="lineNum">     494 </span>            :    * read back the next time.  */
+<span class="lineNum">     495 </span>            :   if (cache_is_dirty)
+<span class="lineNum">     496 </span>            :     {
+<span class="lineNum">     497 </span>            :       for (r = cache_list; r; r = r-&gt;next)
+<span class="lineNum">     498 </span>            :         {
+<span class="lineNum">     499 </span>            :           if (r-&gt;flags.used &amp;&amp; r-&gt;flags.dirty)
+<span class="lineNum">     500 </span>            :             {
+<span class="lineNum">     501 </span>            :               r-&gt;flags.used = 0;
+<span class="lineNum">     502 </span>            :               cache_entries--;
+<span class="lineNum">     503 </span>            :             }
+<span class="lineNum">     504 </span>            :         }
+<span class="lineNum">     505 </span>            :       cache_is_dirty = 0;
+<span class="lineNum">     506 </span>            :     }
+<span class="lineNum">     507 </span>            : 
+<span class="lineNum">     508 </span>            :   in_transaction = 0;
+<span class="lineNum">     509 </span>            :   return 0;
+<span class="lineNum">     510 </span>            : }
+<span class="lineNum">     511 </span>            : #endif  /* Not yet used.  */
+<span class="lineNum">     512 </span>            : 
+<span class="lineNum">     513 </span>            : 
+<span class="lineNum">     514 </span>            : 
+<span class="lineNum">     515 </span>            : /********************************************************
+<span class="lineNum">     516 </span>            :  **************** cached I/O functions ******************
+<span class="lineNum">     517 </span>            :  ********************************************************/
+<span class="lineNum">     518 </span>            : 
+<a name="519"><span class="lineNum">     519 </span>            : /* The cleanup handler for this module.  */</a>
+<span class="lineNum">     520 </span>            : static void
+<span class="lineNum">     521 </span><span class="lineNoCov">          0 : cleanup (void)</span>
+<span class="lineNum">     522 </span>            : {
+<span class="lineNum">     523 </span><span class="lineNoCov">          0 :   if (is_locked)</span>
+<span class="lineNum">     524 </span>            :     {
+<span class="lineNum">     525 </span><span class="lineNoCov">          0 :       if (!dotlock_release (lockhandle))</span>
+<span class="lineNum">     526 </span><span class="lineNoCov">          0 :         is_locked = 0;</span>
+<span class="lineNum">     527 </span>            :     }
+<span class="lineNum">     528 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     529 </span>            : 
+<span class="lineNum">     530 </span>            : 
+<span class="lineNum">     531 </span>            : /*
+<span class="lineNum">     532 </span>            :  * Update an existing trustdb record.  The caller must call
+<span class="lineNum">     533 </span>            :  * tdbio_sync.
+<span class="lineNum">     534 </span>            :  *
+<span class="lineNum">     535 </span>            :  * Returns: 0 on success or an error code.
+<a name="536"><span class="lineNum">     536 </span>            :  */</a>
+<span class="lineNum">     537 </span>            : int
+<span class="lineNum">     538 </span><span class="lineNoCov">          0 : tdbio_update_version_record (ctrl_t ctrl)</span>
+<span class="lineNum">     539 </span>            : {
+<span class="lineNum">     540 </span>            :   TRUSTREC rec;
+<span class="lineNum">     541 </span>            :   int rc;
+<span class="lineNum">     542 </span>            : 
+<span class="lineNum">     543 </span><span class="lineNoCov">          0 :   memset (&amp;rec, 0, sizeof rec);</span>
+<span class="lineNum">     544 </span>            : 
+<span class="lineNum">     545 </span><span class="lineNoCov">          0 :   rc = tdbio_read_record (0, &amp;rec, RECTYPE_VER);</span>
+<span class="lineNum">     546 </span><span class="lineNoCov">          0 :   if (!rc)</span>
+<span class="lineNum">     547 </span>            :     {
+<span class="lineNum">     548 </span><span class="lineNoCov">          0 :       rec.r.ver.created     = make_timestamp();</span>
+<span class="lineNum">     549 </span><span class="lineNoCov">          0 :       rec.r.ver.marginals   = opt.marginals_needed;</span>
+<span class="lineNum">     550 </span><span class="lineNoCov">          0 :       rec.r.ver.completes   = opt.completes_needed;</span>
+<span class="lineNum">     551 </span><span class="lineNoCov">          0 :       rec.r.ver.cert_depth  = opt.max_cert_depth;</span>
+<span class="lineNum">     552 </span><span class="lineNoCov">          0 :       rec.r.ver.trust_model = opt.trust_model;</span>
+<span class="lineNum">     553 </span><span class="lineNoCov">          0 :       rec.r.ver.min_cert_level = opt.min_cert_level;</span>
+<span class="lineNum">     554 </span><span class="lineNoCov">          0 :       rc = tdbio_write_record (ctrl, &amp;rec);</span>
+<span class="lineNum">     555 </span>            :     }
+<span class="lineNum">     556 </span>            : 
+<span class="lineNum">     557 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     558 </span>            : }
+<span class="lineNum">     559 </span>            : 
+<span class="lineNum">     560 </span>            : 
+<span class="lineNum">     561 </span>            : /*
+<span class="lineNum">     562 </span>            :  * Create and write the trustdb version record.
+<span class="lineNum">     563 </span>            :  *
+<span class="lineNum">     564 </span>            :  * Returns: 0 on success or an error code.
+<a name="565"><span class="lineNum">     565 </span>            :  */</a>
+<span class="lineNum">     566 </span>            : static int
+<span class="lineNum">     567 </span><span class="lineNoCov">          0 : create_version_record (ctrl_t ctrl)</span>
+<span class="lineNum">     568 </span>            : {
+<span class="lineNum">     569 </span>            :   TRUSTREC rec;
+<span class="lineNum">     570 </span>            :   int rc;
+<span class="lineNum">     571 </span>            : 
+<span class="lineNum">     572 </span><span class="lineNoCov">          0 :   memset (&amp;rec, 0, sizeof rec);</span>
+<span class="lineNum">     573 </span><span class="lineNoCov">          0 :   rec.r.ver.version     = 3;</span>
+<span class="lineNum">     574 </span><span class="lineNoCov">          0 :   rec.r.ver.created     = make_timestamp ();</span>
+<span class="lineNum">     575 </span><span class="lineNoCov">          0 :   rec.r.ver.marginals   = opt.marginals_needed;</span>
+<span class="lineNum">     576 </span><span class="lineNoCov">          0 :   rec.r.ver.completes   = opt.completes_needed;</span>
+<span class="lineNum">     577 </span><span class="lineNoCov">          0 :   rec.r.ver.cert_depth  = opt.max_cert_depth;</span>
+<span class="lineNum">     578 </span><span class="lineNoCov">          0 :   if (opt.trust_model == TM_PGP || opt.trust_model == TM_CLASSIC)</span>
+<span class="lineNum">     579 </span><span class="lineNoCov">          0 :     rec.r.ver.trust_model = opt.trust_model;</span>
+<span class="lineNum">     580 </span>            :   else
+<span class="lineNum">     581 </span><span class="lineNoCov">          0 :     rec.r.ver.trust_model = TM_PGP;</span>
+<span class="lineNum">     582 </span><span class="lineNoCov">          0 :   rec.r.ver.min_cert_level = opt.min_cert_level;</span>
+<span class="lineNum">     583 </span><span class="lineNoCov">          0 :   rec.rectype = RECTYPE_VER;</span>
+<span class="lineNum">     584 </span><span class="lineNoCov">          0 :   rec.recnum = 0;</span>
+<span class="lineNum">     585 </span><span class="lineNoCov">          0 :   rc = tdbio_write_record (ctrl, &amp;rec);</span>
+<span class="lineNum">     586 </span>            : 
+<span class="lineNum">     587 </span><span class="lineNoCov">          0 :   if (!rc)</span>
+<span class="lineNum">     588 </span><span class="lineNoCov">          0 :     tdbio_sync ();</span>
+<span class="lineNum">     589 </span>            : 
+<span class="lineNum">     590 </span><span class="lineNoCov">          0 :   if (!rc)</span>
+<span class="lineNum">     591 </span><span class="lineNoCov">          0 :     create_hashtable (ctrl, &amp;rec, 0);</span>
+<span class="lineNum">     592 </span>            : 
+<span class="lineNum">     593 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     594 </span>            : }
+<span class="lineNum">     595 </span>            : 
+<span class="lineNum">     596 </span>            : 
+<span class="lineNum">     597 </span>            : /*
+<span class="lineNum">     598 </span>            :  * Set the file name for the trustdb to NEW_DBNAME and if CREATE is
+<span class="lineNum">     599 </span>            :  * true create that file.  If NEW_DBNAME is NULL a default name is
+<span class="lineNum">     600 </span>            :  * used, if the it does not contain a path component separator ('/')
+<span class="lineNum">     601 </span>            :  * the global GnuPG home directory is used.
+<span class="lineNum">     602 </span>            :  *
+<span class="lineNum">     603 </span>            :  * Returns: 0 on success or an error code.
+<span class="lineNum">     604 </span>            :  *
+<span class="lineNum">     605 </span>            :  * On the first call this function registers an atexit handler.
+<span class="lineNum">     606 </span>            :  *
+<a name="607"><span class="lineNum">     607 </span>            :  */</a>
+<span class="lineNum">     608 </span>            : int
+<span class="lineNum">     609 </span><span class="lineNoCov">          0 : tdbio_set_dbname (ctrl_t ctrl, const char *new_dbname,</span>
+<span class="lineNum">     610 </span>            :                   int create, int *r_nofile)
+<span class="lineNum">     611 </span>            : {
+<span class="lineNum">     612 </span>            :   char *fname, *p;
+<span class="lineNum">     613 </span>            :   struct stat statbuf;
+<span class="lineNum">     614 </span>            :   static int initialized = 0;
+<span class="lineNum">     615 </span>            :   int save_slash;
+<span class="lineNum">     616 </span>            : 
+<span class="lineNum">     617 </span><span class="lineNoCov">          0 :   if (!initialized)</span>
+<span class="lineNum">     618 </span>            :     {
+<span class="lineNum">     619 </span><span class="lineNoCov">          0 :       atexit (cleanup);</span>
+<span class="lineNum">     620 </span><span class="lineNoCov">          0 :       initialized = 1;</span>
+<span class="lineNum">     621 </span>            :     }
+<span class="lineNum">     622 </span>            : 
+<span class="lineNum">     623 </span><span class="lineNoCov">          0 :   *r_nofile = 0;</span>
+<span class="lineNum">     624 </span>            : 
+<span class="lineNum">     625 </span><span class="lineNoCov">          0 :   if (!new_dbname)</span>
+<span class="lineNum">     626 </span>            :     {
+<span class="lineNum">     627 </span><span class="lineNoCov">          0 :       fname = make_filename (gnupg_homedir (),</span>
+<span class="lineNum">     628 </span>            :                              &quot;trustdb&quot; EXTSEP_S GPGEXT_GPG, NULL);
+<span class="lineNum">     629 </span>            :     }
+<span class="lineNum">     630 </span><span class="lineNoCov">          0 :   else if (*new_dbname != DIRSEP_C )</span>
+<span class="lineNum">     631 </span>            :     {
+<span class="lineNum">     632 </span><span class="lineNoCov">          0 :       if (strchr (new_dbname, DIRSEP_C))</span>
+<span class="lineNum">     633 </span><span class="lineNoCov">          0 :         fname = make_filename (new_dbname, NULL);</span>
+<span class="lineNum">     634 </span>            :       else
+<span class="lineNum">     635 </span><span class="lineNoCov">          0 :         fname = make_filename (gnupg_homedir (), new_dbname, NULL);</span>
+<span class="lineNum">     636 </span>            :     }
+<span class="lineNum">     637 </span>            :   else
+<span class="lineNum">     638 </span>            :     {
+<span class="lineNum">     639 </span><span class="lineNoCov">          0 :       fname = xstrdup (new_dbname);</span>
+<span class="lineNum">     640 </span>            :     }
+<span class="lineNum">     641 </span>            : 
+<span class="lineNum">     642 </span><span class="lineNoCov">          0 :   xfree (db_name);</span>
+<span class="lineNum">     643 </span><span class="lineNoCov">          0 :   db_name = fname;</span>
+<span class="lineNum">     644 </span>            : 
+<span class="lineNum">     645 </span>            :   /* Quick check for (likely) case where there already is a
+<span class="lineNum">     646 </span>            :    * trustdb.gpg.  This check is not required in theory, but it helps
+<span class="lineNum">     647 </span>            :    * in practice avoiding costly operations of preparing and taking
+<span class="lineNum">     648 </span>            :    * the lock.  */
+<span class="lineNum">     649 </span><span class="lineNoCov">          0 :   if (!stat (fname, &amp;statbuf) &amp;&amp; statbuf.st_size &gt; 0)</span>
+<span class="lineNum">     650 </span>            :     {
+<span class="lineNum">     651 </span>            :       /* OK, we have the valid trustdb.gpg already.  */
+<span class="lineNum">     652 </span><span class="lineNoCov">          0 :       return 0;</span>
+<span class="lineNum">     653 </span>            :     }
+<span class="lineNum">     654 </span><span class="lineNoCov">          0 :   else if (!create)</span>
+<span class="lineNum">     655 </span>            :     {
+<span class="lineNum">     656 </span><span class="lineNoCov">          0 :       *r_nofile = 1;</span>
+<span class="lineNum">     657 </span><span class="lineNoCov">          0 :       return 0;</span>
+<span class="lineNum">     658 </span>            :     }
+<span class="lineNum">     659 </span>            : 
+<span class="lineNum">     660 </span>            :   /* Here comes: No valid trustdb.gpg AND CREATE==1 */
+<span class="lineNum">     661 </span>            : 
+<span class="lineNum">     662 </span>            :   /*
+<span class="lineNum">     663 </span>            :    * Make sure the directory exists.  This should be done before
+<span class="lineNum">     664 </span>            :    * acquiring the lock, which assumes the existence of the directory.
+<span class="lineNum">     665 </span>            :    */
+<span class="lineNum">     666 </span><span class="lineNoCov">          0 :   p = strrchr (fname, DIRSEP_C);</span>
+<span class="lineNum">     667 </span>            : #if HAVE_W32_SYSTEM
+<span class="lineNum">     668 </span>            :   {
+<span class="lineNum">     669 </span>            :     /* Windows may either have a slash or a backslash.  Take
+<span class="lineNum">     670 </span>            :        care of it.  */
+<span class="lineNum">     671 </span>            :     char *pp = strrchr (fname, '/');
+<span class="lineNum">     672 </span>            :     if (!p || pp &gt; p)
+<span class="lineNum">     673 </span>            :       p = pp;
+<span class="lineNum">     674 </span>            :   }
+<span class="lineNum">     675 </span>            : #endif /*HAVE_W32_SYSTEM*/
+<span class="lineNum">     676 </span><span class="lineNoCov">          0 :   log_assert (p);</span>
+<span class="lineNum">     677 </span><span class="lineNoCov">          0 :   save_slash = *p;</span>
+<span class="lineNum">     678 </span><span class="lineNoCov">          0 :   *p = 0;</span>
+<span class="lineNum">     679 </span><span class="lineNoCov">          0 :   if (access (fname, F_OK))</span>
+<span class="lineNum">     680 </span>            :     {
+<span class="lineNum">     681 </span><span class="lineNoCov">          0 :       try_make_homedir (fname);</span>
+<span class="lineNum">     682 </span><span class="lineNoCov">          0 :       if (access (fname, F_OK))</span>
+<span class="lineNum">     683 </span><span class="lineNoCov">          0 :         log_fatal (_(&quot;%s: directory does not exist!\n&quot;), fname);</span>
+<span class="lineNum">     684 </span>            :     }
+<span class="lineNum">     685 </span><span class="lineNoCov">          0 :   *p = save_slash;</span>
+<span class="lineNum">     686 </span>            : 
+<span class="lineNum">     687 </span><span class="lineNoCov">          0 :   take_write_lock ();</span>
+<span class="lineNum">     688 </span>            : 
+<span class="lineNum">     689 </span><span class="lineNoCov">          0 :   if (access (fname, R_OK) || stat (fname, &amp;statbuf) || statbuf.st_size == 0)</span>
+<span class="lineNum">     690 </span>            :     {
+<span class="lineNum">     691 </span>            :       FILE *fp;
+<span class="lineNum">     692 </span>            :       TRUSTREC rec;
+<span class="lineNum">     693 </span>            :       int rc;
+<span class="lineNum">     694 </span>            :       mode_t oldmask;
+<span class="lineNum">     695 </span>            : 
+<span class="lineNum">     696 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">     697 </span>            :       /* We know how the cegcc implementation of access works ;-). */
+<span class="lineNum">     698 </span>            :       if (GetLastError () == ERROR_FILE_NOT_FOUND)
+<span class="lineNum">     699 </span>            :         gpg_err_set_errno (ENOENT);
+<span class="lineNum">     700 </span>            :       else
+<span class="lineNum">     701 </span>            :         gpg_err_set_errno (EIO);
+<span class="lineNum">     702 </span>            : #endif /*HAVE_W32CE_SYSTEM*/
+<span class="lineNum">     703 </span><span class="lineNoCov">          0 :       if (errno &amp;&amp; errno != ENOENT)</span>
+<span class="lineNum">     704 </span><span class="lineNoCov">          0 :         log_fatal ( _(&quot;can't access '%s': %s\n&quot;), fname, strerror (errno));</span>
+<span class="lineNum">     705 </span>            : 
+<span class="lineNum">     706 </span><span class="lineNoCov">          0 :       oldmask = umask (077);</span>
+<span class="lineNum">     707 </span><span class="lineNoCov">          0 :       if (is_secured_filename (fname))</span>
+<span class="lineNum">     708 </span>            :         {
+<span class="lineNum">     709 </span><span class="lineNoCov">          0 :           fp = NULL;</span>
+<span class="lineNum">     710 </span><span class="lineNoCov">          0 :           gpg_err_set_errno (EPERM);</span>
+<span class="lineNum">     711 </span>            :         }
+<span class="lineNum">     712 </span>            :       else
+<span class="lineNum">     713 </span><span class="lineNoCov">          0 :         fp = fopen (fname, &quot;wb&quot;);</span>
+<span class="lineNum">     714 </span><span class="lineNoCov">          0 :       umask(oldmask);</span>
+<span class="lineNum">     715 </span><span class="lineNoCov">          0 :       if (!fp)</span>
+<span class="lineNum">     716 </span><span class="lineNoCov">          0 :         log_fatal (_(&quot;can't create '%s': %s\n&quot;), fname, strerror (errno));</span>
+<span class="lineNum">     717 </span><span class="lineNoCov">          0 :       fclose (fp);</span>
+<span class="lineNum">     718 </span>            : 
+<span class="lineNum">     719 </span><span class="lineNoCov">          0 :       db_fd = open (db_name, O_RDWR | MY_O_BINARY);</span>
+<span class="lineNum">     720 </span><span class="lineNoCov">          0 :       if (db_fd == -1)</span>
+<span class="lineNum">     721 </span><span class="lineNoCov">          0 :         log_fatal (_(&quot;can't open '%s': %s\n&quot;), db_name, strerror (errno));</span>
+<span class="lineNum">     722 </span>            : 
+<span class="lineNum">     723 </span><span class="lineNoCov">          0 :       rc = create_version_record (ctrl);</span>
+<span class="lineNum">     724 </span><span class="lineNoCov">          0 :       if (rc)</span>
+<span class="lineNum">     725 </span><span class="lineNoCov">          0 :         log_fatal (_(&quot;%s: failed to create version record: %s&quot;),</span>
+<span class="lineNum">     726 </span>            :                    fname, gpg_strerror (rc));
+<span class="lineNum">     727 </span>            : 
+<span class="lineNum">     728 </span>            :       /* Read again to check that we are okay. */
+<span class="lineNum">     729 </span><span class="lineNoCov">          0 :       if (tdbio_read_record (0, &amp;rec, RECTYPE_VER))</span>
+<span class="lineNum">     730 </span><span class="lineNoCov">          0 :         log_fatal (_(&quot;%s: invalid trustdb created\n&quot;), db_name);</span>
+<span class="lineNum">     731 </span>            : 
+<span class="lineNum">     732 </span><span class="lineNoCov">          0 :       if (!opt.quiet)</span>
+<span class="lineNum">     733 </span><span class="lineNoCov">          0 :         log_info (_(&quot;%s: trustdb created\n&quot;), db_name);</span>
+<span class="lineNum">     734 </span>            :     }
+<span class="lineNum">     735 </span>            : 
+<span class="lineNum">     736 </span><span class="lineNoCov">          0 :   release_write_lock ();</span>
+<span class="lineNum">     737 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     738 </span>            : }
+<span class="lineNum">     739 </span>            : 
+<span class="lineNum">     740 </span>            : 
+<span class="lineNum">     741 </span>            : /*
+<span class="lineNum">     742 </span>            :  * Return the full name of the trustdb.
+<a name="743"><span class="lineNum">     743 </span>            :  */</a>
+<span class="lineNum">     744 </span>            : const char *
+<span class="lineNum">     745 </span><span class="lineNoCov">          0 : tdbio_get_dbname ()</span>
+<span class="lineNum">     746 </span>            : {
+<span class="lineNum">     747 </span><span class="lineNoCov">          0 :   return db_name;</span>
+<span class="lineNum">     748 </span>            : }
+<span class="lineNum">     749 </span>            : 
+<span class="lineNum">     750 </span>            : 
+<span class="lineNum">     751 </span>            : /*
+<span class="lineNum">     752 </span>            :  * Open the trustdb.  This may only be called if it has not yet been
+<span class="lineNum">     753 </span>            :  * opened and after a successful call to tdbio_set_dbname.  On return
+<span class="lineNum">     754 </span>            :  * the trustdb handle (DB_FD) is guaranteed to be open.
+<a name="755"><span class="lineNum">     755 </span>            :  */</a>
+<span class="lineNum">     756 </span>            : static void
+<span class="lineNum">     757 </span><span class="lineNoCov">          0 : open_db ()</span>
+<span class="lineNum">     758 </span>            : {
+<span class="lineNum">     759 </span>            :   TRUSTREC rec;
+<span class="lineNum">     760 </span>            : 
+<span class="lineNum">     761 </span><span class="lineNoCov">          0 :   log_assert( db_fd == -1 );</span>
+<span class="lineNum">     762 </span>            : 
+<span class="lineNum">     763 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">     764 </span>            :   {
+<span class="lineNum">     765 </span>            :     DWORD prevrc = 0;
+<span class="lineNum">     766 </span>            :     wchar_t *wname = utf8_to_wchar (db_name);
+<span class="lineNum">     767 </span>            :     if (wname)
+<span class="lineNum">     768 </span>            :       {
+<span class="lineNum">     769 </span>            :         db_fd = (int)CreateFile (wname, GENERIC_READ|GENERIC_WRITE,
+<span class="lineNum">     770 </span>            :                                  FILE_SHARE_READ|FILE_SHARE_WRITE, NULL,
+<span class="lineNum">     771 </span>            :                                  OPEN_EXISTING, 0, NULL);
+<span class="lineNum">     772 </span>            :         xfree (wname);
+<span class="lineNum">     773 </span>            :       }
+<span class="lineNum">     774 </span>            :     if (db_fd == -1)
+<span class="lineNum">     775 </span>            :       log_fatal (&quot;can't open '%s': %d, %d\n&quot;, db_name,
+<span class="lineNum">     776 </span>            :                  (int)prevrc, (int)GetLastError ());
+<span class="lineNum">     777 </span>            :   }
+<span class="lineNum">     778 </span>            : #else /*!HAVE_W32CE_SYSTEM*/
+<span class="lineNum">     779 </span><span class="lineNoCov">          0 :   db_fd = open (db_name, O_RDWR | MY_O_BINARY );</span>
+<span class="lineNum">     780 </span><span class="lineNoCov">          0 :   if (db_fd == -1 &amp;&amp; (errno == EACCES</span>
+<span class="lineNum">     781 </span>            : #ifdef EROFS
+<span class="lineNum">     782 </span><span class="lineNoCov">          0 :                       || errno == EROFS</span>
+<span class="lineNum">     783 </span>            : #endif
+<span class="lineNum">     784 </span>            :                       )
+<span class="lineNum">     785 </span>            :       ) {
+<span class="lineNum">     786 </span>            :       /* Take care of read-only trustdbs.  */
+<span class="lineNum">     787 </span><span class="lineNoCov">          0 :       db_fd = open (db_name, O_RDONLY | MY_O_BINARY );</span>
+<span class="lineNum">     788 </span><span class="lineNoCov">          0 :       if (db_fd != -1 &amp;&amp; !opt.quiet)</span>
+<span class="lineNum">     789 </span><span class="lineNoCov">          0 :           log_info (_(&quot;Note: trustdb not writable\n&quot;));</span>
+<span class="lineNum">     790 </span>            :   }
+<span class="lineNum">     791 </span><span class="lineNoCov">          0 :   if ( db_fd == -1 )</span>
+<span class="lineNum">     792 </span><span class="lineNoCov">          0 :     log_fatal( _(&quot;can't open '%s': %s\n&quot;), db_name, strerror(errno) );</span>
+<span class="lineNum">     793 </span>            : #endif /*!HAVE_W32CE_SYSTEM*/
+<span class="lineNum">     794 </span><span class="lineNoCov">          0 :   register_secured_file (db_name);</span>
+<span class="lineNum">     795 </span>            : 
+<span class="lineNum">     796 </span>            :   /* Read the version record. */
+<span class="lineNum">     797 </span><span class="lineNoCov">          0 :   if (tdbio_read_record (0, &amp;rec, RECTYPE_VER ) )</span>
+<span class="lineNum">     798 </span><span class="lineNoCov">          0 :     log_fatal( _(&quot;%s: invalid trustdb\n&quot;), db_name );</span>
+<span class="lineNum">     799 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     800 </span>            : 
+<span class="lineNum">     801 </span>            : 
+<span class="lineNum">     802 </span>            : /*
+<span class="lineNum">     803 </span>            :  * Append a new empty hashtable to the trustdb.  TYPE gives the type
+<span class="lineNum">     804 </span>            :  * of the hash table.  The only defined type is 0 for a trust hash.
+<span class="lineNum">     805 </span>            :  * On return the hashtable has been created, written, the version
+<span class="lineNum">     806 </span>            :  * record update, and the data flushed to the disk.  On a fatal error
+<span class="lineNum">     807 </span>            :  * the function terminates the process.
+<a name="808"><span class="lineNum">     808 </span>            :  */</a>
+<span class="lineNum">     809 </span>            : static void
+<span class="lineNum">     810 </span><span class="lineNoCov">          0 : create_hashtable (ctrl_t ctrl, TRUSTREC *vr, int type)</span>
+<span class="lineNum">     811 </span>            : {
+<span class="lineNum">     812 </span>            :   TRUSTREC rec;
+<span class="lineNum">     813 </span>            :   off_t offset;
+<span class="lineNum">     814 </span>            :   ulong recnum;
+<span class="lineNum">     815 </span>            :   int i, n, rc;
+<span class="lineNum">     816 </span>            : 
+<span class="lineNum">     817 </span><span class="lineNoCov">          0 :   offset = lseek (db_fd, 0, SEEK_END);</span>
+<span class="lineNum">     818 </span><span class="lineNoCov">          0 :   if (offset == -1)</span>
+<span class="lineNum">     819 </span><span class="lineNoCov">          0 :     log_fatal (&quot;trustdb: lseek to end failed: %s\n&quot;, strerror(errno));</span>
+<span class="lineNum">     820 </span><span class="lineNoCov">          0 :   recnum = offset / TRUST_RECORD_LEN;</span>
+<span class="lineNum">     821 </span><span class="lineNoCov">          0 :   log_assert (recnum); /* This is will never be the first record. */</span>
+<span class="lineNum">     822 </span>            : 
+<span class="lineNum">     823 </span><span class="lineNoCov">          0 :   if (!type)</span>
+<span class="lineNum">     824 </span><span class="lineNoCov">          0 :     vr-&gt;r.ver.trusthashtbl = recnum;</span>
+<span class="lineNum">     825 </span>            : 
+<span class="lineNum">     826 </span>            :   /* Now write the records making up the hash table. */
+<span class="lineNum">     827 </span><span class="lineNoCov">          0 :   n = (256+ITEMS_PER_HTBL_RECORD-1) / ITEMS_PER_HTBL_RECORD;</span>
+<span class="lineNum">     828 </span><span class="lineNoCov">          0 :   for (i=0; i &lt; n; i++, recnum++)</span>
+<span class="lineNum">     829 </span>            :     {
+<span class="lineNum">     830 </span><span class="lineNoCov">          0 :       memset (&amp;rec, 0, sizeof rec);</span>
+<span class="lineNum">     831 </span><span class="lineNoCov">          0 :       rec.rectype = RECTYPE_HTBL;</span>
+<span class="lineNum">     832 </span><span class="lineNoCov">          0 :       rec.recnum = recnum;</span>
+<span class="lineNum">     833 </span><span class="lineNoCov">          0 :       rc = tdbio_write_record (ctrl, &amp;rec);</span>
+<span class="lineNum">     834 </span><span class="lineNoCov">          0 :       if (rc)</span>
+<span class="lineNum">     835 </span><span class="lineNoCov">          0 :         log_fatal (_(&quot;%s: failed to create hashtable: %s\n&quot;),</span>
+<span class="lineNum">     836 </span>            :                    db_name, gpg_strerror (rc));
+<span class="lineNum">     837 </span>            :     }
+<span class="lineNum">     838 </span>            :   /* Update the version record and flush. */
+<span class="lineNum">     839 </span><span class="lineNoCov">          0 :   rc = tdbio_write_record (ctrl, vr);</span>
+<span class="lineNum">     840 </span><span class="lineNoCov">          0 :   if (!rc)</span>
+<span class="lineNum">     841 </span><span class="lineNoCov">          0 :     rc = tdbio_sync ();</span>
+<span class="lineNum">     842 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     843 </span><span class="lineNoCov">          0 :     log_fatal (_(&quot;%s: error updating version record: %s\n&quot;),</span>
+<span class="lineNum">     844 </span>            :                db_name, gpg_strerror (rc));
+<span class="lineNum">     845 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     846 </span>            : 
+<span class="lineNum">     847 </span>            : 
+<span class="lineNum">     848 </span>            : /*
+<span class="lineNum">     849 </span>            :  * Check whether open trustdb matches the global trust options given
+<span class="lineNum">     850 </span>            :  * for this process.  On a read problem the process is terminated.
+<span class="lineNum">     851 </span>            :  *
+<span class="lineNum">     852 </span>            :  * Return: 1 for yes, 0 for no.
+<a name="853"><span class="lineNum">     853 </span>            :  */</a>
+<span class="lineNum">     854 </span>            : int
+<span class="lineNum">     855 </span><span class="lineNoCov">          0 : tdbio_db_matches_options()</span>
+<span class="lineNum">     856 </span>            : {
+<span class="lineNum">     857 </span>            :   static int yes_no = -1;
+<span class="lineNum">     858 </span>            : 
+<span class="lineNum">     859 </span><span class="lineNoCov">          0 :   if (yes_no == -1)</span>
+<span class="lineNum">     860 </span>            :     {
+<span class="lineNum">     861 </span>            :       TRUSTREC vr;
+<span class="lineNum">     862 </span>            :       int rc;
+<span class="lineNum">     863 </span>            : 
+<span class="lineNum">     864 </span><span class="lineNoCov">          0 :       rc = tdbio_read_record (0, &amp;vr, RECTYPE_VER);</span>
+<span class="lineNum">     865 </span><span class="lineNoCov">          0 :       if( rc )</span>
+<span class="lineNum">     866 </span><span class="lineNoCov">          0 :         log_fatal( _(&quot;%s: error reading version record: %s\n&quot;),</span>
+<span class="lineNum">     867 </span>            :                    db_name, gpg_strerror (rc) );
+<span class="lineNum">     868 </span>            : 
+<span class="lineNum">     869 </span><span class="lineNoCov">          0 :       yes_no = vr.r.ver.marginals == opt.marginals_needed</span>
+<span class="lineNum">     870 </span><span class="lineNoCov">          0 :         &amp;&amp; vr.r.ver.completes == opt.completes_needed</span>
+<span class="lineNum">     871 </span><span class="lineNoCov">          0 :         &amp;&amp; vr.r.ver.cert_depth == opt.max_cert_depth</span>
+<span class="lineNum">     872 </span><span class="lineNoCov">          0 :         &amp;&amp; vr.r.ver.trust_model == opt.trust_model</span>
+<span class="lineNum">     873 </span><span class="lineNoCov">          0 :         &amp;&amp; vr.r.ver.min_cert_level == opt.min_cert_level;</span>
+<span class="lineNum">     874 </span>            :     }
+<span class="lineNum">     875 </span>            : 
+<span class="lineNum">     876 </span><span class="lineNoCov">          0 :   return yes_no;</span>
+<span class="lineNum">     877 </span>            : }
+<span class="lineNum">     878 </span>            : 
+<span class="lineNum">     879 </span>            : 
+<span class="lineNum">     880 </span>            : /*
+<span class="lineNum">     881 </span>            :  * Read and return the trust model identifier from the trustdb.  On a
+<span class="lineNum">     882 </span>            :  * read problem the process is terminated.
+<a name="883"><span class="lineNum">     883 </span>            :  */</a>
+<span class="lineNum">     884 </span>            : byte
+<span class="lineNum">     885 </span><span class="lineNoCov">          0 : tdbio_read_model (void)</span>
+<span class="lineNum">     886 </span>            : {
+<span class="lineNum">     887 </span>            :   TRUSTREC vr;
+<span class="lineNum">     888 </span>            :   int rc;
+<span class="lineNum">     889 </span>            : 
+<span class="lineNum">     890 </span><span class="lineNoCov">          0 :   rc = tdbio_read_record (0, &amp;vr, RECTYPE_VER );</span>
+<span class="lineNum">     891 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     892 </span><span class="lineNoCov">          0 :     log_fatal (_(&quot;%s: error reading version record: %s\n&quot;),</span>
+<span class="lineNum">     893 </span>            :                db_name, gpg_strerror (rc) );
+<span class="lineNum">     894 </span><span class="lineNoCov">          0 :   return vr.r.ver.trust_model;</span>
+<span class="lineNum">     895 </span>            : }
+<span class="lineNum">     896 </span>            : 
+<span class="lineNum">     897 </span>            : 
+<span class="lineNum">     898 </span>            : /*
+<span class="lineNum">     899 </span>            :  * Read and return the nextstamp value from the trustdb.  On a read
+<span class="lineNum">     900 </span>            :  * problem the process is terminated.
+<a name="901"><span class="lineNum">     901 </span>            :  */</a>
+<span class="lineNum">     902 </span>            : ulong
+<span class="lineNum">     903 </span><span class="lineNoCov">          0 : tdbio_read_nextcheck ()</span>
+<span class="lineNum">     904 </span>            : {
+<span class="lineNum">     905 </span>            :   TRUSTREC vr;
+<span class="lineNum">     906 </span>            :   int rc;
+<span class="lineNum">     907 </span>            : 
+<span class="lineNum">     908 </span><span class="lineNoCov">          0 :   rc = tdbio_read_record (0, &amp;vr, RECTYPE_VER);</span>
+<span class="lineNum">     909 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     910 </span><span class="lineNoCov">          0 :     log_fatal (_(&quot;%s: error reading version record: %s\n&quot;),</span>
+<span class="lineNum">     911 </span>            :                db_name, gpg_strerror (rc));
+<span class="lineNum">     912 </span><span class="lineNoCov">          0 :   return vr.r.ver.nextcheck;</span>
+<span class="lineNum">     913 </span>            : }
+<span class="lineNum">     914 </span>            : 
+<span class="lineNum">     915 </span>            : 
+<span class="lineNum">     916 </span>            : /*
+<span class="lineNum">     917 </span>            :  * Write the STAMP nextstamp timestamp to the trustdb.  On a read or
+<span class="lineNum">     918 </span>            :  * write problem the process is terminated.
+<span class="lineNum">     919 </span>            :  *
+<span class="lineNum">     920 </span>            :  * Return: True if the stamp actually changed.
+<a name="921"><span class="lineNum">     921 </span>            :  */</a>
+<span class="lineNum">     922 </span>            : int
+<span class="lineNum">     923 </span><span class="lineNoCov">          0 : tdbio_write_nextcheck (ctrl_t ctrl, ulong stamp)</span>
+<span class="lineNum">     924 </span>            : {
+<span class="lineNum">     925 </span>            :   TRUSTREC vr;
+<span class="lineNum">     926 </span>            :   int rc;
+<span class="lineNum">     927 </span>            : 
+<span class="lineNum">     928 </span><span class="lineNoCov">          0 :   rc = tdbio_read_record (0, &amp;vr, RECTYPE_VER);</span>
+<span class="lineNum">     929 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     930 </span><span class="lineNoCov">          0 :     log_fatal (_(&quot;%s: error reading version record: %s\n&quot;),</span>
+<span class="lineNum">     931 </span>            :                db_name, gpg_strerror (rc));
+<span class="lineNum">     932 </span>            : 
+<span class="lineNum">     933 </span><span class="lineNoCov">          0 :   if (vr.r.ver.nextcheck == stamp)</span>
+<span class="lineNum">     934 </span><span class="lineNoCov">          0 :     return 0;</span>
+<span class="lineNum">     935 </span>            : 
+<span class="lineNum">     936 </span><span class="lineNoCov">          0 :   vr.r.ver.nextcheck = stamp;</span>
+<span class="lineNum">     937 </span><span class="lineNoCov">          0 :   rc = tdbio_write_record (ctrl, &amp;vr);</span>
+<span class="lineNum">     938 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     939 </span><span class="lineNoCov">          0 :     log_fatal (_(&quot;%s: error writing version record: %s\n&quot;),</span>
+<span class="lineNum">     940 </span>            :                db_name, gpg_strerror (rc));
+<span class="lineNum">     941 </span><span class="lineNoCov">          0 :   return 1;</span>
+<span class="lineNum">     942 </span>            : }
+<span class="lineNum">     943 </span>            : 
+<span class="lineNum">     944 </span>            : 
+<span class="lineNum">     945 </span>            : 
+<span class="lineNum">     946 </span>            : /*
+<span class="lineNum">     947 </span>            :  * Return the record number of the trusthash table or create one if it
+<span class="lineNum">     948 </span>            :  * does not yet exist.  On a read or write problem the process is
+<span class="lineNum">     949 </span>            :  * terminated.
+<span class="lineNum">     950 </span>            :  *
+<span class="lineNum">     951 </span>            :  * Return: record number
+<a name="952"><span class="lineNum">     952 </span>            :  */</a>
+<span class="lineNum">     953 </span>            : static ulong
+<span class="lineNum">     954 </span><span class="lineNoCov">          0 : get_trusthashrec(void)</span>
+<span class="lineNum">     955 </span>            : {
+<span class="lineNum">     956 </span>            :   static ulong trusthashtbl; /* Record number of the trust hashtable.  */
+<span class="lineNum">     957 </span>            : 
+<span class="lineNum">     958 </span><span class="lineNoCov">          0 :   if (!trusthashtbl)</span>
+<span class="lineNum">     959 </span>            :     {
+<span class="lineNum">     960 </span>            :       TRUSTREC vr;
+<span class="lineNum">     961 </span>            :       int rc;
+<span class="lineNum">     962 </span>            : 
+<span class="lineNum">     963 </span><span class="lineNoCov">          0 :       rc = tdbio_read_record (0, &amp;vr, RECTYPE_VER );</span>
+<span class="lineNum">     964 </span><span class="lineNoCov">          0 :       if (rc)</span>
+<span class="lineNum">     965 </span><span class="lineNoCov">          0 :         log_fatal (_(&quot;%s: error reading version record: %s\n&quot;),</span>
+<span class="lineNum">     966 </span>            :                    db_name, gpg_strerror (rc) );
+<span class="lineNum">     967 </span>            : 
+<span class="lineNum">     968 </span><span class="lineNoCov">          0 :       trusthashtbl = vr.r.ver.trusthashtbl;</span>
+<span class="lineNum">     969 </span>            :     }
+<span class="lineNum">     970 </span>            : 
+<span class="lineNum">     971 </span><span class="lineNoCov">          0 :   return trusthashtbl;</span>
+<span class="lineNum">     972 </span>            : }
+<span class="lineNum">     973 </span>            : 
+<span class="lineNum">     974 </span>            : 
+<span class="lineNum">     975 </span>            : 
+<span class="lineNum">     976 </span>            : /*
+<span class="lineNum">     977 </span>            :  * Update a hashtable in the trustdb.  TABLE gives the start of the
+<span class="lineNum">     978 </span>            :  * table, KEY and KEYLEN are the key, NEWRECNUM is the record number
+<span class="lineNum">     979 </span>            :  * to insert into the table.
+<span class="lineNum">     980 </span>            :  *
+<span class="lineNum">     981 </span>            :  * Return: 0 on success or an error code.
+<a name="982"><span class="lineNum">     982 </span>            :  */</a>
+<span class="lineNum">     983 </span>            : static int
+<span class="lineNum">     984 </span><span class="lineNoCov">          0 : upd_hashtable (ctrl_t ctrl, ulong table, byte *key, int keylen, ulong newrecnum)</span>
+<span class="lineNum">     985 </span>            : {
+<span class="lineNum">     986 </span>            :   TRUSTREC lastrec, rec;
+<span class="lineNum">     987 </span>            :   ulong hashrec, item;
+<span class="lineNum">     988 </span>            :   int msb;
+<span class="lineNum">     989 </span><span class="lineNoCov">          0 :   int level = 0;</span>
+<span class="lineNum">     990 </span>            :   int rc, i;
+<span class="lineNum">     991 </span>            : 
+<span class="lineNum">     992 </span><span class="lineNoCov">          0 :   hashrec = table;</span>
+<span class="lineNum">     993 </span>            :  next_level:
+<span class="lineNum">     994 </span><span class="lineNoCov">          0 :   msb = key[level];</span>
+<span class="lineNum">     995 </span><span class="lineNoCov">          0 :   hashrec += msb / ITEMS_PER_HTBL_RECORD;</span>
+<span class="lineNum">     996 </span><span class="lineNoCov">          0 :   rc = tdbio_read_record (hashrec, &amp;rec, RECTYPE_HTBL);</span>
+<span class="lineNum">     997 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     998 </span>            :     {
+<span class="lineNum">     999 </span><span class="lineNoCov">          0 :       log_error (&quot;upd_hashtable: read failed: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">    1000 </span><span class="lineNoCov">          0 :       return rc;</span>
+<span class="lineNum">    1001 </span>            :     }
+<span class="lineNum">    1002 </span>            : 
+<span class="lineNum">    1003 </span><span class="lineNoCov">          0 :   item = rec.r.htbl.item[msb % ITEMS_PER_HTBL_RECORD];</span>
+<span class="lineNum">    1004 </span><span class="lineNoCov">          0 :   if (!item)  /* Insert a new item into the hash table.  */</span>
+<span class="lineNum">    1005 </span>            :     {
+<span class="lineNum">    1006 </span><span class="lineNoCov">          0 :       rec.r.htbl.item[msb % ITEMS_PER_HTBL_RECORD] = newrecnum;</span>
+<span class="lineNum">    1007 </span><span class="lineNoCov">          0 :       rc = tdbio_write_record (ctrl, &amp;rec);</span>
+<span class="lineNum">    1008 </span><span class="lineNoCov">          0 :       if (rc)</span>
+<span class="lineNum">    1009 </span>            :         {
+<span class="lineNum">    1010 </span><span class="lineNoCov">          0 :           log_error (&quot;upd_hashtable: write htbl failed: %s\n&quot;,</span>
+<span class="lineNum">    1011 </span>            :                      gpg_strerror (rc));
+<span class="lineNum">    1012 </span><span class="lineNoCov">          0 :           return rc;</span>
+<span class="lineNum">    1013 </span>            :         }
+<span class="lineNum">    1014 </span>            :     }
+<span class="lineNum">    1015 </span><span class="lineNoCov">          0 :   else if (item != newrecnum) /* Must do an update.  */</span>
+<span class="lineNum">    1016 </span>            :     {
+<span class="lineNum">    1017 </span><span class="lineNoCov">          0 :       lastrec = rec;</span>
+<span class="lineNum">    1018 </span><span class="lineNoCov">          0 :       rc = tdbio_read_record (item, &amp;rec, 0);</span>
+<span class="lineNum">    1019 </span><span class="lineNoCov">          0 :       if (rc)</span>
+<span class="lineNum">    1020 </span>            :         {
+<span class="lineNum">    1021 </span><span class="lineNoCov">          0 :           log_error (&quot;upd_hashtable: read item failed: %s\n&quot;,</span>
+<span class="lineNum">    1022 </span>            :                      gpg_strerror (rc));
+<span class="lineNum">    1023 </span><span class="lineNoCov">          0 :           return rc;</span>
+<span class="lineNum">    1024 </span>            :         }
+<span class="lineNum">    1025 </span>            : 
+<span class="lineNum">    1026 </span><span class="lineNoCov">          0 :       if (rec.rectype == RECTYPE_HTBL)</span>
+<span class="lineNum">    1027 </span>            :         {
+<span class="lineNum">    1028 </span><span class="lineNoCov">          0 :           hashrec = item;</span>
+<span class="lineNum">    1029 </span><span class="lineNoCov">          0 :           level++;</span>
+<span class="lineNum">    1030 </span><span class="lineNoCov">          0 :           if (level &gt;= keylen)</span>
+<span class="lineNum">    1031 </span>            :             {
+<span class="lineNum">    1032 </span><span class="lineNoCov">          0 :               log_error (&quot;hashtable has invalid indirections.\n&quot;);</span>
+<span class="lineNum">    1033 </span><span class="lineNoCov">          0 :               return GPG_ERR_TRUSTDB;</span>
+<span class="lineNum">    1034 </span>            :             }
+<span class="lineNum">    1035 </span><span class="lineNoCov">          0 :           goto next_level;</span>
+<span class="lineNum">    1036 </span>            :         }
+<span class="lineNum">    1037 </span><span class="lineNoCov">          0 :       else if (rec.rectype == RECTYPE_HLST) /* Extend the list.  */</span>
+<span class="lineNum">    1038 </span>            :         {
+<span class="lineNum">    1039 </span>            :           /* Check whether the key is already in this list. */
+<span class="lineNum">    1040 </span>            :           for (;;)
+<span class="lineNum">    1041 </span>            :             {
+<span class="lineNum">    1042 </span><span class="lineNoCov">          0 :               for (i=0; i &lt; ITEMS_PER_HLST_RECORD; i++)</span>
+<span class="lineNum">    1043 </span>            :                 {
+<span class="lineNum">    1044 </span><span class="lineNoCov">          0 :                   if (rec.r.hlst.rnum[i] == newrecnum)</span>
+<span class="lineNum">    1045 </span>            :                     {
+<span class="lineNum">    1046 </span><span class="lineNoCov">          0 :                       return 0; /* Okay, already in the list.  */</span>
+<span class="lineNum">    1047 </span>            :                     }
+<span class="lineNum">    1048 </span>            :                 }
+<span class="lineNum">    1049 </span><span class="lineNoCov">          0 :               if (rec.r.hlst.next)</span>
+<span class="lineNum">    1050 </span>            :                 {
+<span class="lineNum">    1051 </span><span class="lineNoCov">          0 :                   rc = tdbio_read_record (rec.r.hlst.next, &amp;rec, RECTYPE_HLST);</span>
+<span class="lineNum">    1052 </span><span class="lineNoCov">          0 :                   if (rc)</span>
+<span class="lineNum">    1053 </span>            :                     {
+<span class="lineNum">    1054 </span><span class="lineNoCov">          0 :                       log_error (&quot;upd_hashtable: read hlst failed: %s\n&quot;,</span>
+<span class="lineNum">    1055 </span>            :                                  gpg_strerror (rc) );
+<span class="lineNum">    1056 </span><span class="lineNoCov">          0 :                       return rc;</span>
+<span class="lineNum">    1057 </span>            :                     }
+<span class="lineNum">    1058 </span>            :                 }
+<span class="lineNum">    1059 </span>            :               else
+<span class="lineNum">    1060 </span><span class="lineNoCov">          0 :                 break; /* key is not in the list */</span>
+<span class="lineNum">    1061 </span><span class="lineNoCov">          0 :             }</span>
+<span class="lineNum">    1062 </span>            : 
+<span class="lineNum">    1063 </span>            :           /* Find the next free entry and put it in.  */
+<span class="lineNum">    1064 </span>            :           for (;;)
+<span class="lineNum">    1065 </span>            :             {
+<span class="lineNum">    1066 </span><span class="lineNoCov">          0 :               for (i=0; i &lt; ITEMS_PER_HLST_RECORD; i++)</span>
+<span class="lineNum">    1067 </span>            :                 {
+<span class="lineNum">    1068 </span><span class="lineNoCov">          0 :                   if (!rec.r.hlst.rnum[i])</span>
+<span class="lineNum">    1069 </span>            :                     {
+<span class="lineNum">    1070 </span>            :                       /* Empty slot found.  */
+<span class="lineNum">    1071 </span><span class="lineNoCov">          0 :                       rec.r.hlst.rnum[i] = newrecnum;</span>
+<span class="lineNum">    1072 </span><span class="lineNoCov">          0 :                       rc = tdbio_write_record (ctrl, &amp;rec);</span>
+<span class="lineNum">    1073 </span><span class="lineNoCov">          0 :                       if (rc)</span>
+<span class="lineNum">    1074 </span><span class="lineNoCov">          0 :                         log_error (&quot;upd_hashtable: write hlst failed: %s\n&quot;,</span>
+<span class="lineNum">    1075 </span>            :                                    gpg_strerror (rc));
+<span class="lineNum">    1076 </span><span class="lineNoCov">          0 :                       return rc; /* Done.  */</span>
+<span class="lineNum">    1077 </span>            :                     }
+<span class="lineNum">    1078 </span>            :                 }
+<span class="lineNum">    1079 </span>            : 
+<span class="lineNum">    1080 </span><span class="lineNoCov">          0 :               if (rec.r.hlst.next)</span>
+<span class="lineNum">    1081 </span>            :                 {
+<span class="lineNum">    1082 </span>            :                   /* read the next reord of the list.  */
+<span class="lineNum">    1083 </span><span class="lineNoCov">          0 :                   rc = tdbio_read_record (rec.r.hlst.next, &amp;rec, RECTYPE_HLST);</span>
+<span class="lineNum">    1084 </span><span class="lineNoCov">          0 :                   if (rc)</span>
+<span class="lineNum">    1085 </span>            :                     {
+<span class="lineNum">    1086 </span><span class="lineNoCov">          0 :                       log_error (&quot;upd_hashtable: read hlst failed: %s\n&quot;,</span>
+<span class="lineNum">    1087 </span>            :                                  gpg_strerror (rc));
+<span class="lineNum">    1088 </span><span class="lineNoCov">          0 :                       return rc;</span>
+<span class="lineNum">    1089 </span>            :                     }
+<span class="lineNum">    1090 </span>            :                 }
+<span class="lineNum">    1091 </span>            :               else
+<span class="lineNum">    1092 </span>            :                 {
+<span class="lineNum">    1093 </span>            :                   /* Append a new record to the list.  */
+<span class="lineNum">    1094 </span><span class="lineNoCov">          0 :                   rec.r.hlst.next = item = tdbio_new_recnum (ctrl);</span>
+<span class="lineNum">    1095 </span><span class="lineNoCov">          0 :                   rc = tdbio_write_record (ctrl, &amp;rec);</span>
+<span class="lineNum">    1096 </span><span class="lineNoCov">          0 :                   if (rc)</span>
+<span class="lineNum">    1097 </span>            :                     {
+<span class="lineNum">    1098 </span><span class="lineNoCov">          0 :                       log_error (&quot;upd_hashtable: write hlst failed: %s\n&quot;,</span>
+<span class="lineNum">    1099 </span>            :                                  gpg_strerror (rc));
+<span class="lineNum">    1100 </span><span class="lineNoCov">          0 :                       return rc;</span>
+<span class="lineNum">    1101 </span>            :                     }
+<span class="lineNum">    1102 </span><span class="lineNoCov">          0 :                   memset (&amp;rec, 0, sizeof rec);</span>
+<span class="lineNum">    1103 </span><span class="lineNoCov">          0 :                   rec.rectype = RECTYPE_HLST;</span>
+<span class="lineNum">    1104 </span><span class="lineNoCov">          0 :                   rec.recnum = item;</span>
+<span class="lineNum">    1105 </span><span class="lineNoCov">          0 :                   rec.r.hlst.rnum[0] = newrecnum;</span>
+<span class="lineNum">    1106 </span><span class="lineNoCov">          0 :                   rc = tdbio_write_record (ctrl, &amp;rec);</span>
+<span class="lineNum">    1107 </span><span class="lineNoCov">          0 :                   if (rc)</span>
+<span class="lineNum">    1108 </span><span class="lineNoCov">          0 :                     log_error (&quot;upd_hashtable: write ext hlst failed: %s\n&quot;,</span>
+<span class="lineNum">    1109 </span>            :                                gpg_strerror (rc));
+<span class="lineNum">    1110 </span><span class="lineNoCov">          0 :                   return rc; /* Done.  */</span>
+<span class="lineNum">    1111 </span>            :                 }
+<span class="lineNum">    1112 </span><span class="lineNoCov">          0 :             } /* end loop over list slots */</span>
+<span class="lineNum">    1113 </span>            : 
+<span class="lineNum">    1114 </span>            :         }
+<span class="lineNum">    1115 </span><span class="lineNoCov">          0 :       else if (rec.rectype == RECTYPE_TRUST) /* Insert a list record.  */</span>
+<span class="lineNum">    1116 </span>            :         {
+<span class="lineNum">    1117 </span><span class="lineNoCov">          0 :           if (rec.recnum == newrecnum)</span>
+<span class="lineNum">    1118 </span>            :             {
+<span class="lineNum">    1119 </span><span class="lineNoCov">          0 :               return 0;</span>
+<span class="lineNum">    1120 </span>            :             }
+<span class="lineNum">    1121 </span><span class="lineNoCov">          0 :           item = rec.recnum; /* Save number of key record.  */</span>
+<span class="lineNum">    1122 </span><span class="lineNoCov">          0 :           memset (&amp;rec, 0, sizeof rec);</span>
+<span class="lineNum">    1123 </span><span class="lineNoCov">          0 :           rec.rectype = RECTYPE_HLST;</span>
+<span class="lineNum">    1124 </span><span class="lineNoCov">          0 :           rec.recnum = tdbio_new_recnum (ctrl);</span>
+<span class="lineNum">    1125 </span><span class="lineNoCov">          0 :           rec.r.hlst.rnum[0] = item;        /* Old key record */</span>
+<span class="lineNum">    1126 </span><span class="lineNoCov">          0 :           rec.r.hlst.rnum[1] = newrecnum; /* and new key record */</span>
+<span class="lineNum">    1127 </span><span class="lineNoCov">          0 :           rc = tdbio_write_record (ctrl, &amp;rec);</span>
+<span class="lineNum">    1128 </span><span class="lineNoCov">          0 :           if (rc)</span>
+<span class="lineNum">    1129 </span>            :             {
+<span class="lineNum">    1130 </span><span class="lineNoCov">          0 :               log_error( &quot;upd_hashtable: write new hlst failed: %s\n&quot;,</span>
+<span class="lineNum">    1131 </span>            :                            gpg_strerror (rc) );
+<span class="lineNum">    1132 </span><span class="lineNoCov">          0 :               return rc;</span>
+<span class="lineNum">    1133 </span>            :             }
+<span class="lineNum">    1134 </span>            :           /* Update the hashtable record.  */
+<span class="lineNum">    1135 </span><span class="lineNoCov">          0 :           lastrec.r.htbl.item[msb % ITEMS_PER_HTBL_RECORD] = rec.recnum;</span>
+<span class="lineNum">    1136 </span><span class="lineNoCov">          0 :           rc = tdbio_write_record (ctrl, &amp;lastrec);</span>
+<span class="lineNum">    1137 </span><span class="lineNoCov">          0 :           if (rc)</span>
+<span class="lineNum">    1138 </span><span class="lineNoCov">          0 :             log_error (&quot;upd_hashtable: update htbl failed: %s\n&quot;,</span>
+<span class="lineNum">    1139 </span>            :                        gpg_strerror (rc));
+<span class="lineNum">    1140 </span><span class="lineNoCov">          0 :           return rc; /* Ready.  */</span>
+<span class="lineNum">    1141 </span>            :         }
+<span class="lineNum">    1142 </span>            :       else
+<span class="lineNum">    1143 </span>            :         {
+<span class="lineNum">    1144 </span><span class="lineNoCov">          0 :           log_error (&quot;hashtbl %lu: %lu/%d points to an invalid record %lu\n&quot;,</span>
+<span class="lineNum">    1145 </span>            :                      table, hashrec, (msb % ITEMS_PER_HTBL_RECORD), item);
+<span class="lineNum">    1146 </span><span class="lineNoCov">          0 :           if (opt.verbose &gt; 1)</span>
+<span class="lineNum">    1147 </span><span class="lineNoCov">          0 :             list_trustdb (ctrl, es_stderr, NULL);</span>
+<span class="lineNum">    1148 </span><span class="lineNoCov">          0 :           return GPG_ERR_TRUSTDB;</span>
+<span class="lineNum">    1149 </span>            :         }
+<span class="lineNum">    1150 </span>            :     }
+<span class="lineNum">    1151 </span>            : 
+<span class="lineNum">    1152 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">    1153 </span>            : }
+<span class="lineNum">    1154 </span>            : 
+<span class="lineNum">    1155 </span>            : 
+<span class="lineNum">    1156 </span>            : /*
+<span class="lineNum">    1157 </span>            :  * Drop an entry from a hashtable.  TABLE gives the start of the
+<span class="lineNum">    1158 </span>            :  * table, KEY and KEYLEN are the key.
+<span class="lineNum">    1159 </span>            :  *
+<span class="lineNum">    1160 </span>            :  * Return: 0 on success or an error code.
+<a name="1161"><span class="lineNum">    1161 </span>            :  */</a>
+<span class="lineNum">    1162 </span>            : static int
+<span class="lineNum">    1163 </span><span class="lineNoCov">          0 : drop_from_hashtable (ctrl_t ctrl, ulong table,</span>
+<span class="lineNum">    1164 </span>            :                      byte *key, int keylen, ulong recnum)
+<span class="lineNum">    1165 </span>            : {
+<span class="lineNum">    1166 </span>            :   TRUSTREC rec;
+<span class="lineNum">    1167 </span>            :   ulong hashrec, item;
+<span class="lineNum">    1168 </span>            :   int msb;
+<span class="lineNum">    1169 </span><span class="lineNoCov">          0 :   int level = 0;</span>
+<span class="lineNum">    1170 </span>            :   int rc, i;
+<span class="lineNum">    1171 </span>            : 
+<span class="lineNum">    1172 </span><span class="lineNoCov">          0 :   hashrec = table;</span>
+<span class="lineNum">    1173 </span>            :  next_level:
+<span class="lineNum">    1174 </span><span class="lineNoCov">          0 :   msb = key[level];</span>
+<span class="lineNum">    1175 </span><span class="lineNoCov">          0 :   hashrec += msb / ITEMS_PER_HTBL_RECORD;</span>
+<span class="lineNum">    1176 </span><span class="lineNoCov">          0 :   rc = tdbio_read_record (hashrec, &amp;rec, RECTYPE_HTBL );</span>
+<span class="lineNum">    1177 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">    1178 </span>            :     {
+<span class="lineNum">    1179 </span><span class="lineNoCov">          0 :       log_error (&quot;drop_from_hashtable: read failed: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">    1180 </span><span class="lineNoCov">          0 :       return rc;</span>
+<span class="lineNum">    1181 </span>            :     }
+<span class="lineNum">    1182 </span>            : 
+<span class="lineNum">    1183 </span><span class="lineNoCov">          0 :   item = rec.r.htbl.item[msb % ITEMS_PER_HTBL_RECORD];</span>
+<span class="lineNum">    1184 </span><span class="lineNoCov">          0 :   if (!item)</span>
+<span class="lineNum">    1185 </span><span class="lineNoCov">          0 :     return 0;   /* Not found - forget about it.  */</span>
+<span class="lineNum">    1186 </span>            : 
+<span class="lineNum">    1187 </span><span class="lineNoCov">          0 :   if (item == recnum) /* Table points direct to the record.  */</span>
+<span class="lineNum">    1188 </span>            :     {
+<span class="lineNum">    1189 </span><span class="lineNoCov">          0 :       rec.r.htbl.item[msb % ITEMS_PER_HTBL_RECORD] = 0;</span>
+<span class="lineNum">    1190 </span><span class="lineNoCov">          0 :       rc = tdbio_write_record (ctrl, &amp;rec);</span>
+<span class="lineNum">    1191 </span><span class="lineNoCov">          0 :       if (rc)</span>
+<span class="lineNum">    1192 </span><span class="lineNoCov">          0 :         log_error (&quot;drop_from_hashtable: write htbl failed: %s\n&quot;,</span>
+<span class="lineNum">    1193 </span>            :                    gpg_strerror (rc));
+<span class="lineNum">    1194 </span><span class="lineNoCov">          0 :       return rc;</span>
+<span class="lineNum">    1195 </span>            :     }
+<span class="lineNum">    1196 </span>            : 
+<span class="lineNum">    1197 </span><span class="lineNoCov">          0 :   rc = tdbio_read_record (item, &amp;rec, 0);</span>
+<span class="lineNum">    1198 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">    1199 </span>            :     {
+<span class="lineNum">    1200 </span><span class="lineNoCov">          0 :       log_error (&quot;drop_from_hashtable: read item failed: %s\n&quot;,</span>
+<span class="lineNum">    1201 </span>            :                  gpg_strerror (rc));
+<span class="lineNum">    1202 </span><span class="lineNoCov">          0 :       return rc;</span>
+<span class="lineNum">    1203 </span>            :     }
+<span class="lineNum">    1204 </span>            : 
+<span class="lineNum">    1205 </span><span class="lineNoCov">          0 :   if (rec.rectype == RECTYPE_HTBL)</span>
+<span class="lineNum">    1206 </span>            :     {
+<span class="lineNum">    1207 </span><span class="lineNoCov">          0 :       hashrec = item;</span>
+<span class="lineNum">    1208 </span><span class="lineNoCov">          0 :       level++;</span>
+<span class="lineNum">    1209 </span><span class="lineNoCov">          0 :       if (level &gt;= keylen)</span>
+<span class="lineNum">    1210 </span>            :         {
+<span class="lineNum">    1211 </span><span class="lineNoCov">          0 :           log_error (&quot;hashtable has invalid indirections.\n&quot;);</span>
+<span class="lineNum">    1212 </span><span class="lineNoCov">          0 :           return GPG_ERR_TRUSTDB;</span>
+<span class="lineNum">    1213 </span>            :         }
+<span class="lineNum">    1214 </span><span class="lineNoCov">          0 :       goto next_level;</span>
+<span class="lineNum">    1215 </span>            :     }
+<span class="lineNum">    1216 </span>            : 
+<span class="lineNum">    1217 </span><span class="lineNoCov">          0 :   if (rec.rectype == RECTYPE_HLST)</span>
+<span class="lineNum">    1218 </span>            :     {
+<span class="lineNum">    1219 </span>            :       for (;;)
+<span class="lineNum">    1220 </span>            :         {
+<span class="lineNum">    1221 </span><span class="lineNoCov">          0 :           for (i=0; i &lt; ITEMS_PER_HLST_RECORD; i++)</span>
+<span class="lineNum">    1222 </span>            :             {
+<span class="lineNum">    1223 </span><span class="lineNoCov">          0 :               if (rec.r.hlst.rnum[i] == recnum)</span>
+<span class="lineNum">    1224 </span>            :                 {
+<span class="lineNum">    1225 </span><span class="lineNoCov">          0 :                   rec.r.hlst.rnum[i] = 0; /* Mark as free.  */</span>
+<span class="lineNum">    1226 </span><span class="lineNoCov">          0 :                   rc = tdbio_write_record (ctrl, &amp;rec);</span>
+<span class="lineNum">    1227 </span><span class="lineNoCov">          0 :                   if (rc)</span>
+<span class="lineNum">    1228 </span><span class="lineNoCov">          0 :                     log_error(&quot;drop_from_hashtable: write htbl failed: %s\n&quot;,</span>
+<span class="lineNum">    1229 </span>            :                               gpg_strerror (rc));
+<span class="lineNum">    1230 </span><span class="lineNoCov">          0 :                   return rc;</span>
+<span class="lineNum">    1231 </span>            :                 }
+<span class="lineNum">    1232 </span>            :             }
+<span class="lineNum">    1233 </span><span class="lineNoCov">          0 :           if (rec.r.hlst.next)</span>
+<span class="lineNum">    1234 </span>            :             {
+<span class="lineNum">    1235 </span><span class="lineNoCov">          0 :               rc = tdbio_read_record (rec.r.hlst.next, &amp;rec, RECTYPE_HLST);</span>
+<span class="lineNum">    1236 </span><span class="lineNoCov">          0 :               if (rc)</span>
+<span class="lineNum">    1237 </span>            :                 {
+<span class="lineNum">    1238 </span><span class="lineNoCov">          0 :                   log_error (&quot;drop_from_hashtable: read hlst failed: %s\n&quot;,</span>
+<span class="lineNum">    1239 </span>            :                              gpg_strerror (rc));
+<span class="lineNum">    1240 </span><span class="lineNoCov">          0 :                   return rc;</span>
+<span class="lineNum">    1241 </span>            :                 }
+<span class="lineNum">    1242 </span>            :             }
+<span class="lineNum">    1243 </span>            :           else
+<span class="lineNum">    1244 </span><span class="lineNoCov">          0 :             return 0; /* Key not in table.  */</span>
+<span class="lineNum">    1245 </span><span class="lineNoCov">          0 :         }</span>
+<span class="lineNum">    1246 </span>            :     }
+<span class="lineNum">    1247 </span>            : 
+<span class="lineNum">    1248 </span><span class="lineNoCov">          0 :   log_error (&quot;hashtbl %lu: %lu/%d points to wrong record %lu\n&quot;,</span>
+<span class="lineNum">    1249 </span>            :              table, hashrec, (msb % ITEMS_PER_HTBL_RECORD), item);
+<span class="lineNum">    1250 </span><span class="lineNoCov">          0 :   return GPG_ERR_TRUSTDB;</span>
+<span class="lineNum">    1251 </span>            : }
+<span class="lineNum">    1252 </span>            : 
+<span class="lineNum">    1253 </span>            : 
+<span class="lineNum">    1254 </span>            : 
+<span class="lineNum">    1255 </span>            : /*
+<span class="lineNum">    1256 </span>            :  * Lookup a record via the hashtable TABLE by (KEY,KEYLEN) and return
+<span class="lineNum">    1257 </span>            :  * the result in REC.  The return value of CMP() should be True if the
+<span class="lineNum">    1258 </span>            :  * record is the desired one.
+<span class="lineNum">    1259 </span>            :  *
+<span class="lineNum">    1260 </span>            :  * Return: 0 if found, GPG_ERR_NOT_FOUND, or another error code.
+<a name="1261"><span class="lineNum">    1261 </span>            :  */</a>
+<span class="lineNum">    1262 </span>            : static gpg_error_t
+<span class="lineNum">    1263 </span><span class="lineNoCov">          0 : lookup_hashtable (ulong table, const byte *key, size_t keylen,</span>
+<span class="lineNum">    1264 </span>            :                   int (*cmpfnc)(const void*, const TRUSTREC *),
+<span class="lineNum">    1265 </span>            :                   const void *cmpdata, TRUSTREC *rec )
+<span class="lineNum">    1266 </span>            : {
+<span class="lineNum">    1267 </span>            :   int rc;
+<span class="lineNum">    1268 </span>            :   ulong hashrec, item;
+<span class="lineNum">    1269 </span>            :   int msb;
+<span class="lineNum">    1270 </span><span class="lineNoCov">          0 :   int level = 0;</span>
+<span class="lineNum">    1271 </span>            : 
+<span class="lineNum">    1272 </span><span class="lineNoCov">          0 :   hashrec = table;</span>
+<span class="lineNum">    1273 </span>            :  next_level:
+<span class="lineNum">    1274 </span><span class="lineNoCov">          0 :   msb = key[level];</span>
+<span class="lineNum">    1275 </span><span class="lineNoCov">          0 :   hashrec += msb / ITEMS_PER_HTBL_RECORD;</span>
+<span class="lineNum">    1276 </span><span class="lineNoCov">          0 :   rc = tdbio_read_record (hashrec, rec, RECTYPE_HTBL);</span>
+<span class="lineNum">    1277 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">    1278 </span>            :     {
+<span class="lineNum">    1279 </span><span class="lineNoCov">          0 :       log_error(&quot;lookup_hashtable failed: %s\n&quot;, gpg_strerror (rc) );</span>
+<span class="lineNum">    1280 </span><span class="lineNoCov">          0 :       return rc;</span>
+<span class="lineNum">    1281 </span>            :     }
+<span class="lineNum">    1282 </span>            : 
+<span class="lineNum">    1283 </span><span class="lineNoCov">          0 :   item = rec-&gt;r.htbl.item[msb % ITEMS_PER_HTBL_RECORD];</span>
+<span class="lineNum">    1284 </span><span class="lineNoCov">          0 :   if (!item)</span>
+<span class="lineNum">    1285 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_NOT_FOUND);</span>
+<span class="lineNum">    1286 </span>            : 
+<span class="lineNum">    1287 </span><span class="lineNoCov">          0 :   rc = tdbio_read_record (item, rec, 0);</span>
+<span class="lineNum">    1288 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">    1289 </span>            :     {
+<span class="lineNum">    1290 </span><span class="lineNoCov">          0 :       log_error( &quot;hashtable read failed: %s\n&quot;, gpg_strerror (rc) );</span>
+<span class="lineNum">    1291 </span><span class="lineNoCov">          0 :       return rc;</span>
+<span class="lineNum">    1292 </span>            :     }
+<span class="lineNum">    1293 </span><span class="lineNoCov">          0 :   if (rec-&gt;rectype == RECTYPE_HTBL)</span>
+<span class="lineNum">    1294 </span>            :     {
+<span class="lineNum">    1295 </span><span class="lineNoCov">          0 :       hashrec = item;</span>
+<span class="lineNum">    1296 </span><span class="lineNoCov">          0 :       level++;</span>
+<span class="lineNum">    1297 </span><span class="lineNoCov">          0 :       if (level &gt;= keylen)</span>
+<span class="lineNum">    1298 </span>            :         {
+<span class="lineNum">    1299 </span><span class="lineNoCov">          0 :           log_error (&quot;hashtable has invalid indirections\n&quot;);</span>
+<span class="lineNum">    1300 </span><span class="lineNoCov">          0 :           return GPG_ERR_TRUSTDB;</span>
+<span class="lineNum">    1301 </span>            :         }
+<span class="lineNum">    1302 </span><span class="lineNoCov">          0 :       goto next_level;</span>
+<span class="lineNum">    1303 </span>            :     }
+<span class="lineNum">    1304 </span><span class="lineNoCov">          0 :   else if (rec-&gt;rectype == RECTYPE_HLST)</span>
+<span class="lineNum">    1305 </span>            :     {
+<span class="lineNum">    1306 </span>            :       for (;;)
+<span class="lineNum">    1307 </span>            :         {
+<span class="lineNum">    1308 </span>            :           int i;
+<span class="lineNum">    1309 </span>            : 
+<span class="lineNum">    1310 </span><span class="lineNoCov">          0 :           for (i=0; i &lt; ITEMS_PER_HLST_RECORD; i++)</span>
+<span class="lineNum">    1311 </span>            :             {
+<span class="lineNum">    1312 </span><span class="lineNoCov">          0 :               if (rec-&gt;r.hlst.rnum[i])</span>
+<span class="lineNum">    1313 </span>            :                 {
+<span class="lineNum">    1314 </span>            :                   TRUSTREC tmp;
+<span class="lineNum">    1315 </span>            : 
+<span class="lineNum">    1316 </span><span class="lineNoCov">          0 :                   rc = tdbio_read_record (rec-&gt;r.hlst.rnum[i], &amp;tmp, 0);</span>
+<span class="lineNum">    1317 </span><span class="lineNoCov">          0 :                   if (rc)</span>
+<span class="lineNum">    1318 </span>            :                     {
+<span class="lineNum">    1319 </span><span class="lineNoCov">          0 :                       log_error (&quot;lookup_hashtable: read item failed: %s\n&quot;,</span>
+<span class="lineNum">    1320 </span>            :                                  gpg_strerror (rc));
+<span class="lineNum">    1321 </span><span class="lineNoCov">          0 :                       return rc;</span>
+<span class="lineNum">    1322 </span>            :                     }
+<span class="lineNum">    1323 </span><span class="lineNoCov">          0 :                   if ((*cmpfnc)(cmpdata, &amp;tmp))</span>
+<span class="lineNum">    1324 </span>            :                     {
+<span class="lineNum">    1325 </span><span class="lineNoCov">          0 :                       *rec = tmp;</span>
+<span class="lineNum">    1326 </span><span class="lineNoCov">          0 :                       return 0;</span>
+<span class="lineNum">    1327 </span>            :                     }
+<span class="lineNum">    1328 </span>            :                 }
+<span class="lineNum">    1329 </span>            :             }
+<span class="lineNum">    1330 </span><span class="lineNoCov">          0 :           if (rec-&gt;r.hlst.next)</span>
+<span class="lineNum">    1331 </span>            :             {
+<span class="lineNum">    1332 </span><span class="lineNoCov">          0 :               rc = tdbio_read_record (rec-&gt;r.hlst.next, rec, RECTYPE_HLST);</span>
+<span class="lineNum">    1333 </span><span class="lineNoCov">          0 :               if (rc)</span>
+<span class="lineNum">    1334 </span>            :                 {
+<span class="lineNum">    1335 </span><span class="lineNoCov">          0 :                   log_error (&quot;lookup_hashtable: read hlst failed: %s\n&quot;,</span>
+<span class="lineNum">    1336 </span>            :                              gpg_strerror (rc) );
+<span class="lineNum">    1337 </span><span class="lineNoCov">          0 :                   return rc;</span>
+<span class="lineNum">    1338 </span>            :                 }
+<span class="lineNum">    1339 </span>            :             }
+<span class="lineNum">    1340 </span>            :           else
+<span class="lineNum">    1341 </span><span class="lineNoCov">          0 :             return gpg_error (GPG_ERR_NOT_FOUND);</span>
+<span class="lineNum">    1342 </span><span class="lineNoCov">          0 :         }</span>
+<span class="lineNum">    1343 </span>            :     }
+<span class="lineNum">    1344 </span>            : 
+<span class="lineNum">    1345 </span><span class="lineNoCov">          0 :   if ((*cmpfnc)(cmpdata, rec))</span>
+<span class="lineNum">    1346 </span><span class="lineNoCov">          0 :     return 0; /* really found */</span>
+<span class="lineNum">    1347 </span>            : 
+<span class="lineNum">    1348 </span><span class="lineNoCov">          0 :   return gpg_error (GPG_ERR_NOT_FOUND); /* no: not found */</span>
+<span class="lineNum">    1349 </span>            : }
+<span class="lineNum">    1350 </span>            : 
+<span class="lineNum">    1351 </span>            : 
+<span class="lineNum">    1352 </span>            : /*
+<span class="lineNum">    1353 </span>            :  * Update the trust hash table TR or create the table if it does not
+<span class="lineNum">    1354 </span>            :  * exist.
+<span class="lineNum">    1355 </span>            :  *
+<span class="lineNum">    1356 </span>            :  * Return: 0 on success or an error code.
+<a name="1357"><span class="lineNum">    1357 </span>            :  */</a>
+<span class="lineNum">    1358 </span>            : static int
+<span class="lineNum">    1359 </span><span class="lineNoCov">          0 : update_trusthashtbl (ctrl_t ctrl, TRUSTREC *tr)</span>
+<span class="lineNum">    1360 </span>            : {
+<span class="lineNum">    1361 </span><span class="lineNoCov">          0 :   return upd_hashtable (ctrl, get_trusthashrec (),</span>
+<span class="lineNum">    1362 </span><span class="lineNoCov">          0 :                         tr-&gt;r.trust.fingerprint, 20, tr-&gt;recnum);</span>
+<span class="lineNum">    1363 </span>            : }
+<span class="lineNum">    1364 </span>            : 
+<span class="lineNum">    1365 </span>            : 
+<span class="lineNum">    1366 </span>            : /*
+<span class="lineNum">    1367 </span>            :  * Dump the trustdb record REC to stream FP.
+<a name="1368"><span class="lineNum">    1368 </span>            :  */</a>
+<span class="lineNum">    1369 </span>            : void
+<span class="lineNum">    1370 </span><span class="lineNoCov">          0 : tdbio_dump_record (TRUSTREC *rec, estream_t fp)</span>
+<span class="lineNum">    1371 </span>            : {
+<span class="lineNum">    1372 </span>            :   int i;
+<span class="lineNum">    1373 </span><span class="lineNoCov">          0 :   ulong rnum = rec-&gt;recnum;</span>
+<span class="lineNum">    1374 </span>            : 
+<span class="lineNum">    1375 </span><span class="lineNoCov">          0 :   es_fprintf (fp, &quot;rec %5lu, &quot;, rnum);</span>
+<span class="lineNum">    1376 </span>            : 
+<span class="lineNum">    1377 </span><span class="lineNoCov">          0 :   switch (rec-&gt;rectype)</span>
+<span class="lineNum">    1378 </span>            :     {
+<span class="lineNum">    1379 </span>            :     case 0:
+<span class="lineNum">    1380 </span><span class="lineNoCov">          0 :       es_fprintf (fp, &quot;blank\n&quot;);</span>
+<span class="lineNum">    1381 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1382 </span>            : 
+<span class="lineNum">    1383 </span>            :     case RECTYPE_VER:
+<span class="lineNum">    1384 </span><span class="lineNoCov">          0 :       es_fprintf (fp,</span>
+<span class="lineNum">    1385 </span>            :          &quot;version, td=%lu, f=%lu, m/c/d=%d/%d/%d tm=%d mcl=%d nc=%lu (%s)\n&quot;,
+<span class="lineNum">    1386 </span>            :                   rec-&gt;r.ver.trusthashtbl,
+<span class="lineNum">    1387 </span>            :                   rec-&gt;r.ver.firstfree,
+<span class="lineNum">    1388 </span><span class="lineNoCov">          0 :                   rec-&gt;r.ver.marginals,</span>
+<span class="lineNum">    1389 </span><span class="lineNoCov">          0 :                   rec-&gt;r.ver.completes,</span>
+<span class="lineNum">    1390 </span><span class="lineNoCov">          0 :                   rec-&gt;r.ver.cert_depth,</span>
+<span class="lineNum">    1391 </span><span class="lineNoCov">          0 :                   rec-&gt;r.ver.trust_model,</span>
+<span class="lineNum">    1392 </span><span class="lineNoCov">          0 :                   rec-&gt;r.ver.min_cert_level,</span>
+<span class="lineNum">    1393 </span>            :                   rec-&gt;r.ver.nextcheck,
+<span class="lineNum">    1394 </span><span class="lineNoCov">          0 :                   strtimestamp(rec-&gt;r.ver.nextcheck)</span>
+<span class="lineNum">    1395 </span>            :                   );
+<span class="lineNum">    1396 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1397 </span>            : 
+<span class="lineNum">    1398 </span>            :     case RECTYPE_FREE:
+<span class="lineNum">    1399 </span><span class="lineNoCov">          0 :       es_fprintf (fp, &quot;free, next=%lu\n&quot;, rec-&gt;r.free.next);</span>
+<span class="lineNum">    1400 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1401 </span>            : 
+<span class="lineNum">    1402 </span>            :     case RECTYPE_HTBL:
+<span class="lineNum">    1403 </span><span class="lineNoCov">          0 :       es_fprintf (fp, &quot;htbl,&quot;);</span>
+<span class="lineNum">    1404 </span><span class="lineNoCov">          0 :       for (i=0; i &lt; ITEMS_PER_HTBL_RECORD; i++)</span>
+<span class="lineNum">    1405 </span><span class="lineNoCov">          0 :         es_fprintf (fp, &quot; %lu&quot;, rec-&gt;r.htbl.item[i]);</span>
+<span class="lineNum">    1406 </span><span class="lineNoCov">          0 :       es_putc ('\n', fp);</span>
+<span class="lineNum">    1407 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1408 </span>            : 
+<span class="lineNum">    1409 </span>            :     case RECTYPE_HLST:
+<span class="lineNum">    1410 </span><span class="lineNoCov">          0 :       es_fprintf (fp, &quot;hlst, next=%lu,&quot;, rec-&gt;r.hlst.next);</span>
+<span class="lineNum">    1411 </span><span class="lineNoCov">          0 :       for (i=0; i &lt; ITEMS_PER_HLST_RECORD; i++)</span>
+<span class="lineNum">    1412 </span><span class="lineNoCov">          0 :         es_fprintf (fp, &quot; %lu&quot;, rec-&gt;r.hlst.rnum[i]);</span>
+<span class="lineNum">    1413 </span><span class="lineNoCov">          0 :       es_putc ('\n', fp);</span>
+<span class="lineNum">    1414 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1415 </span>            : 
+<span class="lineNum">    1416 </span>            :     case RECTYPE_TRUST:
+<span class="lineNum">    1417 </span><span class="lineNoCov">          0 :       es_fprintf (fp, &quot;trust &quot;);</span>
+<span class="lineNum">    1418 </span><span class="lineNoCov">          0 :       for (i=0; i &lt; 20; i++)</span>
+<span class="lineNum">    1419 </span><span class="lineNoCov">          0 :         es_fprintf (fp, &quot;%02X&quot;, rec-&gt;r.trust.fingerprint[i]);</span>
+<span class="lineNum">    1420 </span><span class="lineNoCov">          0 :       es_fprintf (fp, &quot;, ot=%d, d=%d, vl=%lu\n&quot;, rec-&gt;r.trust.ownertrust,</span>
+<span class="lineNum">    1421 </span><span class="lineNoCov">          0 :                   rec-&gt;r.trust.depth, rec-&gt;r.trust.validlist);</span>
+<span class="lineNum">    1422 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1423 </span>            : 
+<span class="lineNum">    1424 </span>            :     case RECTYPE_VALID:
+<span class="lineNum">    1425 </span><span class="lineNoCov">          0 :       es_fprintf (fp, &quot;valid &quot;);</span>
+<span class="lineNum">    1426 </span><span class="lineNoCov">          0 :       for (i=0; i &lt; 20; i++)</span>
+<span class="lineNum">    1427 </span><span class="lineNoCov">          0 :         es_fprintf(fp, &quot;%02X&quot;, rec-&gt;r.valid.namehash[i]);</span>
+<span class="lineNum">    1428 </span><span class="lineNoCov">          0 :       es_fprintf (fp, &quot;, v=%d, next=%lu\n&quot;, rec-&gt;r.valid.validity,</span>
+<span class="lineNum">    1429 </span>            :                   rec-&gt;r.valid.next);
+<span class="lineNum">    1430 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1431 </span>            : 
+<span class="lineNum">    1432 </span>            :     default:
+<span class="lineNum">    1433 </span><span class="lineNoCov">          0 :       es_fprintf (fp, &quot;unknown type %d\n&quot;, rec-&gt;rectype );</span>
+<span class="lineNum">    1434 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1435 </span>            :     }
+<span class="lineNum">    1436 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">    1437 </span>            : 
+<span class="lineNum">    1438 </span>            : 
+<span class="lineNum">    1439 </span>            : /*
+<span class="lineNum">    1440 </span>            :  * Read the record with number RECNUM into the structure REC.  If
+<span class="lineNum">    1441 </span>            :  * EXPECTED is not 0 reading any other record type will return an
+<span class="lineNum">    1442 </span>            :  * error.
+<span class="lineNum">    1443 </span>            :  *
+<span class="lineNum">    1444 </span>            :  * Return: 0 on success, -1 on EOF, or an error code.
+<a name="1445"><span class="lineNum">    1445 </span>            :  */</a>
+<span class="lineNum">    1446 </span>            : int
+<span class="lineNum">    1447 </span><span class="lineNoCov">          0 : tdbio_read_record (ulong recnum, TRUSTREC *rec, int expected)</span>
+<span class="lineNum">    1448 </span>            : {
+<span class="lineNum">    1449 </span>            :   byte readbuf[TRUST_RECORD_LEN];
+<span class="lineNum">    1450 </span>            :   const byte *buf, *p;
+<span class="lineNum">    1451 </span><span class="lineNoCov">          0 :   gpg_error_t err = 0;</span>
+<span class="lineNum">    1452 </span>            :   int n, i;
+<span class="lineNum">    1453 </span>            : 
+<span class="lineNum">    1454 </span><span class="lineNoCov">          0 :   if (db_fd == -1)</span>
+<span class="lineNum">    1455 </span><span class="lineNoCov">          0 :     open_db ();</span>
+<span class="lineNum">    1456 </span>            : 
+<span class="lineNum">    1457 </span><span class="lineNoCov">          0 :   buf = get_record_from_cache( recnum );</span>
+<span class="lineNum">    1458 </span><span class="lineNoCov">          0 :   if (!buf)</span>
+<span class="lineNum">    1459 </span>            :     {
+<span class="lineNum">    1460 </span><span class="lineNoCov">          0 :       if (lseek (db_fd, recnum * TRUST_RECORD_LEN, SEEK_SET) == -1)</span>
+<span class="lineNum">    1461 </span>            :         {
+<span class="lineNum">    1462 </span><span class="lineNoCov">          0 :           err = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1463 </span><span class="lineNoCov">          0 :           log_error (_(&quot;trustdb: lseek failed: %s\n&quot;), strerror (errno));</span>
+<span class="lineNum">    1464 </span><span class="lineNoCov">          0 :           return err;</span>
+<span class="lineNum">    1465 </span>            :         }
+<span class="lineNum">    1466 </span><span class="lineNoCov">          0 :       n = read (db_fd, readbuf, TRUST_RECORD_LEN);</span>
+<span class="lineNum">    1467 </span><span class="lineNoCov">          0 :       if (!n)</span>
+<span class="lineNum">    1468 </span>            :         {
+<span class="lineNum">    1469 </span><span class="lineNoCov">          0 :           return -1; /* eof */</span>
+<span class="lineNum">    1470 </span>            :         }
+<span class="lineNum">    1471 </span><span class="lineNoCov">          0 :       else if (n != TRUST_RECORD_LEN)</span>
+<span class="lineNum">    1472 </span>            :         {
+<span class="lineNum">    1473 </span><span class="lineNoCov">          0 :           err = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1474 </span><span class="lineNoCov">          0 :           log_error (_(&quot;trustdb: read failed (n=%d): %s\n&quot;),</span>
+<span class="lineNum">    1475 </span><span class="lineNoCov">          0 :                      n, strerror(errno));</span>
+<span class="lineNum">    1476 </span><span class="lineNoCov">          0 :           return err;</span>
+<span class="lineNum">    1477 </span>            :         }
+<span class="lineNum">    1478 </span><span class="lineNoCov">          0 :       buf = readbuf;</span>
+<span class="lineNum">    1479 </span>            :     }
+<span class="lineNum">    1480 </span><span class="lineNoCov">          0 :   rec-&gt;recnum = recnum;</span>
+<span class="lineNum">    1481 </span><span class="lineNoCov">          0 :   rec-&gt;dirty = 0;</span>
+<span class="lineNum">    1482 </span><span class="lineNoCov">          0 :   p = buf;</span>
+<span class="lineNum">    1483 </span><span class="lineNoCov">          0 :   rec-&gt;rectype = *p++;</span>
+<span class="lineNum">    1484 </span><span class="lineNoCov">          0 :   if (expected &amp;&amp; rec-&gt;rectype != expected)</span>
+<span class="lineNum">    1485 </span>            :     {
+<span class="lineNum">    1486 </span><span class="lineNoCov">          0 :       log_error (&quot;%lu: read expected rec type %d, got %d\n&quot;,</span>
+<span class="lineNum">    1487 </span>            :                  recnum, expected, rec-&gt;rectype);
+<span class="lineNum">    1488 </span><span class="lineNoCov">          0 :       return gpg_error (GPG_ERR_TRUSTDB);</span>
+<span class="lineNum">    1489 </span>            :     }
+<span class="lineNum">    1490 </span><span class="lineNoCov">          0 :   p++;    /* Skip reserved byte.  */</span>
+<span class="lineNum">    1491 </span><span class="lineNoCov">          0 :   switch (rec-&gt;rectype)</span>
+<span class="lineNum">    1492 </span>            :     {
+<span class="lineNum">    1493 </span>            :     case 0:  /* unused (free) record */
+<span class="lineNum">    1494 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1495 </span>            : 
+<span class="lineNum">    1496 </span>            :     case RECTYPE_VER: /* version record */
+<span class="lineNum">    1497 </span><span class="lineNoCov">          0 :       if (memcmp(buf+1, GPGEXT_GPG, 3))</span>
+<span class="lineNum">    1498 </span>            :         {
+<span class="lineNum">    1499 </span><span class="lineNoCov">          0 :           log_error (_(&quot;%s: not a trustdb file\n&quot;), db_name );</span>
+<span class="lineNum">    1500 </span><span class="lineNoCov">          0 :           err = gpg_error (GPG_ERR_TRUSTDB);</span>
+<span class="lineNum">    1501 </span>            :         }
+<span class="lineNum">    1502 </span>            :       else
+<span class="lineNum">    1503 </span>            :         {
+<span class="lineNum">    1504 </span><span class="lineNoCov">          0 :           p += 2; /* skip &quot;gpg&quot; */</span>
+<span class="lineNum">    1505 </span><span class="lineNoCov">          0 :           rec-&gt;r.ver.version  = *p++;</span>
+<span class="lineNum">    1506 </span><span class="lineNoCov">          0 :           rec-&gt;r.ver.marginals = *p++;</span>
+<span class="lineNum">    1507 </span><span class="lineNoCov">          0 :           rec-&gt;r.ver.completes = *p++;</span>
+<span class="lineNum">    1508 </span><span class="lineNoCov">          0 :           rec-&gt;r.ver.cert_depth = *p++;</span>
+<span class="lineNum">    1509 </span><span class="lineNoCov">          0 :           rec-&gt;r.ver.trust_model = *p++;</span>
+<span class="lineNum">    1510 </span><span class="lineNoCov">          0 :           rec-&gt;r.ver.min_cert_level = *p++;</span>
+<span class="lineNum">    1511 </span><span class="lineNoCov">          0 :           p += 2;</span>
+<span class="lineNum">    1512 </span><span class="lineNoCov">          0 :           rec-&gt;r.ver.created  = buf32_to_ulong(p);</span>
+<span class="lineNum">    1513 </span><span class="lineNoCov">          0 :           p += 4;</span>
+<span class="lineNum">    1514 </span><span class="lineNoCov">          0 :           rec-&gt;r.ver.nextcheck = buf32_to_ulong(p);</span>
+<span class="lineNum">    1515 </span><span class="lineNoCov">          0 :           p += 4;</span>
+<span class="lineNum">    1516 </span><span class="lineNoCov">          0 :           p += 4;</span>
+<span class="lineNum">    1517 </span><span class="lineNoCov">          0 :           p += 4;</span>
+<span class="lineNum">    1518 </span><span class="lineNoCov">          0 :           rec-&gt;r.ver.firstfree = buf32_to_ulong(p);</span>
+<span class="lineNum">    1519 </span><span class="lineNoCov">          0 :           p += 4;</span>
+<span class="lineNum">    1520 </span><span class="lineNoCov">          0 :           p += 4;</span>
+<span class="lineNum">    1521 </span><span class="lineNoCov">          0 :           rec-&gt;r.ver.trusthashtbl = buf32_to_ulong(p);</span>
+<span class="lineNum">    1522 </span><span class="lineNoCov">          0 :           if (recnum)</span>
+<span class="lineNum">    1523 </span>            :             {
+<span class="lineNum">    1524 </span><span class="lineNoCov">          0 :               log_error( _(&quot;%s: version record with recnum %lu\n&quot;), db_name,</span>
+<span class="lineNum">    1525 </span>            :                          (ulong)recnum );
+<span class="lineNum">    1526 </span><span class="lineNoCov">          0 :               err = gpg_error (GPG_ERR_TRUSTDB);</span>
+<span class="lineNum">    1527 </span>            :             }
+<span class="lineNum">    1528 </span><span class="lineNoCov">          0 :           else if (rec-&gt;r.ver.version != 3)</span>
+<span class="lineNum">    1529 </span>            :             {
+<span class="lineNum">    1530 </span><span class="lineNoCov">          0 :               log_error( _(&quot;%s: invalid file version %d\n&quot;), db_name,</span>
+<span class="lineNum">    1531 </span><span class="lineNoCov">          0 :                          rec-&gt;r.ver.version );</span>
+<span class="lineNum">    1532 </span><span class="lineNoCov">          0 :               err = gpg_error (GPG_ERR_TRUSTDB);</span>
+<span class="lineNum">    1533 </span>            :             }
+<span class="lineNum">    1534 </span>            :         }
+<span class="lineNum">    1535 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1536 </span>            : 
+<span class="lineNum">    1537 </span>            :     case RECTYPE_FREE:
+<span class="lineNum">    1538 </span><span class="lineNoCov">          0 :       rec-&gt;r.free.next  = buf32_to_ulong(p);</span>
+<span class="lineNum">    1539 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1540 </span>            : 
+<span class="lineNum">    1541 </span>            :     case RECTYPE_HTBL:
+<span class="lineNum">    1542 </span><span class="lineNoCov">          0 :       for (i=0; i &lt; ITEMS_PER_HTBL_RECORD; i++)</span>
+<span class="lineNum">    1543 </span>            :         {
+<span class="lineNum">    1544 </span><span class="lineNoCov">          0 :           rec-&gt;r.htbl.item[i] = buf32_to_ulong(p);</span>
+<span class="lineNum">    1545 </span><span class="lineNoCov">          0 :           p += 4;</span>
+<span class="lineNum">    1546 </span>            :         }
+<span class="lineNum">    1547 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1548 </span>            : 
+<span class="lineNum">    1549 </span>            :     case RECTYPE_HLST:
+<span class="lineNum">    1550 </span><span class="lineNoCov">          0 :       rec-&gt;r.hlst.next = buf32_to_ulong(p);</span>
+<span class="lineNum">    1551 </span><span class="lineNoCov">          0 :       p += 4;</span>
+<span class="lineNum">    1552 </span><span class="lineNoCov">          0 :       for (i=0; i &lt; ITEMS_PER_HLST_RECORD; i++)</span>
+<span class="lineNum">    1553 </span>            :         {
+<span class="lineNum">    1554 </span><span class="lineNoCov">          0 :           rec-&gt;r.hlst.rnum[i] = buf32_to_ulong(p);</span>
+<span class="lineNum">    1555 </span><span class="lineNoCov">          0 :           p += 4;</span>
+<span class="lineNum">    1556 </span>            :         }
+<span class="lineNum">    1557 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1558 </span>            : 
+<span class="lineNum">    1559 </span>            :     case RECTYPE_TRUST:
+<span class="lineNum">    1560 </span><span class="lineNoCov">          0 :       memcpy (rec-&gt;r.trust.fingerprint, p, 20);</span>
+<span class="lineNum">    1561 </span><span class="lineNoCov">          0 :       p+=20;</span>
+<span class="lineNum">    1562 </span><span class="lineNoCov">          0 :       rec-&gt;r.trust.ownertrust = *p++;</span>
+<span class="lineNum">    1563 </span><span class="lineNoCov">          0 :       rec-&gt;r.trust.depth = *p++;</span>
+<span class="lineNum">    1564 </span><span class="lineNoCov">          0 :       rec-&gt;r.trust.min_ownertrust = *p++;</span>
+<span class="lineNum">    1565 </span><span class="lineNoCov">          0 :       p++;</span>
+<span class="lineNum">    1566 </span><span class="lineNoCov">          0 :       rec-&gt;r.trust.validlist = buf32_to_ulong(p);</span>
+<span class="lineNum">    1567 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1568 </span>            : 
+<span class="lineNum">    1569 </span>            :     case RECTYPE_VALID:
+<span class="lineNum">    1570 </span><span class="lineNoCov">          0 :       memcpy (rec-&gt;r.valid.namehash, p, 20);</span>
+<span class="lineNum">    1571 </span><span class="lineNoCov">          0 :       p+=20;</span>
+<span class="lineNum">    1572 </span><span class="lineNoCov">          0 :       rec-&gt;r.valid.validity = *p++;</span>
+<span class="lineNum">    1573 </span><span class="lineNoCov">          0 :       rec-&gt;r.valid.next = buf32_to_ulong(p);</span>
+<span class="lineNum">    1574 </span><span class="lineNoCov">          0 :       p += 4;</span>
+<span class="lineNum">    1575 </span><span class="lineNoCov">          0 :       rec-&gt;r.valid.full_count = *p++;</span>
+<span class="lineNum">    1576 </span><span class="lineNoCov">          0 :       rec-&gt;r.valid.marginal_count = *p++;</span>
+<span class="lineNum">    1577 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1578 </span>            : 
+<span class="lineNum">    1579 </span>            :     default:
+<span class="lineNum">    1580 </span><span class="lineNoCov">          0 :       log_error (&quot;%s: invalid record type %d at recnum %lu\n&quot;,</span>
+<span class="lineNum">    1581 </span>            :                  db_name, rec-&gt;rectype, (ulong)recnum);
+<span class="lineNum">    1582 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_TRUSTDB);</span>
+<span class="lineNum">    1583 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1584 </span>            :     }
+<span class="lineNum">    1585 </span>            : 
+<span class="lineNum">    1586 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">    1587 </span>            : }
+<span class="lineNum">    1588 </span>            : 
+<span class="lineNum">    1589 </span>            : 
+<span class="lineNum">    1590 </span>            : /*
+<span class="lineNum">    1591 </span>            :  * Write the record from the struct REC.
+<span class="lineNum">    1592 </span>            :  *
+<span class="lineNum">    1593 </span>            :  * Return: 0 on success or an error code.
+<a name="1594"><span class="lineNum">    1594 </span>            :  */</a>
+<span class="lineNum">    1595 </span>            : int
+<span class="lineNum">    1596 </span><span class="lineNoCov">          0 : tdbio_write_record (ctrl_t ctrl, TRUSTREC *rec)</span>
+<span class="lineNum">    1597 </span>            : {
+<span class="lineNum">    1598 </span>            :   byte buf[TRUST_RECORD_LEN];
+<span class="lineNum">    1599 </span>            :   byte *p;
+<span class="lineNum">    1600 </span><span class="lineNoCov">          0 :   int rc = 0;</span>
+<span class="lineNum">    1601 </span>            :   int i;
+<span class="lineNum">    1602 </span><span class="lineNoCov">          0 :   ulong recnum = rec-&gt;recnum;</span>
+<span class="lineNum">    1603 </span>            : 
+<span class="lineNum">    1604 </span><span class="lineNoCov">          0 :   if (db_fd == -1)</span>
+<span class="lineNum">    1605 </span><span class="lineNoCov">          0 :     open_db ();</span>
+<span class="lineNum">    1606 </span>            : 
+<span class="lineNum">    1607 </span><span class="lineNoCov">          0 :   memset (buf, 0, TRUST_RECORD_LEN);</span>
+<span class="lineNum">    1608 </span><span class="lineNoCov">          0 :   p = buf;</span>
+<span class="lineNum">    1609 </span><span class="lineNoCov">          0 :   *p++ = rec-&gt;rectype; p++;</span>
+<span class="lineNum">    1610 </span>            : 
+<span class="lineNum">    1611 </span><span class="lineNoCov">          0 :   switch (rec-&gt;rectype)</span>
+<span class="lineNum">    1612 </span>            :     {
+<span class="lineNum">    1613 </span>            :     case 0:  /* unused record */
+<span class="lineNum">    1614 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1615 </span>            : 
+<span class="lineNum">    1616 </span>            :     case RECTYPE_VER: /* version record */
+<span class="lineNum">    1617 </span><span class="lineNoCov">          0 :       if (recnum)</span>
+<span class="lineNum">    1618 </span><span class="lineNoCov">          0 :         BUG ();</span>
+<span class="lineNum">    1619 </span><span class="lineNoCov">          0 :       memcpy(p-1, GPGEXT_GPG, 3 ); p += 2;</span>
+<span class="lineNum">    1620 </span><span class="lineNoCov">          0 :       *p++ = rec-&gt;r.ver.version;</span>
+<span class="lineNum">    1621 </span><span class="lineNoCov">          0 :       *p++ = rec-&gt;r.ver.marginals;</span>
+<span class="lineNum">    1622 </span><span class="lineNoCov">          0 :       *p++ = rec-&gt;r.ver.completes;</span>
+<span class="lineNum">    1623 </span><span class="lineNoCov">          0 :       *p++ = rec-&gt;r.ver.cert_depth;</span>
+<span class="lineNum">    1624 </span><span class="lineNoCov">          0 :       *p++ = rec-&gt;r.ver.trust_model;</span>
+<span class="lineNum">    1625 </span><span class="lineNoCov">          0 :       *p++ = rec-&gt;r.ver.min_cert_level;</span>
+<span class="lineNum">    1626 </span><span class="lineNoCov">          0 :       p += 2;</span>
+<span class="lineNum">    1627 </span><span class="lineNoCov">          0 :       ulongtobuf(p, rec-&gt;r.ver.created); p += 4;</span>
+<span class="lineNum">    1628 </span><span class="lineNoCov">          0 :       ulongtobuf(p, rec-&gt;r.ver.nextcheck); p += 4;</span>
+<span class="lineNum">    1629 </span><span class="lineNoCov">          0 :       p += 4;</span>
+<span class="lineNum">    1630 </span><span class="lineNoCov">          0 :       p += 4;</span>
+<span class="lineNum">    1631 </span><span class="lineNoCov">          0 :       ulongtobuf(p, rec-&gt;r.ver.firstfree ); p += 4;</span>
+<span class="lineNum">    1632 </span><span class="lineNoCov">          0 :       p += 4;</span>
+<span class="lineNum">    1633 </span><span class="lineNoCov">          0 :       ulongtobuf(p, rec-&gt;r.ver.trusthashtbl ); p += 4;</span>
+<span class="lineNum">    1634 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1635 </span>            : 
+<span class="lineNum">    1636 </span>            :     case RECTYPE_FREE:
+<span class="lineNum">    1637 </span><span class="lineNoCov">          0 :       ulongtobuf(p, rec-&gt;r.free.next); p += 4;</span>
+<span class="lineNum">    1638 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1639 </span>            : 
+<span class="lineNum">    1640 </span>            :     case RECTYPE_HTBL:
+<span class="lineNum">    1641 </span><span class="lineNoCov">          0 :       for (i=0; i &lt; ITEMS_PER_HTBL_RECORD; i++)</span>
+<span class="lineNum">    1642 </span>            :         {
+<span class="lineNum">    1643 </span><span class="lineNoCov">          0 :           ulongtobuf( p, rec-&gt;r.htbl.item[i]); p += 4;</span>
+<span class="lineNum">    1644 </span>            :         }
+<span class="lineNum">    1645 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1646 </span>            : 
+<span class="lineNum">    1647 </span>            :     case RECTYPE_HLST:
+<span class="lineNum">    1648 </span><span class="lineNoCov">          0 :       ulongtobuf( p, rec-&gt;r.hlst.next); p += 4;</span>
+<span class="lineNum">    1649 </span><span class="lineNoCov">          0 :       for (i=0; i &lt; ITEMS_PER_HLST_RECORD; i++ )</span>
+<span class="lineNum">    1650 </span>            :         {
+<span class="lineNum">    1651 </span><span class="lineNoCov">          0 :           ulongtobuf( p, rec-&gt;r.hlst.rnum[i]); p += 4;</span>
+<span class="lineNum">    1652 </span>            :         }
+<span class="lineNum">    1653 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1654 </span>            : 
+<span class="lineNum">    1655 </span>            :     case RECTYPE_TRUST:
+<span class="lineNum">    1656 </span><span class="lineNoCov">          0 :       memcpy (p, rec-&gt;r.trust.fingerprint, 20); p += 20;</span>
+<span class="lineNum">    1657 </span><span class="lineNoCov">          0 :       *p++ = rec-&gt;r.trust.ownertrust;</span>
+<span class="lineNum">    1658 </span><span class="lineNoCov">          0 :       *p++ = rec-&gt;r.trust.depth;</span>
+<span class="lineNum">    1659 </span><span class="lineNoCov">          0 :       *p++ = rec-&gt;r.trust.min_ownertrust;</span>
+<span class="lineNum">    1660 </span><span class="lineNoCov">          0 :       p++;</span>
+<span class="lineNum">    1661 </span><span class="lineNoCov">          0 :       ulongtobuf( p, rec-&gt;r.trust.validlist); p += 4;</span>
+<span class="lineNum">    1662 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1663 </span>            : 
+<span class="lineNum">    1664 </span>            :     case RECTYPE_VALID:
+<span class="lineNum">    1665 </span><span class="lineNoCov">          0 :       memcpy (p, rec-&gt;r.valid.namehash, 20); p += 20;</span>
+<span class="lineNum">    1666 </span><span class="lineNoCov">          0 :       *p++ = rec-&gt;r.valid.validity;</span>
+<span class="lineNum">    1667 </span><span class="lineNoCov">          0 :       ulongtobuf( p, rec-&gt;r.valid.next); p += 4;</span>
+<span class="lineNum">    1668 </span><span class="lineNoCov">          0 :       *p++ = rec-&gt;r.valid.full_count;</span>
+<span class="lineNum">    1669 </span><span class="lineNoCov">          0 :       *p++ = rec-&gt;r.valid.marginal_count;</span>
+<span class="lineNum">    1670 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">    1671 </span>            : 
+<span class="lineNum">    1672 </span>            :     default:
+<span class="lineNum">    1673 </span><span class="lineNoCov">          0 :       BUG();</span>
+<span class="lineNum">    1674 </span>            :     }
+<span class="lineNum">    1675 </span>            : 
+<span class="lineNum">    1676 </span><span class="lineNoCov">          0 :   rc = put_record_into_cache (recnum, buf);</span>
+<span class="lineNum">    1677 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">    1678 </span>            :     ;
+<span class="lineNum">    1679 </span><span class="lineNoCov">          0 :   else if (rec-&gt;rectype == RECTYPE_TRUST)</span>
+<span class="lineNum">    1680 </span><span class="lineNoCov">          0 :     rc = update_trusthashtbl (ctrl, rec);</span>
+<span class="lineNum">    1681 </span>            : 
+<span class="lineNum">    1682 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">    1683 </span>            : }
+<span class="lineNum">    1684 </span>            : 
+<span class="lineNum">    1685 </span>            : 
+<span class="lineNum">    1686 </span>            : /*
+<span class="lineNum">    1687 </span>            :  * Delete the record at record number RECNUm from the trustdb.
+<span class="lineNum">    1688 </span>            :  *
+<span class="lineNum">    1689 </span>            :  * Return: 0 on success or an error code.
+<a name="1690"><span class="lineNum">    1690 </span>            :  */</a>
+<span class="lineNum">    1691 </span>            : int
+<span class="lineNum">    1692 </span><span class="lineNoCov">          0 : tdbio_delete_record (ctrl_t ctrl, ulong recnum)</span>
+<span class="lineNum">    1693 </span>            : {
+<span class="lineNum">    1694 </span>            :   TRUSTREC vr, rec;
+<span class="lineNum">    1695 </span>            :   int rc;
+<span class="lineNum">    1696 </span>            : 
+<span class="lineNum">    1697 </span>            :   /* Must read the record fist, so we can drop it from the hash tables */
+<span class="lineNum">    1698 </span><span class="lineNoCov">          0 :   rc = tdbio_read_record (recnum, &amp;rec, 0);</span>
+<span class="lineNum">    1699 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">    1700 </span>            :     ;
+<span class="lineNum">    1701 </span><span class="lineNoCov">          0 :   else if (rec.rectype == RECTYPE_TRUST)</span>
+<span class="lineNum">    1702 </span>            :     {
+<span class="lineNum">    1703 </span><span class="lineNoCov">          0 :       rc = drop_from_hashtable (ctrl, get_trusthashrec(),</span>
+<span class="lineNum">    1704 </span>            :                                 rec.r.trust.fingerprint, 20, rec.recnum);
+<span class="lineNum">    1705 </span>            :     }
+<span class="lineNum">    1706 </span>            : 
+<span class="lineNum">    1707 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">    1708 </span><span class="lineNoCov">          0 :     return rc;</span>
+<span class="lineNum">    1709 </span>            : 
+<span class="lineNum">    1710 </span>            :   /* Now we can change it to a free record.  */
+<span class="lineNum">    1711 </span><span class="lineNoCov">          0 :   rc = tdbio_read_record (0, &amp;vr, RECTYPE_VER);</span>
+<span class="lineNum">    1712 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">    1713 </span><span class="lineNoCov">          0 :     log_fatal (_(&quot;%s: error reading version record: %s\n&quot;),</span>
+<span class="lineNum">    1714 </span>            :                db_name, gpg_strerror (rc));
+<span class="lineNum">    1715 </span>            : 
+<span class="lineNum">    1716 </span><span class="lineNoCov">          0 :   rec.recnum = recnum;</span>
+<span class="lineNum">    1717 </span><span class="lineNoCov">          0 :   rec.rectype = RECTYPE_FREE;</span>
+<span class="lineNum">    1718 </span><span class="lineNoCov">          0 :   rec.r.free.next = vr.r.ver.firstfree;</span>
+<span class="lineNum">    1719 </span><span class="lineNoCov">          0 :   vr.r.ver.firstfree = recnum;</span>
+<span class="lineNum">    1720 </span><span class="lineNoCov">          0 :   rc = tdbio_write_record (ctrl, &amp;rec);</span>
+<span class="lineNum">    1721 </span><span class="lineNoCov">          0 :   if (!rc)</span>
+<span class="lineNum">    1722 </span><span class="lineNoCov">          0 :     rc = tdbio_write_record (ctrl, &amp;vr);</span>
+<span class="lineNum">    1723 </span>            : 
+<span class="lineNum">    1724 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">    1725 </span>            : }
+<span class="lineNum">    1726 </span>            : 
+<span class="lineNum">    1727 </span>            : 
+<span class="lineNum">    1728 </span>            : /*
+<span class="lineNum">    1729 </span>            :  * Create a new record and return its record number.
+<a name="1730"><span class="lineNum">    1730 </span>            :  */</a>
+<span class="lineNum">    1731 </span>            : ulong
+<span class="lineNum">    1732 </span><span class="lineNoCov">          0 : tdbio_new_recnum (ctrl_t ctrl)</span>
+<span class="lineNum">    1733 </span>            : {
+<span class="lineNum">    1734 </span>            :   off_t offset;
+<span class="lineNum">    1735 </span>            :   ulong recnum;
+<span class="lineNum">    1736 </span>            :   TRUSTREC vr, rec;
+<span class="lineNum">    1737 </span>            :   int rc;
+<span class="lineNum">    1738 </span>            : 
+<span class="lineNum">    1739 </span>            :   /* Look for unused records.  */
+<span class="lineNum">    1740 </span><span class="lineNoCov">          0 :   rc = tdbio_read_record (0, &amp;vr, RECTYPE_VER);</span>
+<span class="lineNum">    1741 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">    1742 </span><span class="lineNoCov">          0 :     log_fatal( _(&quot;%s: error reading version record: %s\n&quot;),</span>
+<span class="lineNum">    1743 </span>            :                db_name, gpg_strerror (rc));
+<span class="lineNum">    1744 </span><span class="lineNoCov">          0 :   if (vr.r.ver.firstfree)</span>
+<span class="lineNum">    1745 </span>            :     {
+<span class="lineNum">    1746 </span><span class="lineNoCov">          0 :       recnum = vr.r.ver.firstfree;</span>
+<span class="lineNum">    1747 </span><span class="lineNoCov">          0 :       rc = tdbio_read_record (recnum, &amp;rec, RECTYPE_FREE);</span>
+<span class="lineNum">    1748 </span><span class="lineNoCov">          0 :       if (rc)</span>
+<span class="lineNum">    1749 </span>            :         {
+<span class="lineNum">    1750 </span><span class="lineNoCov">          0 :           log_error (_(&quot;%s: error reading free record: %s\n&quot;),</span>
+<span class="lineNum">    1751 </span>            :                      db_name,  gpg_strerror (rc));
+<span class="lineNum">    1752 </span><span class="lineNoCov">          0 :           return rc;</span>
+<span class="lineNum">    1753 </span>            :         }
+<span class="lineNum">    1754 </span>            :       /* Update dir record.  */
+<span class="lineNum">    1755 </span><span class="lineNoCov">          0 :       vr.r.ver.firstfree = rec.r.free.next;</span>
+<span class="lineNum">    1756 </span><span class="lineNoCov">          0 :       rc = tdbio_write_record (ctrl, &amp;vr);</span>
+<span class="lineNum">    1757 </span><span class="lineNoCov">          0 :       if (rc)</span>
+<span class="lineNum">    1758 </span>            :         {
+<span class="lineNum">    1759 </span><span class="lineNoCov">          0 :           log_error (_(&quot;%s: error writing dir record: %s\n&quot;),</span>
+<span class="lineNum">    1760 </span>            :                      db_name, gpg_strerror (rc));
+<span class="lineNum">    1761 </span><span class="lineNoCov">          0 :           return rc;</span>
+<span class="lineNum">    1762 </span>            :         }
+<span class="lineNum">    1763 </span>            :       /* Zero out the new record.  */
+<span class="lineNum">    1764 </span><span class="lineNoCov">          0 :       memset (&amp;rec, 0, sizeof rec);</span>
+<span class="lineNum">    1765 </span><span class="lineNoCov">          0 :       rec.rectype = 0; /* Mark as unused record (actually already done</span>
+<span class="lineNum">    1766 </span>            :                           my the memset).  */
+<span class="lineNum">    1767 </span><span class="lineNoCov">          0 :       rec.recnum = recnum;</span>
+<span class="lineNum">    1768 </span><span class="lineNoCov">          0 :       rc = tdbio_write_record (ctrl, &amp;rec);</span>
+<span class="lineNum">    1769 </span><span class="lineNoCov">          0 :       if (rc)</span>
+<span class="lineNum">    1770 </span><span class="lineNoCov">          0 :         log_fatal (_(&quot;%s: failed to zero a record: %s\n&quot;),</span>
+<span class="lineNum">    1771 </span>            :                    db_name, gpg_strerror (rc));
+<span class="lineNum">    1772 </span>            :     }
+<span class="lineNum">    1773 </span>            :   else /* Not found - append a new record.  */
+<span class="lineNum">    1774 </span>            :     {
+<span class="lineNum">    1775 </span><span class="lineNoCov">          0 :       offset = lseek (db_fd, 0, SEEK_END);</span>
+<span class="lineNum">    1776 </span><span class="lineNoCov">          0 :       if (offset == (off_t)(-1))</span>
+<span class="lineNum">    1777 </span><span class="lineNoCov">          0 :         log_fatal (&quot;trustdb: lseek to end failed: %s\n&quot;, strerror (errno));</span>
+<span class="lineNum">    1778 </span><span class="lineNoCov">          0 :       recnum = offset / TRUST_RECORD_LEN;</span>
+<span class="lineNum">    1779 </span><span class="lineNoCov">          0 :       log_assert (recnum); /* this is will never be the first record */</span>
+<span class="lineNum">    1780 </span>            :       /* We must write a record, so that the next call to this
+<span class="lineNum">    1781 </span>            :        * function returns another recnum.  */
+<span class="lineNum">    1782 </span><span class="lineNoCov">          0 :       memset (&amp;rec, 0, sizeof rec);</span>
+<span class="lineNum">    1783 </span><span class="lineNoCov">          0 :       rec.rectype = 0; /* unused record */</span>
+<span class="lineNum">    1784 </span><span class="lineNoCov">          0 :       rec.recnum = recnum;</span>
+<span class="lineNum">    1785 </span><span class="lineNoCov">          0 :       rc = 0;</span>
+<span class="lineNum">    1786 </span><span class="lineNoCov">          0 :       if (lseek( db_fd, recnum * TRUST_RECORD_LEN, SEEK_SET) == -1)</span>
+<span class="lineNum">    1787 </span>            :         {
+<span class="lineNum">    1788 </span><span class="lineNoCov">          0 :           rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1789 </span><span class="lineNoCov">          0 :           log_error (_(&quot;trustdb rec %lu: lseek failed: %s\n&quot;),</span>
+<span class="lineNum">    1790 </span><span class="lineNoCov">          0 :                      recnum, strerror (errno));</span>
+<span class="lineNum">    1791 </span>            :         }
+<span class="lineNum">    1792 </span>            :       else
+<span class="lineNum">    1793 </span>            :         {
+<span class="lineNum">    1794 </span>            :           int n;
+<span class="lineNum">    1795 </span>            : 
+<span class="lineNum">    1796 </span><span class="lineNoCov">          0 :           n = write (db_fd, &amp;rec, TRUST_RECORD_LEN);</span>
+<span class="lineNum">    1797 </span><span class="lineNoCov">          0 :           if (n != TRUST_RECORD_LEN)</span>
+<span class="lineNum">    1798 </span>            :             {
+<span class="lineNum">    1799 </span><span class="lineNoCov">          0 :               rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1800 </span><span class="lineNoCov">          0 :               log_error (_(&quot;trustdb rec %lu: write failed (n=%d): %s\n&quot;),</span>
+<span class="lineNum">    1801 </span><span class="lineNoCov">          0 :                          recnum, n, strerror (errno));</span>
+<span class="lineNum">    1802 </span>            :             }
+<span class="lineNum">    1803 </span>            :         }
+<span class="lineNum">    1804 </span>            : 
+<span class="lineNum">    1805 </span><span class="lineNoCov">          0 :       if (rc)</span>
+<span class="lineNum">    1806 </span><span class="lineNoCov">          0 :         log_fatal (_(&quot;%s: failed to append a record: %s\n&quot;),</span>
+<span class="lineNum">    1807 </span>            :                    db_name,     gpg_strerror (rc));
+<span class="lineNum">    1808 </span>            :     }
+<span class="lineNum">    1809 </span>            : 
+<span class="lineNum">    1810 </span><span class="lineNoCov">          0 :   return recnum ;</span>
+<span class="lineNum">    1811 </span>            : }
+<span class="lineNum">    1812 </span>            : 
+<span class="lineNum">    1813 </span>            : 
+<span class="lineNum">    1814 </span>            : 
+<a name="1815"><span class="lineNum">    1815 </span>            : /* Helper function for tdbio_search_trust_byfpr.  */</a>
+<span class="lineNum">    1816 </span>            : static int
+<span class="lineNum">    1817 </span><span class="lineNoCov">          0 : cmp_trec_fpr ( const void *fpr, const TRUSTREC *rec )</span>
+<span class="lineNum">    1818 </span>            : {
+<span class="lineNum">    1819 </span><span class="lineNoCov">          0 :   return (rec-&gt;rectype == RECTYPE_TRUST</span>
+<span class="lineNum">    1820 </span><span class="lineNoCov">          0 :           &amp;&amp; !memcmp (rec-&gt;r.trust.fingerprint, fpr, 20));</span>
+<span class="lineNum">    1821 </span>            : }
+<span class="lineNum">    1822 </span>            : 
+<span class="lineNum">    1823 </span>            : 
+<span class="lineNum">    1824 </span>            : /*
+<span class="lineNum">    1825 </span>            :  * Given a 20 byte FINGERPRINT search its trust record and return
+<span class="lineNum">    1826 </span>            :  * that at REC.
+<span class="lineNum">    1827 </span>            :  *
+<span class="lineNum">    1828 </span>            :  * Return: 0 if found, GPG_ERR_NOT_FOUND, or another error code.
+<a name="1829"><span class="lineNum">    1829 </span>            :  */</a>
+<span class="lineNum">    1830 </span>            : gpg_error_t
+<span class="lineNum">    1831 </span><span class="lineNoCov">          0 : tdbio_search_trust_byfpr (const byte *fingerprint, TRUSTREC *rec)</span>
+<span class="lineNum">    1832 </span>            : {
+<span class="lineNum">    1833 </span>            :   int rc;
+<span class="lineNum">    1834 </span>            : 
+<span class="lineNum">    1835 </span>            :   /* Locate the trust record using the hash table */
+<span class="lineNum">    1836 </span><span class="lineNoCov">          0 :   rc = lookup_hashtable (get_trusthashrec(), fingerprint, 20,</span>
+<span class="lineNum">    1837 </span>            :                          cmp_trec_fpr, fingerprint, rec );
+<span class="lineNum">    1838 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">    1839 </span>            : }
+<span class="lineNum">    1840 </span>            : 
+<span class="lineNum">    1841 </span>            : 
+<span class="lineNum">    1842 </span>            : /*
+<span class="lineNum">    1843 </span>            :  * Given a primary public key object PK search its trust record and
+<span class="lineNum">    1844 </span>            :  * return that at REC.
+<span class="lineNum">    1845 </span>            :  *
+<span class="lineNum">    1846 </span>            :  * Return: 0 if found, GPG_ERR_NOT_FOUND, or another error code.
+<a name="1847"><span class="lineNum">    1847 </span>            :  */</a>
+<span class="lineNum">    1848 </span>            : gpg_error_t
+<span class="lineNum">    1849 </span><span class="lineNoCov">          0 : tdbio_search_trust_bypk (PKT_public_key *pk, TRUSTREC *rec)</span>
+<span class="lineNum">    1850 </span>            : {
+<span class="lineNum">    1851 </span>            :   byte fingerprint[MAX_FINGERPRINT_LEN];
+<span class="lineNum">    1852 </span>            :   size_t fingerlen;
+<span class="lineNum">    1853 </span>            : 
+<span class="lineNum">    1854 </span><span class="lineNoCov">          0 :   fingerprint_from_pk( pk, fingerprint, &amp;fingerlen );</span>
+<span class="lineNum">    1855 </span><span class="lineNoCov">          0 :   for (; fingerlen &lt; 20; fingerlen++)</span>
+<span class="lineNum">    1856 </span><span class="lineNoCov">          0 :     fingerprint[fingerlen] = 0;</span>
+<span class="lineNum">    1857 </span><span class="lineNoCov">          0 :   return tdbio_search_trust_byfpr (fingerprint, rec);</span>
+<span class="lineNum">    1858 </span>            : }
+<span class="lineNum">    1859 </span>            : 
+<span class="lineNum">    1860 </span>            : 
+<span class="lineNum">    1861 </span>            : /*
+<span class="lineNum">    1862 </span>            :  * Terminate the process with a message about a corrupted trustdb.
+<a name="1863"><span class="lineNum">    1863 </span>            :  */</a>
+<span class="lineNum">    1864 </span>            : void
+<span class="lineNum">    1865 </span><span class="lineNoCov">          0 : tdbio_invalid (void)</span>
+<span class="lineNum">    1866 </span>            : {
+<span class="lineNum">    1867 </span><span class="lineNoCov">          0 :   log_error (_(&quot;Error: The trustdb is corrupted.\n&quot;));</span>
+<span class="lineNum">    1868 </span><span class="lineNoCov">          0 :   how_to_fix_the_trustdb ();</span>
+<span class="lineNum">    1869 </span><span class="lineNoCov">          0 :   g10_exit (2);</span>
+<span class="lineNum">    1870 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

@@ -1,0 +1,1817 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - g10/keyring.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">g10</a> - keyring.c<span style="font-size: 80%;"> (source / <a href="keyring.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">207</td>
+            <td class="headerCovTableEntry">791</td>
+            <td class="headerCovTableEntryLo">26.2 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 14:21:11</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">11</td>
+            <td class="headerCovTableEntry">28</td>
+            <td class="headerCovTableEntryLo">39.3 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* keyring.c - keyring file handling</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 1998-2010 Free Software Foundation, Inc.
+<span class="lineNum">       3 </span>            :  * Copyright (C) 1997-2015 Werner Koch
+<span class="lineNum">       4 </span>            :  *
+<span class="lineNum">       5 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       6 </span>            :  *
+<span class="lineNum">       7 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       8 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">       9 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">      10 </span>            :  * (at your option) any later version.
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      13 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      14 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      15 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      16 </span>            :  *
+<span class="lineNum">      17 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      18 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      19 </span>            :  */
+<span class="lineNum">      20 </span>            : 
+<span class="lineNum">      21 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      22 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      23 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      24 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      25 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      26 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      27 </span>            : #include &lt;sys/types.h&gt;
+<span class="lineNum">      28 </span>            : #include &lt;sys/stat.h&gt;
+<span class="lineNum">      29 </span>            : 
+<span class="lineNum">      30 </span>            : #include &quot;gpg.h&quot;
+<span class="lineNum">      31 </span>            : #include &quot;../common/util.h&quot;
+<span class="lineNum">      32 </span>            : #include &quot;keyring.h&quot;
+<span class="lineNum">      33 </span>            : #include &quot;packet.h&quot;
+<span class="lineNum">      34 </span>            : #include &quot;keydb.h&quot;
+<span class="lineNum">      35 </span>            : #include &quot;options.h&quot;
+<span class="lineNum">      36 </span>            : #include &quot;main.h&quot; /*for check_key_signature()*/
+<span class="lineNum">      37 </span>            : #include &quot;../common/i18n.h&quot;
+<span class="lineNum">      38 </span>            : #include &quot;../kbx/keybox.h&quot;
+<span class="lineNum">      39 </span>            : 
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span>            : typedef struct keyring_resource *KR_RESOURCE;
+<span class="lineNum">      42 </span>            : struct keyring_resource
+<span class="lineNum">      43 </span>            : {
+<span class="lineNum">      44 </span>            :   struct keyring_resource *next;
+<span class="lineNum">      45 </span>            :   int read_only;
+<span class="lineNum">      46 </span>            :   dotlock_t lockhd;
+<span class="lineNum">      47 </span>            :   int is_locked;
+<span class="lineNum">      48 </span>            :   int did_full_scan;
+<span class="lineNum">      49 </span>            :   char fname[1];
+<span class="lineNum">      50 </span>            : };
+<span class="lineNum">      51 </span>            : typedef struct keyring_resource const * CONST_KR_RESOURCE;
+<span class="lineNum">      52 </span>            : 
+<span class="lineNum">      53 </span>            : static KR_RESOURCE kr_resources;
+<span class="lineNum">      54 </span>            : 
+<span class="lineNum">      55 </span>            : struct keyring_handle
+<span class="lineNum">      56 </span>            : {
+<span class="lineNum">      57 </span>            :   CONST_KR_RESOURCE resource;
+<span class="lineNum">      58 </span>            :   struct {
+<span class="lineNum">      59 </span>            :     CONST_KR_RESOURCE kr;
+<span class="lineNum">      60 </span>            :     IOBUF iobuf;
+<span class="lineNum">      61 </span>            :     int eof;
+<span class="lineNum">      62 </span>            :     int error;
+<span class="lineNum">      63 </span>            :   } current;
+<span class="lineNum">      64 </span>            :   struct {
+<span class="lineNum">      65 </span>            :     CONST_KR_RESOURCE kr;
+<span class="lineNum">      66 </span>            :     off_t offset;
+<span class="lineNum">      67 </span>            :     size_t pk_no;
+<span class="lineNum">      68 </span>            :     size_t uid_no;
+<span class="lineNum">      69 </span>            :     unsigned int n_packets; /*used for delete and update*/
+<span class="lineNum">      70 </span>            :   } found, saved_found;
+<span class="lineNum">      71 </span>            :   struct {
+<span class="lineNum">      72 </span>            :     char *name;
+<span class="lineNum">      73 </span>            :     char *pattern;
+<span class="lineNum">      74 </span>            :   } word_match;
+<span class="lineNum">      75 </span>            : };
+<span class="lineNum">      76 </span>            : 
+<span class="lineNum">      77 </span>            : /* The number of extant handles.  */
+<span class="lineNum">      78 </span>            : static int active_handles;
+<span class="lineNum">      79 </span>            : 
+<span class="lineNum">      80 </span>            : static int do_copy (int mode, const char *fname, KBNODE root,
+<span class="lineNum">      81 </span>            :                     off_t start_offset, unsigned int n_packets );
+<span class="lineNum">      82 </span>            : 
+<span class="lineNum">      83 </span>            : 
+<span class="lineNum">      84 </span>            : 
+<span class="lineNum">      85 </span>            : /* We keep a cache of entries that we have entered in the DB.  This
+<span class="lineNum">      86 </span>            :    includes not only public keys, but also subkeys.
+<span class="lineNum">      87 </span>            : 
+<span class="lineNum">      88 </span>            :    Note: we'd like to keep the offset of the items that are present,
+<span class="lineNum">      89 </span>            :    however, this doesn't work, because another concurrent GnuPG
+<span class="lineNum">      90 </span>            :    process could modify the keyring.  */
+<span class="lineNum">      91 </span>            : struct key_present {
+<span class="lineNum">      92 </span>            :   struct key_present *next;
+<span class="lineNum">      93 </span>            :   u32 kid[2];
+<span class="lineNum">      94 </span>            : };
+<span class="lineNum">      95 </span>            : 
+<span class="lineNum">      96 </span>            : /* For the hash table, we use separate chaining with linked lists.
+<span class="lineNum">      97 </span>            :    This means that we have an array of N linked lists (buckets), which
+<span class="lineNum">      98 </span>            :    is indexed by KEYID[1] mod N.  Elements present in the keyring will
+<span class="lineNum">      99 </span>            :    be on the list; elements not present in the keyring will not be on
+<span class="lineNum">     100 </span>            :    the list.
+<span class="lineNum">     101 </span>            : 
+<span class="lineNum">     102 </span>            :    Note: since the hash table stores both present and not present
+<span class="lineNum">     103 </span>            :    information, it cannot be used until we complete a full scan of the
+<span class="lineNum">     104 </span>            :    keyring.  This is indicated by key_present_hash_ready.  */
+<span class="lineNum">     105 </span>            : typedef struct key_present **key_present_hash_t;
+<span class="lineNum">     106 </span>            : static key_present_hash_t key_present_hash;
+<span class="lineNum">     107 </span>            : static int key_present_hash_ready;
+<span class="lineNum">     108 </span>            : 
+<span class="lineNum">     109 </span>            : #define KEY_PRESENT_HASH_BUCKETS 2048
+<span class="lineNum">     110 </span>            : 
+<a name="111"><span class="lineNum">     111 </span>            : /* Allocate a new value for a key present hash table.  */</a>
+<span class="lineNum">     112 </span>            : static struct key_present *
+<span class="lineNum">     113 </span><span class="lineCov">          1 : key_present_value_new (void)</span>
+<span class="lineNum">     114 </span>            : {
+<span class="lineNum">     115 </span>            :   struct key_present *k;
+<span class="lineNum">     116 </span>            : 
+<span class="lineNum">     117 </span><span class="lineCov">          1 :   k = xmalloc_clear (sizeof *k);</span>
+<span class="lineNum">     118 </span><span class="lineCov">          1 :   return k;</span>
+<span class="lineNum">     119 </span>            : }
+<span class="lineNum">     120 </span>            : 
+<a name="121"><span class="lineNum">     121 </span>            : /* Allocate a new key present hash table.  */</a>
+<span class="lineNum">     122 </span>            : static key_present_hash_t
+<span class="lineNum">     123 </span><span class="lineCov">          1 : key_present_hash_new (void)</span>
+<span class="lineNum">     124 </span>            : {
+<span class="lineNum">     125 </span>            :   struct key_present **tbl;
+<span class="lineNum">     126 </span>            : 
+<span class="lineNum">     127 </span><span class="lineCov">          1 :   tbl = xmalloc_clear (KEY_PRESENT_HASH_BUCKETS * sizeof *tbl);</span>
+<span class="lineNum">     128 </span><span class="lineCov">          1 :   return tbl;</span>
+<span class="lineNum">     129 </span>            : }
+<span class="lineNum">     130 </span>            : 
+<span class="lineNum">     131 </span>            : /* Return whether the value described by KID if it is in the hash
+<a name="132"><span class="lineNum">     132 </span>            :    table.  Otherwise, return NULL.  */</a>
+<span class="lineNum">     133 </span>            : static struct key_present *
+<span class="lineNum">     134 </span><span class="lineNoCov">          0 : key_present_hash_lookup (key_present_hash_t tbl, u32 *kid)</span>
+<span class="lineNum">     135 </span>            : {
+<span class="lineNum">     136 </span>            :   struct key_present *k;
+<span class="lineNum">     137 </span>            : 
+<span class="lineNum">     138 </span><span class="lineNoCov">          0 :   for (k = tbl[(kid[1] % (KEY_PRESENT_HASH_BUCKETS - 1))]; k; k = k-&gt;next)</span>
+<span class="lineNum">     139 </span><span class="lineNoCov">          0 :     if (k-&gt;kid[0] == kid[0] &amp;&amp; k-&gt;kid[1] == kid[1])</span>
+<span class="lineNum">     140 </span><span class="lineNoCov">          0 :       return k;</span>
+<span class="lineNum">     141 </span><span class="lineNoCov">          0 :   return NULL;</span>
+<span class="lineNum">     142 </span>            : }
+<span class="lineNum">     143 </span>            : 
+<a name="144"><span class="lineNum">     144 </span>            : /* Add the key to the hash table TBL if it is not already present.  */</a>
+<span class="lineNum">     145 </span>            : static void
+<span class="lineNum">     146 </span><span class="lineCov">          1 : key_present_hash_update (key_present_hash_t tbl, u32 *kid)</span>
+<span class="lineNum">     147 </span>            : {
+<span class="lineNum">     148 </span>            :   struct key_present *k;
+<span class="lineNum">     149 </span>            : 
+<span class="lineNum">     150 </span><span class="lineCov">          1 :   for (k = tbl[(kid[1] % (KEY_PRESENT_HASH_BUCKETS - 1))]; k; k = k-&gt;next)</span>
+<span class="lineNum">     151 </span>            :     {
+<span class="lineNum">     152 </span><span class="lineNoCov">          0 :       if (k-&gt;kid[0] == kid[0] &amp;&amp; k-&gt;kid[1] == kid[1])</span>
+<span class="lineNum">     153 </span><span class="lineNoCov">          0 :         return;</span>
+<span class="lineNum">     154 </span>            :     }
+<span class="lineNum">     155 </span>            : 
+<span class="lineNum">     156 </span><span class="lineCov">          1 :   k = key_present_value_new ();</span>
+<span class="lineNum">     157 </span><span class="lineCov">          1 :   k-&gt;kid[0] = kid[0];</span>
+<span class="lineNum">     158 </span><span class="lineCov">          1 :   k-&gt;kid[1] = kid[1];</span>
+<span class="lineNum">     159 </span><span class="lineCov">          1 :   k-&gt;next = tbl[(kid[1] % (KEY_PRESENT_HASH_BUCKETS - 1))];</span>
+<span class="lineNum">     160 </span><span class="lineCov">          1 :   tbl[(kid[1] % (KEY_PRESENT_HASH_BUCKETS - 1))] = k;</span>
+<span class="lineNum">     161 </span>            : }
+<span class="lineNum">     162 </span>            : 
+<span class="lineNum">     163 </span>            : /* Add all the keys (public and subkeys) present in the keyblock to
+<a name="164"><span class="lineNum">     164 </span>            :    the hash TBL.  */</a>
+<span class="lineNum">     165 </span>            : static void
+<span class="lineNum">     166 </span><span class="lineNoCov">          0 : key_present_hash_update_from_kb (key_present_hash_t tbl, KBNODE node)</span>
+<span class="lineNum">     167 </span>            : {
+<span class="lineNum">     168 </span><span class="lineNoCov">          0 :   for (; node; node = node-&gt;next)</span>
+<span class="lineNum">     169 </span>            :     {
+<span class="lineNum">     170 </span><span class="lineNoCov">          0 :       if (node-&gt;pkt-&gt;pkttype == PKT_PUBLIC_KEY</span>
+<span class="lineNum">     171 </span><span class="lineNoCov">          0 :           || node-&gt;pkt-&gt;pkttype == PKT_PUBLIC_SUBKEY)</span>
+<span class="lineNum">     172 </span>            :         {
+<span class="lineNum">     173 </span>            :           u32 aki[2];
+<span class="lineNum">     174 </span><span class="lineNoCov">          0 :           keyid_from_pk (node-&gt;pkt-&gt;pkt.public_key, aki);</span>
+<span class="lineNum">     175 </span><span class="lineNoCov">          0 :           key_present_hash_update (tbl, aki);</span>
+<span class="lineNum">     176 </span>            :         }
+<span class="lineNum">     177 </span>            :     }
+<span class="lineNum">     178 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     179 </span>            : 
+<span class="lineNum">     180 </span>            : /*
+<span class="lineNum">     181 </span>            :  * Register a filename for plain keyring files.  ptr is set to a
+<span class="lineNum">     182 </span>            :  * pointer to be used to create a handles etc, or the already-issued
+<span class="lineNum">     183 </span>            :  * pointer if it has already been registered.  The function returns 1
+<span class="lineNum">     184 </span>            :  * if a new keyring was registered.
+<a name="185"><span class="lineNum">     185 </span>            : */</a>
+<span class="lineNum">     186 </span>            : int
+<span class="lineNum">     187 </span><span class="lineCov">          1 : keyring_register_filename (const char *fname, int read_only, void **ptr)</span>
+<span class="lineNum">     188 </span>            : {
+<span class="lineNum">     189 </span>            :     KR_RESOURCE kr;
+<span class="lineNum">     190 </span>            : 
+<span class="lineNum">     191 </span><span class="lineCov">          1 :     if (active_handles)</span>
+<span class="lineNum">     192 </span>            :       /* There are open handles.  */
+<span class="lineNum">     193 </span><span class="lineNoCov">          0 :       BUG ();</span>
+<span class="lineNum">     194 </span>            : 
+<span class="lineNum">     195 </span><span class="lineCov">          1 :     for (kr=kr_resources; kr; kr = kr-&gt;next)</span>
+<span class="lineNum">     196 </span>            :       {
+<span class="lineNum">     197 </span><span class="lineNoCov">          0 :         if (same_file_p (kr-&gt;fname, fname))</span>
+<span class="lineNum">     198 </span>            :           {
+<span class="lineNum">     199 </span>            :             /* Already registered. */
+<span class="lineNum">     200 </span><span class="lineNoCov">          0 :             if (read_only)</span>
+<span class="lineNum">     201 </span><span class="lineNoCov">          0 :               kr-&gt;read_only = 1;</span>
+<span class="lineNum">     202 </span><span class="lineNoCov">          0 :             *ptr=kr;</span>
+<span class="lineNum">     203 </span><span class="lineNoCov">          0 :             return 0;</span>
+<span class="lineNum">     204 </span>            :           }
+<span class="lineNum">     205 </span>            :       }
+<span class="lineNum">     206 </span>            : 
+<span class="lineNum">     207 </span><span class="lineCov">          1 :     kr = xmalloc (sizeof *kr + strlen (fname));</span>
+<span class="lineNum">     208 </span><span class="lineCov">          1 :     strcpy (kr-&gt;fname, fname);</span>
+<span class="lineNum">     209 </span><span class="lineCov">          1 :     kr-&gt;read_only = read_only;</span>
+<span class="lineNum">     210 </span><span class="lineCov">          1 :     kr-&gt;lockhd = NULL;</span>
+<span class="lineNum">     211 </span><span class="lineCov">          1 :     kr-&gt;is_locked = 0;</span>
+<span class="lineNum">     212 </span><span class="lineCov">          1 :     kr-&gt;did_full_scan = 0;</span>
+<span class="lineNum">     213 </span>            :     /* keep a list of all issued pointers */
+<span class="lineNum">     214 </span><span class="lineCov">          1 :     kr-&gt;next = kr_resources;</span>
+<span class="lineNum">     215 </span><span class="lineCov">          1 :     kr_resources = kr;</span>
+<span class="lineNum">     216 </span>            : 
+<span class="lineNum">     217 </span>            :     /* create the offset table the first time a function here is used */
+<span class="lineNum">     218 </span><span class="lineCov">          1 :     if (!key_present_hash)</span>
+<span class="lineNum">     219 </span><span class="lineCov">          1 :       key_present_hash = key_present_hash_new ();</span>
+<span class="lineNum">     220 </span>            : 
+<span class="lineNum">     221 </span><span class="lineCov">          1 :     *ptr=kr;</span>
+<span class="lineNum">     222 </span>            : 
+<span class="lineNum">     223 </span><span class="lineCov">          1 :     return 1;</span>
+<span class="lineNum">     224 </span>            : }
+<a name="225"><span class="lineNum">     225 </span>            : </a>
+<span class="lineNum">     226 </span>            : int
+<span class="lineNum">     227 </span><span class="lineNoCov">          0 : keyring_is_writable (void *token)</span>
+<span class="lineNum">     228 </span>            : {
+<span class="lineNum">     229 </span><span class="lineNoCov">          0 :   KR_RESOURCE r = token;</span>
+<span class="lineNum">     230 </span>            : 
+<span class="lineNum">     231 </span><span class="lineNoCov">          0 :   return r? (r-&gt;read_only || !access (r-&gt;fname, W_OK)) : 0;</span>
+<span class="lineNum">     232 </span>            : }
+<span class="lineNum">     233 </span>            : 
+<span class="lineNum">     234 </span>            : 
+<span class="lineNum">     235 </span>            : 
+<span class="lineNum">     236 </span>            : /* Create a new handle for the resource associated with TOKEN.
+<span class="lineNum">     237 </span>            :    On error NULL is returned and ERRNO is set.
+<a name="238"><span class="lineNum">     238 </span>            :    The returned handle must be released using keyring_release (). */</a>
+<span class="lineNum">     239 </span>            : KEYRING_HANDLE
+<span class="lineNum">     240 </span><span class="lineCov">          1 : keyring_new (void *token)</span>
+<span class="lineNum">     241 </span>            : {
+<span class="lineNum">     242 </span>            :   KEYRING_HANDLE hd;
+<span class="lineNum">     243 </span><span class="lineCov">          1 :   KR_RESOURCE resource = token;</span>
+<span class="lineNum">     244 </span>            : 
+<span class="lineNum">     245 </span><span class="lineCov">          1 :   log_assert (resource);</span>
+<span class="lineNum">     246 </span>            : 
+<span class="lineNum">     247 </span><span class="lineCov">          1 :   hd = xtrycalloc (1, sizeof *hd);</span>
+<span class="lineNum">     248 </span><span class="lineCov">          1 :   if (!hd)</span>
+<span class="lineNum">     249 </span><span class="lineNoCov">          0 :     return hd;</span>
+<span class="lineNum">     250 </span><span class="lineCov">          1 :   hd-&gt;resource = resource;</span>
+<span class="lineNum">     251 </span><span class="lineCov">          1 :   active_handles++;</span>
+<span class="lineNum">     252 </span><span class="lineCov">          1 :   return hd;</span>
+<span class="lineNum">     253 </span>            : }
+<a name="254"><span class="lineNum">     254 </span>            : </a>
+<span class="lineNum">     255 </span>            : void
+<span class="lineNum">     256 </span><span class="lineCov">          1 : keyring_release (KEYRING_HANDLE hd)</span>
+<span class="lineNum">     257 </span>            : {
+<span class="lineNum">     258 </span><span class="lineCov">          1 :     if (!hd)</span>
+<span class="lineNum">     259 </span><span class="lineNoCov">          0 :         return;</span>
+<span class="lineNum">     260 </span><span class="lineCov">          1 :     log_assert (active_handles &gt; 0);</span>
+<span class="lineNum">     261 </span><span class="lineCov">          1 :     active_handles--;</span>
+<span class="lineNum">     262 </span><span class="lineCov">          1 :     xfree (hd-&gt;word_match.name);</span>
+<span class="lineNum">     263 </span><span class="lineCov">          1 :     xfree (hd-&gt;word_match.pattern);</span>
+<span class="lineNum">     264 </span><span class="lineCov">          1 :     iobuf_close (hd-&gt;current.iobuf);</span>
+<span class="lineNum">     265 </span><span class="lineCov">          1 :     xfree (hd);</span>
+<span class="lineNum">     266 </span>            : }
+<span class="lineNum">     267 </span>            : 
+<span class="lineNum">     268 </span>            : 
+<span class="lineNum">     269 </span>            : /* Save the current found state in HD for later retrieval by
+<a name="270"><span class="lineNum">     270 </span>            :    keybox_pop_found_state.  Only one state may be saved.  */</a>
+<span class="lineNum">     271 </span>            : void
+<span class="lineNum">     272 </span><span class="lineNoCov">          0 : keyring_push_found_state (KEYRING_HANDLE hd)</span>
+<span class="lineNum">     273 </span>            : {
+<span class="lineNum">     274 </span><span class="lineNoCov">          0 :   hd-&gt;saved_found = hd-&gt;found;</span>
+<span class="lineNum">     275 </span><span class="lineNoCov">          0 :   hd-&gt;found.kr = NULL;</span>
+<span class="lineNum">     276 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     277 </span>            : 
+<span class="lineNum">     278 </span>            : 
+<a name="279"><span class="lineNum">     279 </span>            : /* Restore the saved found state in HD.  */</a>
+<span class="lineNum">     280 </span>            : void
+<span class="lineNum">     281 </span><span class="lineNoCov">          0 : keyring_pop_found_state (KEYRING_HANDLE hd)</span>
+<span class="lineNum">     282 </span>            : {
+<span class="lineNum">     283 </span><span class="lineNoCov">          0 :   hd-&gt;found = hd-&gt;saved_found;</span>
+<span class="lineNum">     284 </span><span class="lineNoCov">          0 :   hd-&gt;saved_found.kr = NULL;</span>
+<span class="lineNum">     285 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     286 </span>            : 
+<a name="287"><span class="lineNum">     287 </span>            : </a>
+<span class="lineNum">     288 </span>            : const char *
+<span class="lineNum">     289 </span><span class="lineCov">          2 : keyring_get_resource_name (KEYRING_HANDLE hd)</span>
+<span class="lineNum">     290 </span>            : {
+<span class="lineNum">     291 </span><span class="lineCov">          2 :     if (!hd || !hd-&gt;resource)</span>
+<span class="lineNum">     292 </span><span class="lineNoCov">          0 :       return NULL;</span>
+<span class="lineNum">     293 </span><span class="lineCov">          2 :     return hd-&gt;resource-&gt;fname;</span>
+<span class="lineNum">     294 </span>            : }
+<span class="lineNum">     295 </span>            : 
+<span class="lineNum">     296 </span>            : 
+<span class="lineNum">     297 </span>            : /*
+<span class="lineNum">     298 </span>            :  * Lock the keyring with the given handle, or unlock if YES is false.
+<span class="lineNum">     299 </span>            :  * We ignore the handle and lock all registered files.
+<a name="300"><span class="lineNum">     300 </span>            :  */</a>
+<span class="lineNum">     301 </span>            : int
+<span class="lineNum">     302 </span><span class="lineNoCov">          0 : keyring_lock (KEYRING_HANDLE hd, int yes)</span>
+<span class="lineNum">     303 </span>            : {
+<span class="lineNum">     304 </span>            :     KR_RESOURCE kr;
+<span class="lineNum">     305 </span><span class="lineNoCov">          0 :     int rc = 0;</span>
+<span class="lineNum">     306 </span>            : 
+<span class="lineNum">     307 </span>            :     (void)hd;
+<span class="lineNum">     308 </span>            : 
+<span class="lineNum">     309 </span><span class="lineNoCov">          0 :     if (yes) {</span>
+<span class="lineNum">     310 </span>            :         /* first make sure the lock handles are created */
+<span class="lineNum">     311 </span><span class="lineNoCov">          0 :         for (kr=kr_resources; kr; kr = kr-&gt;next) {</span>
+<span class="lineNum">     312 </span><span class="lineNoCov">          0 :             if (!keyring_is_writable(kr))</span>
+<span class="lineNum">     313 </span><span class="lineNoCov">          0 :                 continue;</span>
+<span class="lineNum">     314 </span><span class="lineNoCov">          0 :             if (!kr-&gt;lockhd) {</span>
+<span class="lineNum">     315 </span><span class="lineNoCov">          0 :                 kr-&gt;lockhd = dotlock_create (kr-&gt;fname, 0);</span>
+<span class="lineNum">     316 </span><span class="lineNoCov">          0 :                 if (!kr-&gt;lockhd) {</span>
+<span class="lineNum">     317 </span><span class="lineNoCov">          0 :                     log_info (&quot;can't allocate lock for '%s'\n&quot;, kr-&gt;fname );</span>
+<span class="lineNum">     318 </span><span class="lineNoCov">          0 :                     rc = GPG_ERR_GENERAL;</span>
+<span class="lineNum">     319 </span>            :                 }
+<span class="lineNum">     320 </span>            :             }
+<span class="lineNum">     321 </span>            :         }
+<span class="lineNum">     322 </span><span class="lineNoCov">          0 :         if (rc)</span>
+<span class="lineNum">     323 </span><span class="lineNoCov">          0 :             return rc;</span>
+<span class="lineNum">     324 </span>            : 
+<span class="lineNum">     325 </span>            :         /* and now set the locks */
+<span class="lineNum">     326 </span><span class="lineNoCov">          0 :         for (kr=kr_resources; kr; kr = kr-&gt;next) {</span>
+<span class="lineNum">     327 </span><span class="lineNoCov">          0 :             if (!keyring_is_writable(kr))</span>
+<span class="lineNum">     328 </span><span class="lineNoCov">          0 :                 continue;</span>
+<span class="lineNum">     329 </span><span class="lineNoCov">          0 :             if (kr-&gt;is_locked)</span>
+<span class="lineNum">     330 </span><span class="lineNoCov">          0 :                 continue;</span>
+<span class="lineNum">     331 </span>            : 
+<span class="lineNum">     332 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     333 </span>            :             /* Under Windows we need to CloseHandle the file before we
+<span class="lineNum">     334 </span>            :              * try to lock it.  This is because another process might
+<span class="lineNum">     335 </span>            :              * have taken the lock and is using keybox_file_rename to
+<span class="lineNum">     336 </span>            :              * rename the base file.  How if our dotlock_take below is
+<span class="lineNum">     337 </span>            :              * waiting for the lock but we have the base file still
+<span class="lineNum">     338 </span>            :              * open, keybox_file_rename will never succeed as we are
+<span class="lineNum">     339 </span>            :              * in a deadlock.  */
+<span class="lineNum">     340 </span>            :             iobuf_ioctl (NULL, IOBUF_IOCTL_INVALIDATE_CACHE, 0,
+<span class="lineNum">     341 </span>            :                          (char*)kr-&gt;fname);
+<span class="lineNum">     342 </span>            : #endif /*HAVE_W32_SYSTEM*/
+<span class="lineNum">     343 </span><span class="lineNoCov">          0 :             if (dotlock_take (kr-&gt;lockhd, -1) ) {</span>
+<span class="lineNum">     344 </span><span class="lineNoCov">          0 :                 log_info (&quot;can't lock '%s'\n&quot;, kr-&gt;fname );</span>
+<span class="lineNum">     345 </span><span class="lineNoCov">          0 :                 rc = GPG_ERR_GENERAL;</span>
+<span class="lineNum">     346 </span>            :             }
+<span class="lineNum">     347 </span>            :             else
+<span class="lineNum">     348 </span><span class="lineNoCov">          0 :                 kr-&gt;is_locked = 1;</span>
+<span class="lineNum">     349 </span>            :         }
+<span class="lineNum">     350 </span>            :     }
+<span class="lineNum">     351 </span>            : 
+<span class="lineNum">     352 </span><span class="lineNoCov">          0 :     if (rc || !yes) {</span>
+<span class="lineNum">     353 </span><span class="lineNoCov">          0 :         for (kr=kr_resources; kr; kr = kr-&gt;next) {</span>
+<span class="lineNum">     354 </span><span class="lineNoCov">          0 :             if (!keyring_is_writable(kr))</span>
+<span class="lineNum">     355 </span><span class="lineNoCov">          0 :                 continue;</span>
+<span class="lineNum">     356 </span><span class="lineNoCov">          0 :             if (!kr-&gt;is_locked)</span>
+<span class="lineNum">     357 </span><span class="lineNoCov">          0 :                 continue;</span>
+<span class="lineNum">     358 </span>            : 
+<span class="lineNum">     359 </span><span class="lineNoCov">          0 :             if (dotlock_release (kr-&gt;lockhd))</span>
+<span class="lineNum">     360 </span><span class="lineNoCov">          0 :                 log_info (&quot;can't unlock '%s'\n&quot;, kr-&gt;fname );</span>
+<span class="lineNum">     361 </span>            :             else
+<span class="lineNum">     362 </span><span class="lineNoCov">          0 :                 kr-&gt;is_locked = 0;</span>
+<span class="lineNum">     363 </span>            :         }
+<span class="lineNum">     364 </span>            :     }
+<span class="lineNum">     365 </span>            : 
+<span class="lineNum">     366 </span><span class="lineNoCov">          0 :     return rc;</span>
+<span class="lineNum">     367 </span>            : }
+<span class="lineNum">     368 </span>            : 
+<span class="lineNum">     369 </span>            : 
+<span class="lineNum">     370 </span>            : 
+<span class="lineNum">     371 </span>            : /*
+<span class="lineNum">     372 </span>            :  * Return the last found keyblock.  Caller must free it.
+<span class="lineNum">     373 </span>            :  * The returned keyblock has the kbode flag bit 0 set for the node with
+<span class="lineNum">     374 </span>            :  * the public key used to locate the keyblock or flag bit 1 set for
+<span class="lineNum">     375 </span>            :  * the user ID node.
+<a name="376"><span class="lineNum">     376 </span>            :  */</a>
+<span class="lineNum">     377 </span>            : int
+<span class="lineNum">     378 </span><span class="lineCov">          2 : keyring_get_keyblock (KEYRING_HANDLE hd, KBNODE *ret_kb)</span>
+<span class="lineNum">     379 </span>            : {
+<span class="lineNum">     380 </span>            :     PACKET *pkt;
+<span class="lineNum">     381 </span>            :     struct parse_packet_ctx_s parsectx;
+<span class="lineNum">     382 </span>            :     int rc;
+<span class="lineNum">     383 </span><span class="lineCov">          2 :     KBNODE keyblock = NULL, node, lastnode;</span>
+<span class="lineNum">     384 </span>            :     IOBUF a;
+<span class="lineNum">     385 </span><span class="lineCov">          2 :     int in_cert = 0;</span>
+<span class="lineNum">     386 </span><span class="lineCov">          2 :     int pk_no = 0;</span>
+<span class="lineNum">     387 </span><span class="lineCov">          2 :     int uid_no = 0;</span>
+<span class="lineNum">     388 </span>            :     int save_mode;
+<span class="lineNum">     389 </span>            : 
+<span class="lineNum">     390 </span><span class="lineCov">          2 :     if (ret_kb)</span>
+<span class="lineNum">     391 </span><span class="lineCov">          2 :         *ret_kb = NULL;</span>
+<span class="lineNum">     392 </span>            : 
+<span class="lineNum">     393 </span><span class="lineCov">          2 :     if (!hd-&gt;found.kr)</span>
+<span class="lineNum">     394 </span><span class="lineNoCov">          0 :         return -1; /* no successful search */</span>
+<span class="lineNum">     395 </span>            : 
+<span class="lineNum">     396 </span><span class="lineCov">          2 :     a = iobuf_open (hd-&gt;found.kr-&gt;fname);</span>
+<span class="lineNum">     397 </span><span class="lineCov">          2 :     if (!a)</span>
+<span class="lineNum">     398 </span>            :       {
+<span class="lineNum">     399 </span><span class="lineNoCov">          0 :         log_error(_(&quot;can't open '%s'\n&quot;), hd-&gt;found.kr-&gt;fname);</span>
+<span class="lineNum">     400 </span><span class="lineNoCov">          0 :         return GPG_ERR_KEYRING_OPEN;</span>
+<span class="lineNum">     401 </span>            :       }
+<span class="lineNum">     402 </span>            : 
+<span class="lineNum">     403 </span><span class="lineCov">          2 :     if (iobuf_seek (a, hd-&gt;found.offset) ) {</span>
+<span class="lineNum">     404 </span><span class="lineNoCov">          0 :         log_error (&quot;can't seek '%s'\n&quot;, hd-&gt;found.kr-&gt;fname);</span>
+<span class="lineNum">     405 </span><span class="lineNoCov">          0 :         iobuf_close(a);</span>
+<span class="lineNum">     406 </span><span class="lineNoCov">          0 :         return GPG_ERR_KEYRING_OPEN;</span>
+<span class="lineNum">     407 </span>            :     }
+<span class="lineNum">     408 </span>            : 
+<span class="lineNum">     409 </span><span class="lineCov">          2 :     pkt = xmalloc (sizeof *pkt);</span>
+<span class="lineNum">     410 </span><span class="lineCov">          2 :     init_packet (pkt);</span>
+<span class="lineNum">     411 </span><span class="lineCov">          2 :     init_parse_packet (&amp;parsectx, a);</span>
+<span class="lineNum">     412 </span><span class="lineCov">          2 :     hd-&gt;found.n_packets = 0;</span>
+<span class="lineNum">     413 </span><span class="lineCov">          2 :     lastnode = NULL;</span>
+<span class="lineNum">     414 </span><span class="lineCov">          2 :     save_mode = set_packet_list_mode(0);</span>
+<span class="lineNum">     415 </span><span class="lineCov">         14 :     while ((rc=parse_packet (&amp;parsectx, pkt)) != -1) {</span>
+<span class="lineNum">     416 </span><span class="lineCov">         11 :         hd-&gt;found.n_packets = parsectx.n_parsed_packets;</span>
+<span class="lineNum">     417 </span><span class="lineCov">         11 :         if (gpg_err_code (rc) == GPG_ERR_UNKNOWN_PACKET) {</span>
+<span class="lineNum">     418 </span><span class="lineNoCov">          0 :             free_packet (pkt, &amp;parsectx);</span>
+<span class="lineNum">     419 </span><span class="lineNoCov">          0 :             init_packet (pkt);</span>
+<span class="lineNum">     420 </span><span class="lineNoCov">          0 :             continue;</span>
+<span class="lineNum">     421 </span>            :         }
+<span class="lineNum">     422 </span><span class="lineCov">         11 :         if (gpg_err_code (rc) == GPG_ERR_LEGACY_KEY)</span>
+<span class="lineNum">     423 </span>            :           {
+<span class="lineNum">     424 </span><span class="lineNoCov">          0 :             if (in_cert)</span>
+<span class="lineNum">     425 </span>            :               /* It is not this key that is problematic, but the
+<span class="lineNum">     426 </span>            :                  following key.  */
+<span class="lineNum">     427 </span>            :               {
+<span class="lineNum">     428 </span><span class="lineNoCov">          0 :                 rc = 0;</span>
+<span class="lineNum">     429 </span><span class="lineNoCov">          0 :                 hd-&gt;found.n_packets --;</span>
+<span class="lineNum">     430 </span>            :               }
+<span class="lineNum">     431 </span>            :             else
+<span class="lineNum">     432 </span>            :               /* Upper layer needs to handle this.  */
+<span class="lineNum">     433 </span>            :               {
+<span class="lineNum">     434 </span>            :               }
+<span class="lineNum">     435 </span><span class="lineNoCov">          0 :             break;</span>
+<span class="lineNum">     436 </span>            :           }
+<span class="lineNum">     437 </span><span class="lineCov">         11 :         if (rc) {</span>
+<span class="lineNum">     438 </span><span class="lineNoCov">          0 :             log_error (&quot;keyring_get_keyblock: read error: %s\n&quot;,</span>
+<span class="lineNum">     439 </span>            :                        gpg_strerror (rc) );
+<span class="lineNum">     440 </span><span class="lineNoCov">          0 :             rc = GPG_ERR_INV_KEYRING;</span>
+<span class="lineNum">     441 </span><span class="lineNoCov">          0 :             break;</span>
+<span class="lineNum">     442 </span>            :         }
+<span class="lineNum">     443 </span>            : 
+<span class="lineNum">     444 </span>            :         /* Filter allowed packets.  */
+<span class="lineNum">     445 </span><span class="lineCov">         11 :         switch (pkt-&gt;pkttype)</span>
+<span class="lineNum">     446 </span>            :           {
+<span class="lineNum">     447 </span>            :           case PKT_PUBLIC_KEY:
+<span class="lineNum">     448 </span>            :           case PKT_PUBLIC_SUBKEY:
+<span class="lineNum">     449 </span>            :           case PKT_SECRET_KEY:
+<span class="lineNum">     450 </span>            :           case PKT_SECRET_SUBKEY:
+<span class="lineNum">     451 </span>            :           case PKT_USER_ID:
+<span class="lineNum">     452 </span>            :           case PKT_ATTRIBUTE:
+<span class="lineNum">     453 </span>            :           case PKT_SIGNATURE:
+<span class="lineNum">     454 </span><span class="lineCov">         11 :             break; /* Allowed per RFC.  */</span>
+<span class="lineNum">     455 </span>            :           case PKT_RING_TRUST:
+<span class="lineNum">     456 </span>            :           case PKT_OLD_COMMENT:
+<span class="lineNum">     457 </span>            :           case PKT_COMMENT:
+<span class="lineNum">     458 </span>            :           case PKT_GPG_CONTROL:
+<span class="lineNum">     459 </span><span class="lineNoCov">          0 :             break; /* Allowed by us.  */</span>
+<span class="lineNum">     460 </span>            : 
+<span class="lineNum">     461 </span>            :           default:
+<span class="lineNum">     462 </span><span class="lineNoCov">          0 :             log_error (&quot;skipped packet of type %d in keyring\n&quot;,</span>
+<span class="lineNum">     463 </span><span class="lineNoCov">          0 :                        (int)pkt-&gt;pkttype);</span>
+<span class="lineNum">     464 </span><span class="lineNoCov">          0 :             free_packet(pkt, &amp;parsectx);</span>
+<span class="lineNum">     465 </span><span class="lineNoCov">          0 :             init_packet(pkt);</span>
+<span class="lineNum">     466 </span><span class="lineNoCov">          0 :             continue;</span>
+<span class="lineNum">     467 </span>            :           }
+<span class="lineNum">     468 </span>            : 
+<span class="lineNum">     469 </span><span class="lineCov">         11 :         if (in_cert &amp;&amp; (pkt-&gt;pkttype == PKT_PUBLIC_KEY</span>
+<span class="lineNum">     470 </span><span class="lineCov">          8 :                         || pkt-&gt;pkttype == PKT_SECRET_KEY)) {</span>
+<span class="lineNum">     471 </span><span class="lineCov">          1 :             hd-&gt;found.n_packets--; /* fix counter */</span>
+<span class="lineNum">     472 </span><span class="lineCov">          1 :             break; /* ready */</span>
+<span class="lineNum">     473 </span>            :         }
+<span class="lineNum">     474 </span>            : 
+<span class="lineNum">     475 </span><span class="lineCov">         10 :         in_cert = 1;</span>
+<span class="lineNum">     476 </span><span class="lineCov">         10 :         node = lastnode = new_kbnode (pkt);</span>
+<span class="lineNum">     477 </span><span class="lineCov">         10 :         if (!keyblock)</span>
+<span class="lineNum">     478 </span><span class="lineCov">          2 :           keyblock = node;</span>
+<span class="lineNum">     479 </span>            :         else
+<span class="lineNum">     480 </span><span class="lineCov">          8 :           add_kbnode (keyblock, node);</span>
+<span class="lineNum">     481 </span><span class="lineCov">         10 :         switch (pkt-&gt;pkttype)</span>
+<span class="lineNum">     482 </span>            :           {
+<span class="lineNum">     483 </span>            :           case PKT_PUBLIC_KEY:
+<span class="lineNum">     484 </span>            :           case PKT_PUBLIC_SUBKEY:
+<span class="lineNum">     485 </span>            :           case PKT_SECRET_KEY:
+<span class="lineNum">     486 </span>            :           case PKT_SECRET_SUBKEY:
+<span class="lineNum">     487 </span><span class="lineCov">          4 :             if (++pk_no == hd-&gt;found.pk_no)</span>
+<span class="lineNum">     488 </span><span class="lineCov">          2 :               node-&gt;flag |= 1;</span>
+<span class="lineNum">     489 </span><span class="lineCov">          4 :             break;</span>
+<span class="lineNum">     490 </span>            : 
+<span class="lineNum">     491 </span>            :           case PKT_USER_ID:
+<span class="lineNum">     492 </span><span class="lineCov">          2 :             if (++uid_no == hd-&gt;found.uid_no)</span>
+<span class="lineNum">     493 </span><span class="lineNoCov">          0 :               node-&gt;flag |= 2;</span>
+<span class="lineNum">     494 </span><span class="lineCov">          2 :             break;</span>
+<span class="lineNum">     495 </span>            : 
+<span class="lineNum">     496 </span>            :           default:
+<span class="lineNum">     497 </span><span class="lineCov">          4 :             break;</span>
+<span class="lineNum">     498 </span>            :           }
+<span class="lineNum">     499 </span>            : 
+<span class="lineNum">     500 </span><span class="lineCov">         10 :         pkt = xmalloc (sizeof *pkt);</span>
+<span class="lineNum">     501 </span><span class="lineCov">         10 :         init_packet(pkt);</span>
+<span class="lineNum">     502 </span>            :     }
+<span class="lineNum">     503 </span><span class="lineCov">          2 :     set_packet_list_mode(save_mode);</span>
+<span class="lineNum">     504 </span>            : 
+<span class="lineNum">     505 </span><span class="lineCov">          2 :     if (rc == -1 &amp;&amp; keyblock)</span>
+<span class="lineNum">     506 </span><span class="lineCov">          1 :         rc = 0; /* got the entire keyblock */</span>
+<span class="lineNum">     507 </span>            : 
+<span class="lineNum">     508 </span><span class="lineCov">          2 :     if (rc || !ret_kb)</span>
+<span class="lineNum">     509 </span><span class="lineNoCov">          0 :         release_kbnode (keyblock);</span>
+<span class="lineNum">     510 </span>            :     else {
+<span class="lineNum">     511 </span><span class="lineCov">          2 :         *ret_kb = keyblock;</span>
+<span class="lineNum">     512 </span>            :     }
+<span class="lineNum">     513 </span><span class="lineCov">          2 :     free_packet (pkt, &amp;parsectx);</span>
+<span class="lineNum">     514 </span><span class="lineCov">          2 :     deinit_parse_packet (&amp;parsectx);</span>
+<span class="lineNum">     515 </span><span class="lineCov">          2 :     xfree (pkt);</span>
+<span class="lineNum">     516 </span><span class="lineCov">          2 :     iobuf_close(a);</span>
+<span class="lineNum">     517 </span>            : 
+<span class="lineNum">     518 </span>            :     /* Make sure that future search operations fail immediately when
+<span class="lineNum">     519 </span>            :      * we know that we are working on a invalid keyring
+<span class="lineNum">     520 </span>            :      */
+<span class="lineNum">     521 </span><span class="lineCov">          2 :     if (gpg_err_code (rc) == GPG_ERR_INV_KEYRING)</span>
+<span class="lineNum">     522 </span><span class="lineNoCov">          0 :         hd-&gt;current.error = rc;</span>
+<span class="lineNum">     523 </span>            : 
+<span class="lineNum">     524 </span><span class="lineCov">          2 :     return rc;</span>
+<span class="lineNum">     525 </span>            : }
+<a name="526"><span class="lineNum">     526 </span>            : </a>
+<span class="lineNum">     527 </span>            : int
+<span class="lineNum">     528 </span><span class="lineNoCov">          0 : keyring_update_keyblock (KEYRING_HANDLE hd, KBNODE kb)</span>
+<span class="lineNum">     529 </span>            : {
+<span class="lineNum">     530 </span>            :     int rc;
+<span class="lineNum">     531 </span>            : 
+<span class="lineNum">     532 </span><span class="lineNoCov">          0 :     if (!hd-&gt;found.kr)</span>
+<span class="lineNum">     533 </span><span class="lineNoCov">          0 :         return -1; /* no successful prior search */</span>
+<span class="lineNum">     534 </span>            : 
+<span class="lineNum">     535 </span><span class="lineNoCov">          0 :     if (hd-&gt;found.kr-&gt;read_only)</span>
+<span class="lineNum">     536 </span><span class="lineNoCov">          0 :       return gpg_error (GPG_ERR_EACCES);</span>
+<span class="lineNum">     537 </span>            : 
+<span class="lineNum">     538 </span><span class="lineNoCov">          0 :     if (!hd-&gt;found.n_packets) {</span>
+<span class="lineNum">     539 </span>            :         /* need to know the number of packets - do a dummy get_keyblock*/
+<span class="lineNum">     540 </span><span class="lineNoCov">          0 :         rc = keyring_get_keyblock (hd, NULL);</span>
+<span class="lineNum">     541 </span><span class="lineNoCov">          0 :         if (rc) {</span>
+<span class="lineNum">     542 </span><span class="lineNoCov">          0 :             log_error (&quot;re-reading keyblock failed: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">     543 </span><span class="lineNoCov">          0 :             return rc;</span>
+<span class="lineNum">     544 </span>            :         }
+<span class="lineNum">     545 </span><span class="lineNoCov">          0 :         if (!hd-&gt;found.n_packets)</span>
+<span class="lineNum">     546 </span><span class="lineNoCov">          0 :             BUG ();</span>
+<span class="lineNum">     547 </span>            :     }
+<span class="lineNum">     548 </span>            : 
+<span class="lineNum">     549 </span>            :     /* The open iobuf isn't needed anymore and in fact is a problem when
+<span class="lineNum">     550 </span>            :        it comes to renaming the keyring files on some operating systems,
+<span class="lineNum">     551 </span>            :        so close it here */
+<span class="lineNum">     552 </span><span class="lineNoCov">          0 :     iobuf_close(hd-&gt;current.iobuf);</span>
+<span class="lineNum">     553 </span><span class="lineNoCov">          0 :     hd-&gt;current.iobuf = NULL;</span>
+<span class="lineNum">     554 </span>            : 
+<span class="lineNum">     555 </span>            :     /* do the update */
+<span class="lineNum">     556 </span><span class="lineNoCov">          0 :     rc = do_copy (3, hd-&gt;found.kr-&gt;fname, kb,</span>
+<span class="lineNum">     557 </span>            :                   hd-&gt;found.offset, hd-&gt;found.n_packets );
+<span class="lineNum">     558 </span><span class="lineNoCov">          0 :     if (!rc) {</span>
+<span class="lineNum">     559 </span><span class="lineNoCov">          0 :       if (key_present_hash)</span>
+<span class="lineNum">     560 </span>            :         {
+<span class="lineNum">     561 </span><span class="lineNoCov">          0 :           key_present_hash_update_from_kb (key_present_hash, kb);</span>
+<span class="lineNum">     562 </span>            :         }
+<span class="lineNum">     563 </span>            :       /* better reset the found info */
+<span class="lineNum">     564 </span><span class="lineNoCov">          0 :       hd-&gt;found.kr = NULL;</span>
+<span class="lineNum">     565 </span><span class="lineNoCov">          0 :       hd-&gt;found.offset = 0;</span>
+<span class="lineNum">     566 </span>            :     }
+<span class="lineNum">     567 </span><span class="lineNoCov">          0 :     return rc;</span>
+<span class="lineNum">     568 </span>            : }
+<a name="569"><span class="lineNum">     569 </span>            : </a>
+<span class="lineNum">     570 </span>            : int
+<span class="lineNum">     571 </span><span class="lineNoCov">          0 : keyring_insert_keyblock (KEYRING_HANDLE hd, KBNODE kb)</span>
+<span class="lineNum">     572 </span>            : {
+<span class="lineNum">     573 </span>            :     int rc;
+<span class="lineNum">     574 </span>            :     const char *fname;
+<span class="lineNum">     575 </span>            : 
+<span class="lineNum">     576 </span><span class="lineNoCov">          0 :     if (!hd)</span>
+<span class="lineNum">     577 </span><span class="lineNoCov">          0 :         fname = NULL;</span>
+<span class="lineNum">     578 </span><span class="lineNoCov">          0 :     else if (hd-&gt;found.kr)</span>
+<span class="lineNum">     579 </span>            :       {
+<span class="lineNum">     580 </span><span class="lineNoCov">          0 :         fname = hd-&gt;found.kr-&gt;fname;</span>
+<span class="lineNum">     581 </span><span class="lineNoCov">          0 :         if (hd-&gt;found.kr-&gt;read_only)</span>
+<span class="lineNum">     582 </span><span class="lineNoCov">          0 :           return gpg_error (GPG_ERR_EACCES);</span>
+<span class="lineNum">     583 </span>            :       }
+<span class="lineNum">     584 </span><span class="lineNoCov">          0 :     else if (hd-&gt;current.kr)</span>
+<span class="lineNum">     585 </span>            :       {
+<span class="lineNum">     586 </span><span class="lineNoCov">          0 :         fname = hd-&gt;current.kr-&gt;fname;</span>
+<span class="lineNum">     587 </span><span class="lineNoCov">          0 :         if (hd-&gt;current.kr-&gt;read_only)</span>
+<span class="lineNum">     588 </span><span class="lineNoCov">          0 :           return gpg_error (GPG_ERR_EACCES);</span>
+<span class="lineNum">     589 </span>            :       }
+<span class="lineNum">     590 </span>            :     else
+<span class="lineNum">     591 </span><span class="lineNoCov">          0 :         fname = hd-&gt;resource? hd-&gt;resource-&gt;fname:NULL;</span>
+<span class="lineNum">     592 </span>            : 
+<span class="lineNum">     593 </span><span class="lineNoCov">          0 :     if (!fname)</span>
+<span class="lineNum">     594 </span><span class="lineNoCov">          0 :         return GPG_ERR_GENERAL;</span>
+<span class="lineNum">     595 </span>            : 
+<span class="lineNum">     596 </span>            :     /* Close this one otherwise we will lose the position for
+<span class="lineNum">     597 </span>            :      * a next search.  Fixme: it would be better to adjust the position
+<span class="lineNum">     598 </span>            :      * after the write opertions.
+<span class="lineNum">     599 </span>            :      */
+<span class="lineNum">     600 </span><span class="lineNoCov">          0 :     iobuf_close (hd-&gt;current.iobuf);</span>
+<span class="lineNum">     601 </span><span class="lineNoCov">          0 :     hd-&gt;current.iobuf = NULL;</span>
+<span class="lineNum">     602 </span>            : 
+<span class="lineNum">     603 </span>            :     /* do the insert */
+<span class="lineNum">     604 </span><span class="lineNoCov">          0 :     rc = do_copy (1, fname, kb, 0, 0 );</span>
+<span class="lineNum">     605 </span><span class="lineNoCov">          0 :     if (!rc &amp;&amp; key_present_hash)</span>
+<span class="lineNum">     606 </span>            :       {
+<span class="lineNum">     607 </span><span class="lineNoCov">          0 :         key_present_hash_update_from_kb (key_present_hash, kb);</span>
+<span class="lineNum">     608 </span>            :       }
+<span class="lineNum">     609 </span>            : 
+<span class="lineNum">     610 </span><span class="lineNoCov">          0 :     return rc;</span>
+<span class="lineNum">     611 </span>            : }
+<span class="lineNum">     612 </span>            : 
+<a name="613"><span class="lineNum">     613 </span>            : </a>
+<span class="lineNum">     614 </span>            : int
+<span class="lineNum">     615 </span><span class="lineNoCov">          0 : keyring_delete_keyblock (KEYRING_HANDLE hd)</span>
+<span class="lineNum">     616 </span>            : {
+<span class="lineNum">     617 </span>            :     int rc;
+<span class="lineNum">     618 </span>            : 
+<span class="lineNum">     619 </span><span class="lineNoCov">          0 :     if (!hd-&gt;found.kr)</span>
+<span class="lineNum">     620 </span><span class="lineNoCov">          0 :         return -1; /* no successful prior search */</span>
+<span class="lineNum">     621 </span>            : 
+<span class="lineNum">     622 </span><span class="lineNoCov">          0 :     if (hd-&gt;found.kr-&gt;read_only)</span>
+<span class="lineNum">     623 </span><span class="lineNoCov">          0 :       return gpg_error (GPG_ERR_EACCES);</span>
+<span class="lineNum">     624 </span>            : 
+<span class="lineNum">     625 </span><span class="lineNoCov">          0 :     if (!hd-&gt;found.n_packets) {</span>
+<span class="lineNum">     626 </span>            :         /* need to know the number of packets - do a dummy get_keyblock*/
+<span class="lineNum">     627 </span><span class="lineNoCov">          0 :         rc = keyring_get_keyblock (hd, NULL);</span>
+<span class="lineNum">     628 </span><span class="lineNoCov">          0 :         if (rc) {</span>
+<span class="lineNum">     629 </span><span class="lineNoCov">          0 :             log_error (&quot;re-reading keyblock failed: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">     630 </span><span class="lineNoCov">          0 :             return rc;</span>
+<span class="lineNum">     631 </span>            :         }
+<span class="lineNum">     632 </span><span class="lineNoCov">          0 :         if (!hd-&gt;found.n_packets)</span>
+<span class="lineNum">     633 </span><span class="lineNoCov">          0 :             BUG ();</span>
+<span class="lineNum">     634 </span>            :     }
+<span class="lineNum">     635 </span>            : 
+<span class="lineNum">     636 </span>            :     /* close this one otherwise we will lose the position for
+<span class="lineNum">     637 </span>            :      * a next search.  Fixme: it would be better to adjust the position
+<span class="lineNum">     638 </span>            :      * after the write opertions.
+<span class="lineNum">     639 </span>            :      */
+<span class="lineNum">     640 </span><span class="lineNoCov">          0 :     iobuf_close (hd-&gt;current.iobuf);</span>
+<span class="lineNum">     641 </span><span class="lineNoCov">          0 :     hd-&gt;current.iobuf = NULL;</span>
+<span class="lineNum">     642 </span>            : 
+<span class="lineNum">     643 </span>            :     /* do the delete */
+<span class="lineNum">     644 </span><span class="lineNoCov">          0 :     rc = do_copy (2, hd-&gt;found.kr-&gt;fname, NULL,</span>
+<span class="lineNum">     645 </span>            :                   hd-&gt;found.offset, hd-&gt;found.n_packets );
+<span class="lineNum">     646 </span><span class="lineNoCov">          0 :     if (!rc) {</span>
+<span class="lineNum">     647 </span>            :         /* better reset the found info */
+<span class="lineNum">     648 </span><span class="lineNoCov">          0 :         hd-&gt;found.kr = NULL;</span>
+<span class="lineNum">     649 </span><span class="lineNoCov">          0 :         hd-&gt;found.offset = 0;</span>
+<span class="lineNum">     650 </span>            :         /* Delete is a rare operations, so we don't remove the keys
+<span class="lineNum">     651 </span>            :          * from the offset table */
+<span class="lineNum">     652 </span>            :     }
+<span class="lineNum">     653 </span><span class="lineNoCov">          0 :     return rc;</span>
+<span class="lineNum">     654 </span>            : }
+<span class="lineNum">     655 </span>            : 
+<span class="lineNum">     656 </span>            : 
+<span class="lineNum">     657 </span>            : 
+<span class="lineNum">     658 </span>            : /*
+<span class="lineNum">     659 </span>            :  * Start the next search on this handle right at the beginning
+<a name="660"><span class="lineNum">     660 </span>            :  */</a>
+<span class="lineNum">     661 </span>            : int
+<span class="lineNum">     662 </span><span class="lineCov">          2 : keyring_search_reset (KEYRING_HANDLE hd)</span>
+<span class="lineNum">     663 </span>            : {
+<span class="lineNum">     664 </span><span class="lineCov">          2 :     log_assert (hd);</span>
+<span class="lineNum">     665 </span>            : 
+<span class="lineNum">     666 </span><span class="lineCov">          2 :     iobuf_close (hd-&gt;current.iobuf);</span>
+<span class="lineNum">     667 </span><span class="lineCov">          2 :     hd-&gt;current.iobuf = NULL;</span>
+<span class="lineNum">     668 </span><span class="lineCov">          2 :     hd-&gt;current.eof = 0;</span>
+<span class="lineNum">     669 </span><span class="lineCov">          2 :     hd-&gt;current.error = 0;</span>
+<span class="lineNum">     670 </span>            : 
+<span class="lineNum">     671 </span><span class="lineCov">          2 :     hd-&gt;found.kr = NULL;</span>
+<span class="lineNum">     672 </span><span class="lineCov">          2 :     hd-&gt;found.offset = 0;</span>
+<span class="lineNum">     673 </span>            : 
+<span class="lineNum">     674 </span><span class="lineCov">          2 :     if (hd-&gt;current.kr)</span>
+<span class="lineNum">     675 </span><span class="lineNoCov">          0 :       iobuf_ioctl (NULL, IOBUF_IOCTL_INVALIDATE_CACHE, 0,</span>
+<span class="lineNum">     676 </span><span class="lineNoCov">          0 :                    (char*)hd-&gt;current.kr-&gt;fname);</span>
+<span class="lineNum">     677 </span><span class="lineCov">          2 :     hd-&gt;current.kr = NULL;</span>
+<span class="lineNum">     678 </span>            : 
+<span class="lineNum">     679 </span><span class="lineCov">          2 :     return 0;</span>
+<span class="lineNum">     680 </span>            : }
+<span class="lineNum">     681 </span>            : 
+<a name="682"><span class="lineNum">     682 </span>            : </a>
+<span class="lineNum">     683 </span>            : static int
+<span class="lineNum">     684 </span><span class="lineCov">          3 : prepare_search (KEYRING_HANDLE hd)</span>
+<span class="lineNum">     685 </span>            : {
+<span class="lineNum">     686 </span><span class="lineCov">          3 :     if (hd-&gt;current.error) {</span>
+<span class="lineNum">     687 </span>            :         /* If the last key was a legacy key, we simply ignore the error so that
+<span class="lineNum">     688 </span>            :            we can easily use search_next.  */
+<span class="lineNum">     689 </span><span class="lineNoCov">          0 :         if (gpg_err_code (hd-&gt;current.error) == GPG_ERR_LEGACY_KEY)</span>
+<span class="lineNum">     690 </span>            :           {
+<span class="lineNum">     691 </span><span class="lineNoCov">          0 :             if (DBG_LOOKUP)</span>
+<span class="lineNum">     692 </span><span class="lineNoCov">          0 :               log_debug (&quot;%s: last error was GPG_ERR_LEGACY_KEY, clearing\n&quot;,</span>
+<span class="lineNum">     693 </span>            :                          __func__);
+<span class="lineNum">     694 </span><span class="lineNoCov">          0 :             hd-&gt;current.error = 0;</span>
+<span class="lineNum">     695 </span>            :           }
+<span class="lineNum">     696 </span>            :         else
+<span class="lineNum">     697 </span>            :           {
+<span class="lineNum">     698 </span><span class="lineNoCov">          0 :             if (DBG_LOOKUP)</span>
+<span class="lineNum">     699 </span><span class="lineNoCov">          0 :               log_debug (&quot;%s: returning last error: %s\n&quot;,</span>
+<span class="lineNum">     700 </span><span class="lineNoCov">          0 :                          __func__, gpg_strerror (hd-&gt;current.error));</span>
+<span class="lineNum">     701 </span><span class="lineNoCov">          0 :             return hd-&gt;current.error; /* still in error state */</span>
+<span class="lineNum">     702 </span>            :           }
+<span class="lineNum">     703 </span>            :     }
+<span class="lineNum">     704 </span>            : 
+<span class="lineNum">     705 </span><span class="lineCov">          3 :     if (hd-&gt;current.kr &amp;&amp; !hd-&gt;current.eof) {</span>
+<span class="lineNum">     706 </span><span class="lineCov">          2 :         if ( !hd-&gt;current.iobuf )</span>
+<span class="lineNum">     707 </span>            :           {
+<span class="lineNum">     708 </span><span class="lineNoCov">          0 :             if (DBG_LOOKUP)</span>
+<span class="lineNum">     709 </span><span class="lineNoCov">          0 :               log_debug (&quot;%s: missing iobuf!\n&quot;, __func__);</span>
+<span class="lineNum">     710 </span><span class="lineNoCov">          0 :             return GPG_ERR_GENERAL; /* Position invalid after a modify.  */</span>
+<span class="lineNum">     711 </span>            :           }
+<span class="lineNum">     712 </span><span class="lineCov">          2 :         return 0; /* okay */</span>
+<span class="lineNum">     713 </span>            :     }
+<span class="lineNum">     714 </span>            : 
+<span class="lineNum">     715 </span><span class="lineCov">          1 :     if (!hd-&gt;current.kr &amp;&amp; hd-&gt;current.eof)</span>
+<span class="lineNum">     716 </span>            :       {
+<span class="lineNum">     717 </span><span class="lineNoCov">          0 :         if (DBG_LOOKUP)</span>
+<span class="lineNum">     718 </span><span class="lineNoCov">          0 :           log_debug (&quot;%s: EOF!\n&quot;, __func__);</span>
+<span class="lineNum">     719 </span><span class="lineNoCov">          0 :         return -1; /* still EOF */</span>
+<span class="lineNum">     720 </span>            :       }
+<span class="lineNum">     721 </span>            : 
+<span class="lineNum">     722 </span><span class="lineCov">          1 :     if (!hd-&gt;current.kr) { /* start search with first keyring */</span>
+<span class="lineNum">     723 </span><span class="lineCov">          1 :         hd-&gt;current.kr = hd-&gt;resource;</span>
+<span class="lineNum">     724 </span><span class="lineCov">          1 :         if (!hd-&gt;current.kr) {</span>
+<span class="lineNum">     725 </span><span class="lineNoCov">          0 :           if (DBG_LOOKUP)</span>
+<span class="lineNum">     726 </span><span class="lineNoCov">          0 :             log_debug (&quot;%s: keyring not available!\n&quot;, __func__);</span>
+<span class="lineNum">     727 </span><span class="lineNoCov">          0 :           hd-&gt;current.eof = 1;</span>
+<span class="lineNum">     728 </span><span class="lineNoCov">          0 :           return -1; /* keyring not available */</span>
+<span class="lineNum">     729 </span>            :         }
+<span class="lineNum">     730 </span><span class="lineCov">          1 :         log_assert (!hd-&gt;current.iobuf);</span>
+<span class="lineNum">     731 </span>            :     }
+<span class="lineNum">     732 </span>            :     else { /* EOF */
+<span class="lineNum">     733 </span><span class="lineNoCov">          0 :         if (DBG_LOOKUP)</span>
+<span class="lineNum">     734 </span><span class="lineNoCov">          0 :           log_debug (&quot;%s: EOF\n&quot;, __func__);</span>
+<span class="lineNum">     735 </span><span class="lineNoCov">          0 :         iobuf_close (hd-&gt;current.iobuf);</span>
+<span class="lineNum">     736 </span><span class="lineNoCov">          0 :         hd-&gt;current.iobuf = NULL;</span>
+<span class="lineNum">     737 </span><span class="lineNoCov">          0 :         hd-&gt;current.kr = NULL;</span>
+<span class="lineNum">     738 </span><span class="lineNoCov">          0 :         hd-&gt;current.eof = 1;</span>
+<span class="lineNum">     739 </span><span class="lineNoCov">          0 :         return -1;</span>
+<span class="lineNum">     740 </span>            :     }
+<span class="lineNum">     741 </span>            : 
+<span class="lineNum">     742 </span><span class="lineCov">          1 :     hd-&gt;current.eof = 0;</span>
+<span class="lineNum">     743 </span><span class="lineCov">          1 :     hd-&gt;current.iobuf = iobuf_open (hd-&gt;current.kr-&gt;fname);</span>
+<span class="lineNum">     744 </span><span class="lineCov">          1 :     if (!hd-&gt;current.iobuf)</span>
+<span class="lineNum">     745 </span>            :       {
+<span class="lineNum">     746 </span><span class="lineNoCov">          0 :         hd-&gt;current.error = gpg_error_from_syserror ();</span>
+<span class="lineNum">     747 </span><span class="lineNoCov">          0 :         log_error(_(&quot;can't open '%s'\n&quot;), hd-&gt;current.kr-&gt;fname );</span>
+<span class="lineNum">     748 </span><span class="lineNoCov">          0 :         return hd-&gt;current.error;</span>
+<span class="lineNum">     749 </span>            :       }
+<span class="lineNum">     750 </span>            : 
+<span class="lineNum">     751 </span><span class="lineCov">          1 :     return 0;</span>
+<span class="lineNum">     752 </span>            : }
+<span class="lineNum">     753 </span>            : 
+<span class="lineNum">     754 </span>            : 
+<span class="lineNum">     755 </span>            : /* A map of the all characters valid used for word_match()
+<span class="lineNum">     756 </span>            :  * Valid characters are in this table converted to uppercase.
+<span class="lineNum">     757 </span>            :  * because the upper 128 bytes have special meaning, we assume
+<span class="lineNum">     758 </span>            :  * that they are all valid.
+<span class="lineNum">     759 </span>            :  * Note: We must use numerical values here in case that this program
+<span class="lineNum">     760 </span>            :  * will be converted to those little blue HAL9000s with their strange
+<span class="lineNum">     761 </span>            :  * EBCDIC character set (user ids are UTF-8).
+<span class="lineNum">     762 </span>            :  * wk 2000-04-13: Hmmm, does this really make sense, given the fact that
+<span class="lineNum">     763 </span>            :  * we can run gpg now on a S/390 running GNU/Linux, where the code
+<span class="lineNum">     764 </span>            :  * translation is done by the device drivers?
+<span class="lineNum">     765 </span>            :  */
+<span class="lineNum">     766 </span>            : static const byte word_match_chars[256] = {
+<span class="lineNum">     767 </span>            :   /* 00 */  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+<span class="lineNum">     768 </span>            :   /* 08 */  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+<span class="lineNum">     769 </span>            :   /* 10 */  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+<span class="lineNum">     770 </span>            :   /* 18 */  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+<span class="lineNum">     771 </span>            :   /* 20 */  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+<span class="lineNum">     772 </span>            :   /* 28 */  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+<span class="lineNum">     773 </span>            :   /* 30 */  0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+<span class="lineNum">     774 </span>            :   /* 38 */  0x38, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+<span class="lineNum">     775 </span>            :   /* 40 */  0x00, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
+<span class="lineNum">     776 </span>            :   /* 48 */  0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f,
+<span class="lineNum">     777 </span>            :   /* 50 */  0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57,
+<span class="lineNum">     778 </span>            :   /* 58 */  0x58, 0x59, 0x5a, 0x00, 0x00, 0x00, 0x00, 0x00,
+<span class="lineNum">     779 </span>            :   /* 60 */  0x00, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
+<span class="lineNum">     780 </span>            :   /* 68 */  0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f,
+<span class="lineNum">     781 </span>            :   /* 70 */  0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57,
+<span class="lineNum">     782 </span>            :   /* 78 */  0x58, 0x59, 0x5a, 0x00, 0x00, 0x00, 0x00, 0x00,
+<span class="lineNum">     783 </span>            :   /* 80 */  0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
+<span class="lineNum">     784 </span>            :   /* 88 */  0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
+<span class="lineNum">     785 </span>            :   /* 90 */  0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97,
+<span class="lineNum">     786 </span>            :   /* 98 */  0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d, 0x9e, 0x9f,
+<span class="lineNum">     787 </span>            :   /* a0 */  0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
+<span class="lineNum">     788 </span>            :   /* a8 */  0xa8, 0xa9, 0xaa, 0xab, 0xac, 0xad, 0xae, 0xaf,
+<span class="lineNum">     789 </span>            :   /* b0 */  0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7,
+<span class="lineNum">     790 </span>            :   /* b8 */  0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf,
+<span class="lineNum">     791 </span>            :   /* c0 */  0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7,
+<span class="lineNum">     792 </span>            :   /* c8 */  0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf,
+<span class="lineNum">     793 </span>            :   /* d0 */  0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7,
+<span class="lineNum">     794 </span>            :   /* d8 */  0xd8, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf,
+<span class="lineNum">     795 </span>            :   /* e0 */  0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
+<span class="lineNum">     796 </span>            :   /* e8 */  0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
+<span class="lineNum">     797 </span>            :   /* f0 */  0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
+<span class="lineNum">     798 </span>            :   /* f8 */  0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
+<span class="lineNum">     799 </span>            : };
+<span class="lineNum">     800 </span>            : 
+<span class="lineNum">     801 </span>            : /****************
+<span class="lineNum">     802 </span>            :  * Do a word match (original user id starts with a '+').
+<span class="lineNum">     803 </span>            :  * The pattern is already tokenized to a more suitable format:
+<span class="lineNum">     804 </span>            :  * There are only the real words in it delimited by one space
+<span class="lineNum">     805 </span>            :  * and all converted to uppercase.
+<span class="lineNum">     806 </span>            :  *
+<span class="lineNum">     807 </span>            :  * Returns: 0 if all words match.
+<span class="lineNum">     808 </span>            :  *
+<span class="lineNum">     809 </span>            :  * Note: This algorithm is a straightforward one and not very
+<span class="lineNum">     810 </span>            :  *       fast.  It works for UTF-8 strings.  The uidlen should
+<span class="lineNum">     811 </span>            :  *       be removed but due to the fact that old versions of
+<span class="lineNum">     812 </span>            :  *       pgp don't use UTF-8 we still use the length; this should
+<span class="lineNum">     813 </span>            :  *       be fixed in parse-packet (and replace \0 by some special
+<span class="lineNum">     814 </span>            :  *       UTF-8 encoding)
+<a name="815"><span class="lineNum">     815 </span>            :  */</a>
+<span class="lineNum">     816 </span>            : static int
+<span class="lineNum">     817 </span><span class="lineNoCov">          0 : word_match( const byte *uid, size_t uidlen, const byte *pattern )</span>
+<span class="lineNum">     818 </span>            : {
+<span class="lineNum">     819 </span>            :     size_t wlen, n;
+<span class="lineNum">     820 </span>            :     const byte *p;
+<span class="lineNum">     821 </span>            :     const byte *s;
+<span class="lineNum">     822 </span>            : 
+<span class="lineNum">     823 </span><span class="lineNoCov">          0 :     for( s=pattern; *s; ) {</span>
+<span class="lineNum">     824 </span>            :         do {
+<span class="lineNum">     825 </span>            :             /* skip leading delimiters */
+<span class="lineNum">     826 </span><span class="lineNoCov">          0 :             while( uidlen &amp;&amp; !word_match_chars[*uid] )</span>
+<span class="lineNum">     827 </span><span class="lineNoCov">          0 :                 uid++, uidlen--;</span>
+<span class="lineNum">     828 </span>            :             /* get length of the word */
+<span class="lineNum">     829 </span><span class="lineNoCov">          0 :             n = uidlen; p = uid;</span>
+<span class="lineNum">     830 </span><span class="lineNoCov">          0 :             while( n &amp;&amp; word_match_chars[*p] )</span>
+<span class="lineNum">     831 </span><span class="lineNoCov">          0 :                 p++, n--;</span>
+<span class="lineNum">     832 </span><span class="lineNoCov">          0 :             wlen = p - uid;</span>
+<span class="lineNum">     833 </span>            :             /* and compare against the current word from pattern */
+<span class="lineNum">     834 </span><span class="lineNoCov">          0 :             for(n=0, p=uid; n &lt; wlen &amp;&amp; s[n] != ' ' &amp;&amp; s[n] ; n++, p++ ) {</span>
+<span class="lineNum">     835 </span><span class="lineNoCov">          0 :                 if( word_match_chars[*p] != s[n] )</span>
+<span class="lineNum">     836 </span><span class="lineNoCov">          0 :                     break;</span>
+<span class="lineNum">     837 </span>            :             }
+<span class="lineNum">     838 </span><span class="lineNoCov">          0 :             if( n == wlen &amp;&amp; (s[n] == ' ' || !s[n]) )</span>
+<span class="lineNum">     839 </span>            :                 break; /* found */
+<span class="lineNum">     840 </span><span class="lineNoCov">          0 :             uid += wlen;</span>
+<span class="lineNum">     841 </span><span class="lineNoCov">          0 :             uidlen -= wlen;</span>
+<span class="lineNum">     842 </span><span class="lineNoCov">          0 :         } while( uidlen );</span>
+<span class="lineNum">     843 </span><span class="lineNoCov">          0 :         if( !uidlen )</span>
+<span class="lineNum">     844 </span><span class="lineNoCov">          0 :             return -1; /* not found */</span>
+<span class="lineNum">     845 </span>            : 
+<span class="lineNum">     846 </span>            :         /* advance to next word in pattern */
+<span class="lineNum">     847 </span><span class="lineNoCov">          0 :         for(; *s != ' ' &amp;&amp; *s ; s++ )</span>
+<span class="lineNum">     848 </span>            :             ;
+<span class="lineNum">     849 </span><span class="lineNoCov">          0 :         if( *s )</span>
+<span class="lineNum">     850 </span><span class="lineNoCov">          0 :             s++ ;</span>
+<span class="lineNum">     851 </span>            :     }
+<span class="lineNum">     852 </span><span class="lineNoCov">          0 :     return 0; /* found */</span>
+<span class="lineNum">     853 </span>            : }
+<span class="lineNum">     854 </span>            : 
+<span class="lineNum">     855 </span>            : /****************
+<span class="lineNum">     856 </span>            :  * prepare word word_match; that is parse the name and
+<span class="lineNum">     857 </span>            :  * build the pattern.
+<span class="lineNum">     858 </span>            :  * caller has to free the returned pattern
+<a name="859"><span class="lineNum">     859 </span>            :  */</a>
+<span class="lineNum">     860 </span>            : static char*
+<span class="lineNum">     861 </span><span class="lineNoCov">          0 : prepare_word_match (const byte *name)</span>
+<span class="lineNum">     862 </span>            : {
+<span class="lineNum">     863 </span>            :     byte *pattern, *p;
+<span class="lineNum">     864 </span>            :     int c;
+<span class="lineNum">     865 </span>            : 
+<span class="lineNum">     866 </span>            :     /* the original length is always enough for the pattern */
+<span class="lineNum">     867 </span><span class="lineNoCov">          0 :     p = pattern = xmalloc(strlen(name)+1);</span>
+<span class="lineNum">     868 </span>            :     do {
+<span class="lineNum">     869 </span>            :         /* skip leading delimiters */
+<span class="lineNum">     870 </span><span class="lineNoCov">          0 :         while( *name &amp;&amp; !word_match_chars[*name] )</span>
+<span class="lineNum">     871 </span><span class="lineNoCov">          0 :             name++;</span>
+<span class="lineNum">     872 </span>            :         /* copy as long as we don't have a delimiter and convert
+<span class="lineNum">     873 </span>            :          * to uppercase.
+<span class="lineNum">     874 </span>            :          * fixme: how can we handle utf8 uppercasing */
+<span class="lineNum">     875 </span><span class="lineNoCov">          0 :         for( ; *name &amp;&amp;  (c=word_match_chars[*name]); name++ )</span>
+<span class="lineNum">     876 </span><span class="lineNoCov">          0 :             *p++ = c;</span>
+<span class="lineNum">     877 </span><span class="lineNoCov">          0 :         *p++ = ' '; /* append pattern delimiter */</span>
+<span class="lineNum">     878 </span><span class="lineNoCov">          0 :     } while( *name );</span>
+<span class="lineNum">     879 </span><span class="lineNoCov">          0 :     p[-1] = 0; /* replace last pattern delimiter by EOS */</span>
+<span class="lineNum">     880 </span>            : 
+<span class="lineNum">     881 </span><span class="lineNoCov">          0 :     return pattern;</span>
+<span class="lineNum">     882 </span>            : }
+<span class="lineNum">     883 </span>            : 
+<span class="lineNum">     884 </span>            : 
+<span class="lineNum">     885 </span>            : 
+<a name="886"><span class="lineNum">     886 </span>            : </a>
+<span class="lineNum">     887 </span>            : static int
+<span class="lineNum">     888 </span><span class="lineNoCov">          0 : compare_name (int mode, const char *name, const char *uid, size_t uidlen)</span>
+<span class="lineNum">     889 </span>            : {
+<span class="lineNum">     890 </span>            :     int i;
+<span class="lineNum">     891 </span>            :     const char *s, *se;
+<span class="lineNum">     892 </span>            : 
+<span class="lineNum">     893 </span><span class="lineNoCov">          0 :     if (mode == KEYDB_SEARCH_MODE_EXACT) {</span>
+<span class="lineNum">     894 </span><span class="lineNoCov">          0 :         for (i=0; name[i] &amp;&amp; uidlen; i++, uidlen--)</span>
+<span class="lineNum">     895 </span><span class="lineNoCov">          0 :             if (uid[i] != name[i])</span>
+<span class="lineNum">     896 </span><span class="lineNoCov">          0 :                 break;</span>
+<span class="lineNum">     897 </span><span class="lineNoCov">          0 :         if (!uidlen &amp;&amp; !name[i])</span>
+<span class="lineNum">     898 </span><span class="lineNoCov">          0 :             return 0; /* found */</span>
+<span class="lineNum">     899 </span>            :     }
+<span class="lineNum">     900 </span><span class="lineNoCov">          0 :     else if (mode == KEYDB_SEARCH_MODE_SUBSTR) {</span>
+<span class="lineNum">     901 </span><span class="lineNoCov">          0 :         if (ascii_memistr( uid, uidlen, name ))</span>
+<span class="lineNum">     902 </span><span class="lineNoCov">          0 :             return 0;</span>
+<span class="lineNum">     903 </span>            :     }
+<span class="lineNum">     904 </span><span class="lineNoCov">          0 :     else if (   mode == KEYDB_SEARCH_MODE_MAIL</span>
+<span class="lineNum">     905 </span><span class="lineNoCov">          0 :              || mode == KEYDB_SEARCH_MODE_MAILSUB</span>
+<span class="lineNum">     906 </span><span class="lineNoCov">          0 :              || mode == KEYDB_SEARCH_MODE_MAILEND) {</span>
+<span class="lineNum">     907 </span><span class="lineNoCov">          0 :         int have_angles = 1;</span>
+<span class="lineNum">     908 </span><span class="lineNoCov">          0 :         for (i=0, s= uid; i &lt; uidlen &amp;&amp; *s != '&lt;'; s++, i++)</span>
+<span class="lineNum">     909 </span>            :             ;
+<span class="lineNum">     910 </span><span class="lineNoCov">          0 :         if (i == uidlen)</span>
+<span class="lineNum">     911 </span>            :           {
+<span class="lineNum">     912 </span>            :             /* The UID is a plain addr-spec (cf. RFC2822 section 4.3).  */
+<span class="lineNum">     913 </span><span class="lineNoCov">          0 :             have_angles = 0;</span>
+<span class="lineNum">     914 </span><span class="lineNoCov">          0 :             s = uid;</span>
+<span class="lineNum">     915 </span><span class="lineNoCov">          0 :             i = 0;</span>
+<span class="lineNum">     916 </span>            :           }
+<span class="lineNum">     917 </span><span class="lineNoCov">          0 :         if (i &lt; uidlen)  {</span>
+<span class="lineNum">     918 </span><span class="lineNoCov">          0 :             if (have_angles)</span>
+<span class="lineNum">     919 </span>            :               {
+<span class="lineNum">     920 </span>            :                 /* skip opening delim and one char and look for the closing one*/
+<span class="lineNum">     921 </span><span class="lineNoCov">          0 :                 s++; i++;</span>
+<span class="lineNum">     922 </span><span class="lineNoCov">          0 :                 for (se=s+1, i++; i &lt; uidlen &amp;&amp; *se != '&gt;'; se++, i++)</span>
+<span class="lineNum">     923 </span>            :                   ;
+<span class="lineNum">     924 </span>            :               }
+<span class="lineNum">     925 </span>            :             else
+<span class="lineNum">     926 </span><span class="lineNoCov">          0 :               se = s + uidlen;</span>
+<span class="lineNum">     927 </span>            : 
+<span class="lineNum">     928 </span><span class="lineNoCov">          0 :             if (i &lt; uidlen) {</span>
+<span class="lineNum">     929 </span><span class="lineNoCov">          0 :                 i = se - s;</span>
+<span class="lineNum">     930 </span><span class="lineNoCov">          0 :                 if (mode == KEYDB_SEARCH_MODE_MAIL) {</span>
+<span class="lineNum">     931 </span><span class="lineNoCov">          0 :                     if( strlen(name)-2 == i</span>
+<span class="lineNum">     932 </span><span class="lineNoCov">          0 :                         &amp;&amp; !ascii_memcasecmp( s, name+1, i) )</span>
+<span class="lineNum">     933 </span><span class="lineNoCov">          0 :                         return 0;</span>
+<span class="lineNum">     934 </span>            :                 }
+<span class="lineNum">     935 </span><span class="lineNoCov">          0 :                 else if (mode == KEYDB_SEARCH_MODE_MAILSUB) {</span>
+<span class="lineNum">     936 </span><span class="lineNoCov">          0 :                     if( ascii_memistr( s, i, name ) )</span>
+<span class="lineNum">     937 </span><span class="lineNoCov">          0 :                         return 0;</span>
+<span class="lineNum">     938 </span>            :                 }
+<span class="lineNum">     939 </span>            :                 else { /* email from end */
+<span class="lineNum">     940 </span>            :                     /* nyi */
+<span class="lineNum">     941 </span>            :                 }
+<span class="lineNum">     942 </span>            :             }
+<span class="lineNum">     943 </span>            :         }
+<span class="lineNum">     944 </span>            :     }
+<span class="lineNum">     945 </span><span class="lineNoCov">          0 :     else if (mode == KEYDB_SEARCH_MODE_WORDS)</span>
+<span class="lineNum">     946 </span><span class="lineNoCov">          0 :         return word_match (uid, uidlen, name);</span>
+<span class="lineNum">     947 </span>            :     else
+<span class="lineNum">     948 </span><span class="lineNoCov">          0 :         BUG();</span>
+<span class="lineNum">     949 </span>            : 
+<span class="lineNum">     950 </span><span class="lineNoCov">          0 :     return -1; /* not found */</span>
+<span class="lineNum">     951 </span>            : }
+<span class="lineNum">     952 </span>            : 
+<span class="lineNum">     953 </span>            : 
+<span class="lineNum">     954 </span>            : /*
+<span class="lineNum">     955 </span>            :  * Search through the keyring(s), starting at the current position,
+<span class="lineNum">     956 </span>            :  * for a keyblock which contains one of the keys described in the DESC array.
+<a name="957"><span class="lineNum">     957 </span>            :  */</a>
+<span class="lineNum">     958 </span>            : int
+<span class="lineNum">     959 </span><span class="lineCov">          3 : keyring_search (KEYRING_HANDLE hd, KEYDB_SEARCH_DESC *desc,</span>
+<span class="lineNum">     960 </span>            :                 size_t ndesc, size_t *descindex, int ignore_legacy)
+<span class="lineNum">     961 </span>            : {
+<span class="lineNum">     962 </span>            :   int rc;
+<span class="lineNum">     963 </span>            :   PACKET pkt;
+<span class="lineNum">     964 </span>            :   struct parse_packet_ctx_s parsectx;
+<span class="lineNum">     965 </span>            :   int save_mode;
+<span class="lineNum">     966 </span>            :   off_t offset, main_offset;
+<span class="lineNum">     967 </span>            :   size_t n;
+<span class="lineNum">     968 </span>            :   int need_uid, need_words, need_keyid, need_fpr, any_skip;
+<span class="lineNum">     969 </span>            :   int pk_no, uid_no;
+<span class="lineNum">     970 </span>            :   int initial_skip;
+<span class="lineNum">     971 </span>            :   int scanned_from_start;
+<span class="lineNum">     972 </span>            :   int use_key_present_hash;
+<span class="lineNum">     973 </span><span class="lineCov">          3 :   PKT_user_id *uid = NULL;</span>
+<span class="lineNum">     974 </span><span class="lineCov">          3 :   PKT_public_key *pk = NULL;</span>
+<span class="lineNum">     975 </span>            :   u32 aki[2];
+<span class="lineNum">     976 </span>            : 
+<span class="lineNum">     977 </span>            :   /* figure out what information we need */
+<span class="lineNum">     978 </span><span class="lineCov">          3 :   need_uid = need_words = need_keyid = need_fpr = any_skip = 0;</span>
+<span class="lineNum">     979 </span><span class="lineCov">          6 :   for (n=0; n &lt; ndesc; n++)</span>
+<span class="lineNum">     980 </span>            :     {
+<span class="lineNum">     981 </span><span class="lineCov">          3 :       switch (desc[n].mode)</span>
+<span class="lineNum">     982 </span>            :         {
+<span class="lineNum">     983 </span>            :         case KEYDB_SEARCH_MODE_EXACT:
+<span class="lineNum">     984 </span>            :         case KEYDB_SEARCH_MODE_SUBSTR:
+<span class="lineNum">     985 </span>            :         case KEYDB_SEARCH_MODE_MAIL:
+<span class="lineNum">     986 </span>            :         case KEYDB_SEARCH_MODE_MAILSUB:
+<span class="lineNum">     987 </span>            :         case KEYDB_SEARCH_MODE_MAILEND:
+<span class="lineNum">     988 </span><span class="lineNoCov">          0 :           need_uid = 1;</span>
+<span class="lineNum">     989 </span><span class="lineNoCov">          0 :           break;</span>
+<span class="lineNum">     990 </span>            :         case KEYDB_SEARCH_MODE_WORDS:
+<span class="lineNum">     991 </span><span class="lineNoCov">          0 :           need_uid = 1;</span>
+<span class="lineNum">     992 </span><span class="lineNoCov">          0 :           need_words = 1;</span>
+<span class="lineNum">     993 </span><span class="lineNoCov">          0 :           break;</span>
+<span class="lineNum">     994 </span>            :         case KEYDB_SEARCH_MODE_SHORT_KID:
+<span class="lineNum">     995 </span>            :         case KEYDB_SEARCH_MODE_LONG_KID:
+<span class="lineNum">     996 </span><span class="lineNoCov">          0 :           need_keyid = 1;</span>
+<span class="lineNum">     997 </span><span class="lineNoCov">          0 :           break;</span>
+<span class="lineNum">     998 </span>            :         case KEYDB_SEARCH_MODE_FPR16:
+<span class="lineNum">     999 </span>            :         case KEYDB_SEARCH_MODE_FPR20:
+<span class="lineNum">    1000 </span>            :         case KEYDB_SEARCH_MODE_FPR:
+<span class="lineNum">    1001 </span><span class="lineNoCov">          0 :           need_fpr = 1;</span>
+<span class="lineNum">    1002 </span><span class="lineNoCov">          0 :           break;</span>
+<span class="lineNum">    1003 </span>            :         case KEYDB_SEARCH_MODE_FIRST:
+<span class="lineNum">    1004 </span>            :           /* always restart the search in this mode */
+<span class="lineNum">    1005 </span><span class="lineCov">          1 :           keyring_search_reset (hd);</span>
+<span class="lineNum">    1006 </span><span class="lineCov">          1 :           break;</span>
+<span class="lineNum">    1007 </span><span class="lineCov">          2 :         default: break;</span>
+<span class="lineNum">    1008 </span>            :         }
+<span class="lineNum">    1009 </span><span class="lineCov">          3 :       if (desc[n].skipfnc)</span>
+<span class="lineNum">    1010 </span>            :         {
+<span class="lineNum">    1011 </span><span class="lineNoCov">          0 :           any_skip = 1;</span>
+<span class="lineNum">    1012 </span><span class="lineNoCov">          0 :           need_keyid = 1;</span>
+<span class="lineNum">    1013 </span>            :         }
+<span class="lineNum">    1014 </span>            :     }
+<span class="lineNum">    1015 </span>            : 
+<span class="lineNum">    1016 </span><span class="lineCov">          3 :   if (DBG_LOOKUP)</span>
+<span class="lineNum">    1017 </span><span class="lineNoCov">          0 :     log_debug (&quot;%s: need_uid = %d; need_words = %d; need_keyid = %d; need_fpr = %d; any_skip = %d\n&quot;,</span>
+<span class="lineNum">    1018 </span>            :                __func__, need_uid, need_words, need_keyid, need_fpr, any_skip);
+<span class="lineNum">    1019 </span>            : 
+<span class="lineNum">    1020 </span><span class="lineCov">          3 :   rc = prepare_search (hd);</span>
+<span class="lineNum">    1021 </span><span class="lineCov">          3 :   if (rc)</span>
+<span class="lineNum">    1022 </span>            :     {
+<span class="lineNum">    1023 </span><span class="lineNoCov">          0 :       if (DBG_LOOKUP)</span>
+<span class="lineNum">    1024 </span><span class="lineNoCov">          0 :         log_debug (&quot;%s: prepare_search failed: %s (%d)\n&quot;,</span>
+<span class="lineNum">    1025 </span><span class="lineNoCov">          0 :                    __func__, gpg_strerror (rc), gpg_err_code (rc));</span>
+<span class="lineNum">    1026 </span><span class="lineNoCov">          0 :       return rc;</span>
+<span class="lineNum">    1027 </span>            :     }
+<span class="lineNum">    1028 </span>            : 
+<span class="lineNum">    1029 </span><span class="lineCov">          3 :   use_key_present_hash = !!key_present_hash;</span>
+<span class="lineNum">    1030 </span><span class="lineCov">          3 :   if (!use_key_present_hash)</span>
+<span class="lineNum">    1031 </span>            :     {
+<span class="lineNum">    1032 </span><span class="lineNoCov">          0 :       if (DBG_LOOKUP)</span>
+<span class="lineNum">    1033 </span><span class="lineNoCov">          0 :         log_debug (&quot;%s: no offset table.\n&quot;, __func__);</span>
+<span class="lineNum">    1034 </span>            :     }
+<span class="lineNum">    1035 </span><span class="lineCov">          3 :   else if (!key_present_hash_ready)</span>
+<span class="lineNum">    1036 </span>            :     {
+<span class="lineNum">    1037 </span><span class="lineCov">          3 :       if (DBG_LOOKUP)</span>
+<span class="lineNum">    1038 </span><span class="lineNoCov">          0 :         log_debug (&quot;%s: initializing offset table. (need_keyid: %d =&gt; 1)\n&quot;,</span>
+<span class="lineNum">    1039 </span>            :                    __func__, need_keyid);
+<span class="lineNum">    1040 </span><span class="lineCov">          3 :       need_keyid = 1;</span>
+<span class="lineNum">    1041 </span>            :     }
+<span class="lineNum">    1042 </span><span class="lineNoCov">          0 :   else if (ndesc == 1 &amp;&amp; desc[0].mode == KEYDB_SEARCH_MODE_LONG_KID)</span>
+<span class="lineNum">    1043 </span>            :     {
+<span class="lineNum">    1044 </span>            :       struct key_present *oi;
+<span class="lineNum">    1045 </span>            : 
+<span class="lineNum">    1046 </span><span class="lineNoCov">          0 :       if (DBG_LOOKUP)</span>
+<span class="lineNum">    1047 </span><span class="lineNoCov">          0 :         log_debug (&quot;%s: look up by long key id, checking cache\n&quot;, __func__);</span>
+<span class="lineNum">    1048 </span>            : 
+<span class="lineNum">    1049 </span><span class="lineNoCov">          0 :       oi = key_present_hash_lookup (key_present_hash, desc[0].u.kid);</span>
+<span class="lineNum">    1050 </span><span class="lineNoCov">          0 :       if (!oi)</span>
+<span class="lineNum">    1051 </span>            :         { /* We know that we don't have this key */
+<span class="lineNum">    1052 </span><span class="lineNoCov">          0 :           if (DBG_LOOKUP)</span>
+<span class="lineNum">    1053 </span><span class="lineNoCov">          0 :             log_debug (&quot;%s: cache says not present\n&quot;, __func__);</span>
+<span class="lineNum">    1054 </span><span class="lineNoCov">          0 :           hd-&gt;found.kr = NULL;</span>
+<span class="lineNum">    1055 </span><span class="lineNoCov">          0 :           hd-&gt;current.eof = 1;</span>
+<span class="lineNum">    1056 </span><span class="lineNoCov">          0 :           return -1;</span>
+<span class="lineNum">    1057 </span>            :         }
+<span class="lineNum">    1058 </span>            :       /* We could now create a positive search status and return.
+<span class="lineNum">    1059 </span>            :        * However the problem is that another instance of gpg may
+<span class="lineNum">    1060 </span>            :        * have changed the keyring so that the offsets are not valid
+<span class="lineNum">    1061 </span>            :        * anymore - therefore we don't do it
+<span class="lineNum">    1062 </span>            :        */
+<span class="lineNum">    1063 </span>            :     }
+<span class="lineNum">    1064 </span>            : 
+<span class="lineNum">    1065 </span><span class="lineCov">          3 :   if (need_words)</span>
+<span class="lineNum">    1066 </span>            :     {
+<span class="lineNum">    1067 </span><span class="lineNoCov">          0 :       const char *name = NULL;</span>
+<span class="lineNum">    1068 </span>            : 
+<span class="lineNum">    1069 </span><span class="lineNoCov">          0 :       log_debug (&quot;word search mode does not yet work\n&quot;);</span>
+<span class="lineNum">    1070 </span>            :       /* FIXME: here is a long standing bug in our function and in addition we
+<span class="lineNum">    1071 </span>            :          just use the first search description */
+<span class="lineNum">    1072 </span><span class="lineNoCov">          0 :       for (n=0; n &lt; ndesc &amp;&amp; !name; n++)</span>
+<span class="lineNum">    1073 </span>            :         {
+<span class="lineNum">    1074 </span><span class="lineNoCov">          0 :           if (desc[n].mode == KEYDB_SEARCH_MODE_WORDS)</span>
+<span class="lineNum">    1075 </span><span class="lineNoCov">          0 :             name = desc[n].u.name;</span>
+<span class="lineNum">    1076 </span>            :         }
+<span class="lineNum">    1077 </span><span class="lineNoCov">          0 :       log_assert (name);</span>
+<span class="lineNum">    1078 </span><span class="lineNoCov">          0 :       if ( !hd-&gt;word_match.name || strcmp (hd-&gt;word_match.name, name) )</span>
+<span class="lineNum">    1079 </span>            :         {
+<span class="lineNum">    1080 </span>            :           /* name changed */
+<span class="lineNum">    1081 </span><span class="lineNoCov">          0 :           xfree (hd-&gt;word_match.name);</span>
+<span class="lineNum">    1082 </span><span class="lineNoCov">          0 :           xfree (hd-&gt;word_match.pattern);</span>
+<span class="lineNum">    1083 </span><span class="lineNoCov">          0 :           hd-&gt;word_match.name = xstrdup (name);</span>
+<span class="lineNum">    1084 </span><span class="lineNoCov">          0 :           hd-&gt;word_match.pattern = prepare_word_match (name);</span>
+<span class="lineNum">    1085 </span>            :         }
+<span class="lineNum">    1086 </span>            :       /*  name = hd-&gt;word_match.pattern; */
+<span class="lineNum">    1087 </span>            :     }
+<span class="lineNum">    1088 </span>            : 
+<span class="lineNum">    1089 </span><span class="lineCov">          3 :   init_packet(&amp;pkt);</span>
+<span class="lineNum">    1090 </span><span class="lineCov">          3 :   save_mode = set_packet_list_mode(0);</span>
+<span class="lineNum">    1091 </span>            : 
+<span class="lineNum">    1092 </span><span class="lineCov">          3 :   hd-&gt;found.kr = NULL;</span>
+<span class="lineNum">    1093 </span><span class="lineCov">          3 :   main_offset = 0;</span>
+<span class="lineNum">    1094 </span><span class="lineCov">          3 :   pk_no = uid_no = 0;</span>
+<span class="lineNum">    1095 </span><span class="lineCov">          3 :   initial_skip = 1; /* skip until we see the start of a keyblock */</span>
+<span class="lineNum">    1096 </span><span class="lineCov">          3 :   scanned_from_start = iobuf_tell (hd-&gt;current.iobuf) == 0;</span>
+<span class="lineNum">    1097 </span><span class="lineCov">          3 :   if (DBG_LOOKUP)</span>
+<span class="lineNum">    1098 </span><span class="lineNoCov">          0 :     log_debug (&quot;%s: %ssearching from start of resource.\n&quot;,</span>
+<span class="lineNum">    1099 </span>            :                __func__, scanned_from_start ? &quot;&quot; : &quot;not &quot;);
+<span class="lineNum">    1100 </span><span class="lineCov">          3 :   init_parse_packet (&amp;parsectx, hd-&gt;current.iobuf);</span>
+<span class="lineNum">    1101 </span>            :   while (1)
+<span class="lineNum">    1102 </span>            :     {
+<span class="lineNum">    1103 </span>            :       byte afp[MAX_FINGERPRINT_LEN];
+<span class="lineNum">    1104 </span>            :       size_t an;
+<span class="lineNum">    1105 </span>            : 
+<span class="lineNum">    1106 </span><span class="lineCov">          5 :       rc = search_packet (&amp;parsectx, &amp;pkt, &amp;offset, need_uid);</span>
+<span class="lineNum">    1107 </span><span class="lineCov">          5 :       if (ignore_legacy &amp;&amp; gpg_err_code (rc) == GPG_ERR_LEGACY_KEY)</span>
+<span class="lineNum">    1108 </span>            :         {
+<span class="lineNum">    1109 </span><span class="lineNoCov">          0 :           free_packet (&amp;pkt, &amp;parsectx);</span>
+<span class="lineNum">    1110 </span><span class="lineCov">          2 :           continue;</span>
+<span class="lineNum">    1111 </span>            :         }
+<span class="lineNum">    1112 </span><span class="lineCov">          5 :       if (rc)</span>
+<span class="lineNum">    1113 </span><span class="lineCov">          1 :         break;</span>
+<span class="lineNum">    1114 </span>            : 
+<span class="lineNum">    1115 </span><span class="lineCov">          4 :       if (pkt.pkttype == PKT_PUBLIC_KEY  || pkt.pkttype == PKT_SECRET_KEY)</span>
+<span class="lineNum">    1116 </span>            :         {
+<span class="lineNum">    1117 </span><span class="lineCov">          2 :           main_offset = offset;</span>
+<span class="lineNum">    1118 </span><span class="lineCov">          2 :           pk_no = uid_no = 0;</span>
+<span class="lineNum">    1119 </span><span class="lineCov">          2 :           initial_skip = 0;</span>
+<span class="lineNum">    1120 </span>            :         }
+<span class="lineNum">    1121 </span><span class="lineCov">          4 :       if (initial_skip)</span>
+<span class="lineNum">    1122 </span>            :         {
+<span class="lineNum">    1123 </span><span class="lineCov">          2 :           free_packet (&amp;pkt, &amp;parsectx);</span>
+<span class="lineNum">    1124 </span><span class="lineCov">          2 :           continue;</span>
+<span class="lineNum">    1125 </span>            :         }
+<span class="lineNum">    1126 </span>            : 
+<span class="lineNum">    1127 </span><span class="lineCov">          2 :       pk = NULL;</span>
+<span class="lineNum">    1128 </span><span class="lineCov">          2 :       uid = NULL;</span>
+<span class="lineNum">    1129 </span><span class="lineCov">          2 :       if (   pkt.pkttype == PKT_PUBLIC_KEY</span>
+<span class="lineNum">    1130 </span><span class="lineNoCov">          0 :              || pkt.pkttype == PKT_PUBLIC_SUBKEY</span>
+<span class="lineNum">    1131 </span><span class="lineNoCov">          0 :              || pkt.pkttype == PKT_SECRET_KEY</span>
+<span class="lineNum">    1132 </span><span class="lineNoCov">          0 :              || pkt.pkttype == PKT_SECRET_SUBKEY)</span>
+<span class="lineNum">    1133 </span>            :         {
+<span class="lineNum">    1134 </span><span class="lineCov">          2 :           pk = pkt.pkt.public_key;</span>
+<span class="lineNum">    1135 </span><span class="lineCov">          2 :           ++pk_no;</span>
+<span class="lineNum">    1136 </span>            : 
+<span class="lineNum">    1137 </span><span class="lineCov">          2 :           if (need_fpr) {</span>
+<span class="lineNum">    1138 </span><span class="lineNoCov">          0 :             fingerprint_from_pk (pk, afp, &amp;an);</span>
+<span class="lineNum">    1139 </span><span class="lineNoCov">          0 :             while (an &lt; 20) /* fill up to 20 bytes */</span>
+<span class="lineNum">    1140 </span><span class="lineNoCov">          0 :               afp[an++] = 0;</span>
+<span class="lineNum">    1141 </span>            :           }
+<span class="lineNum">    1142 </span><span class="lineCov">          2 :           if (need_keyid)</span>
+<span class="lineNum">    1143 </span><span class="lineCov">          2 :             keyid_from_pk (pk, aki);</span>
+<span class="lineNum">    1144 </span>            : 
+<span class="lineNum">    1145 </span><span class="lineCov">          4 :           if (use_key_present_hash</span>
+<span class="lineNum">    1146 </span><span class="lineCov">          2 :               &amp;&amp; !key_present_hash_ready</span>
+<span class="lineNum">    1147 </span><span class="lineCov">          2 :               &amp;&amp; scanned_from_start)</span>
+<span class="lineNum">    1148 </span><span class="lineCov">          1 :             key_present_hash_update (key_present_hash, aki);</span>
+<span class="lineNum">    1149 </span>            :         }
+<span class="lineNum">    1150 </span><span class="lineNoCov">          0 :       else if (pkt.pkttype == PKT_USER_ID)</span>
+<span class="lineNum">    1151 </span>            :         {
+<span class="lineNum">    1152 </span><span class="lineNoCov">          0 :           uid = pkt.pkt.user_id;</span>
+<span class="lineNum">    1153 </span><span class="lineNoCov">          0 :           ++uid_no;</span>
+<span class="lineNum">    1154 </span>            :         }
+<span class="lineNum">    1155 </span>            : 
+<span class="lineNum">    1156 </span><span class="lineCov">          2 :       for (n=0; n &lt; ndesc; n++)</span>
+<span class="lineNum">    1157 </span>            :         {
+<span class="lineNum">    1158 </span><span class="lineCov">          2 :           switch (desc[n].mode) {</span>
+<span class="lineNum">    1159 </span>            :           case KEYDB_SEARCH_MODE_NONE:
+<span class="lineNum">    1160 </span><span class="lineNoCov">          0 :             BUG ();</span>
+<span class="lineNum">    1161 </span>            :             break;
+<span class="lineNum">    1162 </span>            :           case KEYDB_SEARCH_MODE_EXACT:
+<span class="lineNum">    1163 </span>            :           case KEYDB_SEARCH_MODE_SUBSTR:
+<span class="lineNum">    1164 </span>            :           case KEYDB_SEARCH_MODE_MAIL:
+<span class="lineNum">    1165 </span>            :           case KEYDB_SEARCH_MODE_MAILSUB:
+<span class="lineNum">    1166 </span>            :           case KEYDB_SEARCH_MODE_MAILEND:
+<span class="lineNum">    1167 </span>            :           case KEYDB_SEARCH_MODE_WORDS:
+<span class="lineNum">    1168 </span><span class="lineNoCov">          0 :             if ( uid &amp;&amp; !compare_name (desc[n].mode,</span>
+<span class="lineNum">    1169 </span><span class="lineNoCov">          0 :                                        desc[n].u.name,</span>
+<span class="lineNum">    1170 </span><span class="lineNoCov">          0 :                                        uid-&gt;name, uid-&gt;len))</span>
+<span class="lineNum">    1171 </span><span class="lineNoCov">          0 :               goto found;</span>
+<span class="lineNum">    1172 </span><span class="lineNoCov">          0 :             break;</span>
+<span class="lineNum">    1173 </span>            : 
+<span class="lineNum">    1174 </span>            :           case KEYDB_SEARCH_MODE_SHORT_KID:
+<span class="lineNum">    1175 </span><span class="lineNoCov">          0 :             if (pk &amp;&amp; desc[n].u.kid[1] == aki[1])</span>
+<span class="lineNum">    1176 </span><span class="lineNoCov">          0 :               goto found;</span>
+<span class="lineNum">    1177 </span><span class="lineNoCov">          0 :             break;</span>
+<span class="lineNum">    1178 </span>            :           case KEYDB_SEARCH_MODE_LONG_KID:
+<span class="lineNum">    1179 </span><span class="lineNoCov">          0 :             if (pk &amp;&amp; desc[n].u.kid[0] == aki[0]</span>
+<span class="lineNum">    1180 </span><span class="lineNoCov">          0 :                 &amp;&amp; desc[n].u.kid[1] == aki[1])</span>
+<span class="lineNum">    1181 </span><span class="lineNoCov">          0 :               goto found;</span>
+<span class="lineNum">    1182 </span><span class="lineNoCov">          0 :             break;</span>
+<span class="lineNum">    1183 </span>            :           case KEYDB_SEARCH_MODE_FPR16:
+<span class="lineNum">    1184 </span><span class="lineNoCov">          0 :             if (pk &amp;&amp; !memcmp (desc[n].u.fpr, afp, 16))</span>
+<span class="lineNum">    1185 </span><span class="lineNoCov">          0 :               goto found;</span>
+<span class="lineNum">    1186 </span><span class="lineNoCov">          0 :             break;</span>
+<span class="lineNum">    1187 </span>            :           case KEYDB_SEARCH_MODE_FPR20:
+<span class="lineNum">    1188 </span>            :           case KEYDB_SEARCH_MODE_FPR:
+<span class="lineNum">    1189 </span><span class="lineNoCov">          0 :             if (pk &amp;&amp; !memcmp (desc[n].u.fpr, afp, 20))</span>
+<span class="lineNum">    1190 </span><span class="lineNoCov">          0 :               goto found;</span>
+<span class="lineNum">    1191 </span><span class="lineNoCov">          0 :             break;</span>
+<span class="lineNum">    1192 </span>            :           case KEYDB_SEARCH_MODE_FIRST:
+<span class="lineNum">    1193 </span><span class="lineCov">          1 :             if (pk)</span>
+<span class="lineNum">    1194 </span><span class="lineCov">          1 :               goto found;</span>
+<span class="lineNum">    1195 </span><span class="lineNoCov">          0 :             break;</span>
+<span class="lineNum">    1196 </span>            :           case KEYDB_SEARCH_MODE_NEXT:
+<span class="lineNum">    1197 </span><span class="lineCov">          1 :             if (pk)</span>
+<span class="lineNum">    1198 </span><span class="lineCov">          1 :               goto found;</span>
+<span class="lineNum">    1199 </span><span class="lineNoCov">          0 :             break;</span>
+<span class="lineNum">    1200 </span>            :           default:
+<span class="lineNum">    1201 </span><span class="lineNoCov">          0 :             rc = GPG_ERR_INV_ARG;</span>
+<span class="lineNum">    1202 </span><span class="lineNoCov">          0 :             goto found;</span>
+<span class="lineNum">    1203 </span>            :           }
+<span class="lineNum">    1204 </span>            :         }
+<span class="lineNum">    1205 </span><span class="lineNoCov">          0 :       free_packet (&amp;pkt, &amp;parsectx);</span>
+<span class="lineNum">    1206 </span><span class="lineNoCov">          0 :       continue;</span>
+<span class="lineNum">    1207 </span>            :     found:
+<span class="lineNum">    1208 </span><span class="lineCov">          2 :       if (rc)</span>
+<span class="lineNum">    1209 </span><span class="lineCov">          2 :         goto real_found;</span>
+<span class="lineNum">    1210 </span>            : 
+<span class="lineNum">    1211 </span><span class="lineCov">          2 :       if (DBG_LOOKUP)</span>
+<span class="lineNum">    1212 </span><span class="lineNoCov">          0 :         log_debug (&quot;%s: packet starting at offset %lld matched descriptor %zu\n&quot;</span>
+<span class="lineNum">    1213 </span>            :                    , __func__, (long long)offset, n);
+<span class="lineNum">    1214 </span>            : 
+<span class="lineNum">    1215 </span>            :       /* Record which desc we matched on.  Note this value is only
+<span class="lineNum">    1216 </span>            :          meaningful if this function returns with no errors. */
+<span class="lineNum">    1217 </span><span class="lineCov">          2 :       if(descindex)</span>
+<span class="lineNum">    1218 </span><span class="lineNoCov">          0 :         *descindex=n;</span>
+<span class="lineNum">    1219 </span><span class="lineCov">          2 :       for (n=any_skip?0:ndesc; n &lt; ndesc; n++)</span>
+<span class="lineNum">    1220 </span>            :         {
+<span class="lineNum">    1221 </span><span class="lineNoCov">          0 :           if (desc[n].skipfnc</span>
+<span class="lineNum">    1222 </span><span class="lineNoCov">          0 :               &amp;&amp; desc[n].skipfnc (desc[n].skipfncvalue, aki, uid_no))</span>
+<span class="lineNum">    1223 </span>            :             {
+<span class="lineNum">    1224 </span><span class="lineNoCov">          0 :               if (DBG_LOOKUP)</span>
+<span class="lineNum">    1225 </span><span class="lineNoCov">          0 :                 log_debug (&quot;%s: skipping match: desc %zd's skip function returned TRUE\n&quot;,</span>
+<span class="lineNum">    1226 </span>            :                            __func__, n);
+<span class="lineNum">    1227 </span><span class="lineNoCov">          0 :               break;</span>
+<span class="lineNum">    1228 </span>            :             }
+<span class="lineNum">    1229 </span>            :         }
+<span class="lineNum">    1230 </span><span class="lineCov">          2 :       if (n == ndesc)</span>
+<span class="lineNum">    1231 </span><span class="lineCov">          2 :         goto real_found;</span>
+<span class="lineNum">    1232 </span><span class="lineNoCov">          0 :       free_packet (&amp;pkt, &amp;parsectx);</span>
+<span class="lineNum">    1233 </span><span class="lineCov">          2 :     }</span>
+<span class="lineNum">    1234 </span>            :  real_found:
+<span class="lineNum">    1235 </span><span class="lineCov">          3 :   if (!rc)</span>
+<span class="lineNum">    1236 </span>            :     {
+<span class="lineNum">    1237 </span><span class="lineCov">          2 :       if (DBG_LOOKUP)</span>
+<span class="lineNum">    1238 </span><span class="lineNoCov">          0 :         log_debug (&quot;%s: returning success\n&quot;, __func__);</span>
+<span class="lineNum">    1239 </span><span class="lineCov">          2 :       hd-&gt;found.offset = main_offset;</span>
+<span class="lineNum">    1240 </span><span class="lineCov">          2 :       hd-&gt;found.kr = hd-&gt;current.kr;</span>
+<span class="lineNum">    1241 </span><span class="lineCov">          2 :       hd-&gt;found.pk_no = pk? pk_no : 0;</span>
+<span class="lineNum">    1242 </span><span class="lineCov">          2 :       hd-&gt;found.uid_no = uid? uid_no : 0;</span>
+<span class="lineNum">    1243 </span>            :     }
+<span class="lineNum">    1244 </span><span class="lineCov">          1 :   else if (rc == -1)</span>
+<span class="lineNum">    1245 </span>            :     {
+<span class="lineNum">    1246 </span><span class="lineCov">          1 :       if (DBG_LOOKUP)</span>
+<span class="lineNum">    1247 </span><span class="lineNoCov">          0 :         log_debug (&quot;%s: no matches (EOF)\n&quot;, __func__);</span>
+<span class="lineNum">    1248 </span>            : 
+<span class="lineNum">    1249 </span><span class="lineCov">          1 :       hd-&gt;current.eof = 1;</span>
+<span class="lineNum">    1250 </span>            :       /* if we scanned all keyrings, we are sure that
+<span class="lineNum">    1251 </span>            :        * all known key IDs are in our offtbl, mark that. */
+<span class="lineNum">    1252 </span><span class="lineCov">          1 :       if (use_key_present_hash</span>
+<span class="lineNum">    1253 </span><span class="lineCov">          1 :           &amp;&amp; !key_present_hash_ready</span>
+<span class="lineNum">    1254 </span><span class="lineCov">          1 :           &amp;&amp; scanned_from_start)</span>
+<span class="lineNum">    1255 </span>            :         {
+<span class="lineNum">    1256 </span>            :           KR_RESOURCE kr;
+<span class="lineNum">    1257 </span>            : 
+<span class="lineNum">    1258 </span>            :           /* First set the did_full_scan flag for this keyring.  */
+<span class="lineNum">    1259 </span><span class="lineNoCov">          0 :           for (kr=kr_resources; kr; kr = kr-&gt;next)</span>
+<span class="lineNum">    1260 </span>            :             {
+<span class="lineNum">    1261 </span><span class="lineNoCov">          0 :               if (hd-&gt;resource == kr)</span>
+<span class="lineNum">    1262 </span>            :                 {
+<span class="lineNum">    1263 </span><span class="lineNoCov">          0 :                   kr-&gt;did_full_scan = 1;</span>
+<span class="lineNum">    1264 </span><span class="lineNoCov">          0 :                   break;</span>
+<span class="lineNum">    1265 </span>            :                 }
+<span class="lineNum">    1266 </span>            :             }
+<span class="lineNum">    1267 </span>            :           /* Then check whether all flags are set and if so, mark the
+<span class="lineNum">    1268 </span>            :              offtbl ready */
+<span class="lineNum">    1269 </span><span class="lineNoCov">          0 :           for (kr=kr_resources; kr; kr = kr-&gt;next)</span>
+<span class="lineNum">    1270 </span>            :             {
+<span class="lineNum">    1271 </span><span class="lineNoCov">          0 :               if (!kr-&gt;did_full_scan)</span>
+<span class="lineNum">    1272 </span><span class="lineNoCov">          0 :                 break;</span>
+<span class="lineNum">    1273 </span>            :             }
+<span class="lineNum">    1274 </span><span class="lineNoCov">          0 :           if (!kr)</span>
+<span class="lineNum">    1275 </span><span class="lineNoCov">          0 :             key_present_hash_ready = 1;</span>
+<span class="lineNum">    1276 </span>            :         }
+<span class="lineNum">    1277 </span>            :     }
+<span class="lineNum">    1278 </span>            :   else
+<span class="lineNum">    1279 </span>            :     {
+<span class="lineNum">    1280 </span><span class="lineNoCov">          0 :       if (DBG_LOOKUP)</span>
+<span class="lineNum">    1281 </span><span class="lineNoCov">          0 :         log_debug (&quot;%s: error encountered during search: %s (%d)\n&quot;,</span>
+<span class="lineNum">    1282 </span>            :                    __func__, gpg_strerror (rc), rc);
+<span class="lineNum">    1283 </span><span class="lineNoCov">          0 :       hd-&gt;current.error = rc;</span>
+<span class="lineNum">    1284 </span>            :     }
+<span class="lineNum">    1285 </span>            : 
+<span class="lineNum">    1286 </span><span class="lineCov">          3 :   free_packet (&amp;pkt, &amp;parsectx);</span>
+<span class="lineNum">    1287 </span><span class="lineCov">          3 :   deinit_parse_packet (&amp;parsectx);</span>
+<span class="lineNum">    1288 </span><span class="lineCov">          3 :   set_packet_list_mode(save_mode);</span>
+<span class="lineNum">    1289 </span><span class="lineCov">          3 :   return rc;</span>
+<span class="lineNum">    1290 </span>            : }
+<span class="lineNum">    1291 </span>            : 
+<a name="1292"><span class="lineNum">    1292 </span>            : </a>
+<span class="lineNum">    1293 </span>            : static int
+<span class="lineNum">    1294 </span><span class="lineNoCov">          0 : create_tmp_file (const char *template,</span>
+<span class="lineNum">    1295 </span>            :                  char **r_bakfname, char **r_tmpfname, IOBUF *r_fp)
+<span class="lineNum">    1296 </span>            : {
+<span class="lineNum">    1297 </span>            :   gpg_error_t err;
+<span class="lineNum">    1298 </span>            :   mode_t oldmask;
+<span class="lineNum">    1299 </span>            : 
+<span class="lineNum">    1300 </span><span class="lineNoCov">          0 :   err = keybox_tmp_names (template, 1, r_bakfname, r_tmpfname);</span>
+<span class="lineNum">    1301 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">    1302 </span><span class="lineNoCov">          0 :     return err;</span>
+<span class="lineNum">    1303 </span>            : 
+<span class="lineNum">    1304 </span>            :   /* Create the temp file with limited access.  Note that the umask
+<span class="lineNum">    1305 </span>            :      call is not anymore needed because iobuf_create now takes care of
+<span class="lineNum">    1306 </span>            :      it.  However, it does not harm and thus we keep it.  */
+<span class="lineNum">    1307 </span><span class="lineNoCov">          0 :   oldmask = umask (077);</span>
+<span class="lineNum">    1308 </span><span class="lineNoCov">          0 :   if (is_secured_filename (*r_tmpfname))</span>
+<span class="lineNum">    1309 </span>            :     {
+<span class="lineNum">    1310 </span><span class="lineNoCov">          0 :       *r_fp = NULL;</span>
+<span class="lineNum">    1311 </span><span class="lineNoCov">          0 :       gpg_err_set_errno (EPERM);</span>
+<span class="lineNum">    1312 </span>            :     }
+<span class="lineNum">    1313 </span>            :   else
+<span class="lineNum">    1314 </span><span class="lineNoCov">          0 :     *r_fp = iobuf_create (*r_tmpfname, 1);</span>
+<span class="lineNum">    1315 </span><span class="lineNoCov">          0 :   umask (oldmask);</span>
+<span class="lineNum">    1316 </span><span class="lineNoCov">          0 :   if (!*r_fp)</span>
+<span class="lineNum">    1317 </span>            :     {
+<span class="lineNum">    1318 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1319 </span><span class="lineNoCov">          0 :       log_error (_(&quot;can't create '%s': %s\n&quot;), *r_tmpfname, gpg_strerror (err));</span>
+<span class="lineNum">    1320 </span><span class="lineNoCov">          0 :       xfree (*r_tmpfname);</span>
+<span class="lineNum">    1321 </span><span class="lineNoCov">          0 :       *r_tmpfname = NULL;</span>
+<span class="lineNum">    1322 </span><span class="lineNoCov">          0 :       xfree (*r_bakfname);</span>
+<span class="lineNum">    1323 </span><span class="lineNoCov">          0 :       *r_bakfname = NULL;</span>
+<span class="lineNum">    1324 </span>            :     }
+<span class="lineNum">    1325 </span>            : 
+<span class="lineNum">    1326 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">    1327 </span>            : }
+<span class="lineNum">    1328 </span>            : 
+<a name="1329"><span class="lineNum">    1329 </span>            : </a>
+<span class="lineNum">    1330 </span>            : static int
+<span class="lineNum">    1331 </span><span class="lineNoCov">          0 : rename_tmp_file (const char *bakfname, const char *tmpfname, const char *fname)</span>
+<span class="lineNum">    1332 </span>            : {
+<span class="lineNum">    1333 </span><span class="lineNoCov">          0 :   int rc = 0;</span>
+<span class="lineNum">    1334 </span><span class="lineNoCov">          0 :   int block = 0;</span>
+<span class="lineNum">    1335 </span>            : 
+<span class="lineNum">    1336 </span>            :   /* Invalidate close caches.  */
+<span class="lineNum">    1337 </span><span class="lineNoCov">          0 :   if (iobuf_ioctl (NULL, IOBUF_IOCTL_INVALIDATE_CACHE, 0, (char*)tmpfname ))</span>
+<span class="lineNum">    1338 </span>            :     {
+<span class="lineNum">    1339 </span><span class="lineNoCov">          0 :       rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1340 </span><span class="lineNoCov">          0 :       goto fail;</span>
+<span class="lineNum">    1341 </span>            :     }
+<span class="lineNum">    1342 </span><span class="lineNoCov">          0 :   iobuf_ioctl (NULL, IOBUF_IOCTL_INVALIDATE_CACHE, 0, (char*)bakfname );</span>
+<span class="lineNum">    1343 </span><span class="lineNoCov">          0 :   iobuf_ioctl (NULL, IOBUF_IOCTL_INVALIDATE_CACHE, 0, (char*)fname );</span>
+<span class="lineNum">    1344 </span>            : 
+<span class="lineNum">    1345 </span>            :   /* First make a backup file. */
+<span class="lineNum">    1346 </span><span class="lineNoCov">          0 :   block = 1;</span>
+<span class="lineNum">    1347 </span><span class="lineNoCov">          0 :   rc = gnupg_rename_file (fname, bakfname, &amp;block);</span>
+<span class="lineNum">    1348 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">    1349 </span><span class="lineNoCov">          0 :     goto fail;</span>
+<span class="lineNum">    1350 </span>            : 
+<span class="lineNum">    1351 </span>            :   /* then rename the file */
+<span class="lineNum">    1352 </span><span class="lineNoCov">          0 :   rc = gnupg_rename_file (tmpfname, fname, NULL);</span>
+<span class="lineNum">    1353 </span><span class="lineNoCov">          0 :   if (block)</span>
+<span class="lineNum">    1354 </span>            :     {
+<span class="lineNum">    1355 </span><span class="lineNoCov">          0 :       gnupg_unblock_all_signals ();</span>
+<span class="lineNum">    1356 </span><span class="lineNoCov">          0 :       block = 0;</span>
+<span class="lineNum">    1357 </span>            :     }
+<span class="lineNum">    1358 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">    1359 </span>            :     {
+<span class="lineNum">    1360 </span><span class="lineNoCov">          0 :       register_secured_file (fname);</span>
+<span class="lineNum">    1361 </span><span class="lineNoCov">          0 :       goto fail;</span>
+<span class="lineNum">    1362 </span>            :     }
+<span class="lineNum">    1363 </span>            : 
+<span class="lineNum">    1364 </span>            :   /* Now make sure the file has the same permissions as the original */
+<span class="lineNum">    1365 </span>            : #ifndef HAVE_DOSISH_SYSTEM
+<span class="lineNum">    1366 </span>            :   {
+<span class="lineNum">    1367 </span>            :     struct stat statbuf;
+<span class="lineNum">    1368 </span>            : 
+<span class="lineNum">    1369 </span><span class="lineNoCov">          0 :     statbuf.st_mode=S_IRUSR | S_IWUSR;</span>
+<span class="lineNum">    1370 </span>            : 
+<span class="lineNum">    1371 </span><span class="lineNoCov">          0 :     if (!stat (bakfname, &amp;statbuf) &amp;&amp; !chmod (fname, statbuf.st_mode))</span>
+<span class="lineNum">    1372 </span>            :       ;
+<span class="lineNum">    1373 </span>            :     else
+<span class="lineNum">    1374 </span><span class="lineNoCov">          0 :       log_error (&quot;WARNING: unable to restore permissions to '%s': %s&quot;,</span>
+<span class="lineNum">    1375 </span><span class="lineNoCov">          0 :                  fname, strerror(errno));</span>
+<span class="lineNum">    1376 </span>            :   }
+<span class="lineNum">    1377 </span>            : #endif
+<span class="lineNum">    1378 </span>            : 
+<span class="lineNum">    1379 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">    1380 </span>            : 
+<span class="lineNum">    1381 </span>            :  fail:
+<span class="lineNum">    1382 </span><span class="lineNoCov">          0 :   if (block)</span>
+<span class="lineNum">    1383 </span><span class="lineNoCov">          0 :     gnupg_unblock_all_signals ();</span>
+<span class="lineNum">    1384 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">    1385 </span>            : }
+<span class="lineNum">    1386 </span>            : 
+<a name="1387"><span class="lineNum">    1387 </span>            : </a>
+<span class="lineNum">    1388 </span>            : static int
+<span class="lineNum">    1389 </span><span class="lineNoCov">          0 : write_keyblock (IOBUF fp, KBNODE keyblock)</span>
+<span class="lineNum">    1390 </span>            : {
+<span class="lineNum">    1391 </span><span class="lineNoCov">          0 :   KBNODE kbctx = NULL, node;</span>
+<span class="lineNum">    1392 </span>            :   int rc;
+<span class="lineNum">    1393 </span>            : 
+<span class="lineNum">    1394 </span><span class="lineNoCov">          0 :   while ( (node = walk_kbnode (keyblock, &amp;kbctx, 0)) )</span>
+<span class="lineNum">    1395 </span>            :     {
+<span class="lineNum">    1396 </span><span class="lineNoCov">          0 :       if ( (rc = build_packet_and_meta (fp, node-&gt;pkt) ))</span>
+<span class="lineNum">    1397 </span>            :         {
+<span class="lineNum">    1398 </span><span class="lineNoCov">          0 :           log_error (&quot;build_packet(%d) failed: %s\n&quot;,</span>
+<span class="lineNum">    1399 </span><span class="lineNoCov">          0 :                      node-&gt;pkt-&gt;pkttype, gpg_strerror (rc) );</span>
+<span class="lineNum">    1400 </span><span class="lineNoCov">          0 :           return rc;</span>
+<span class="lineNum">    1401 </span>            :         }
+<span class="lineNum">    1402 </span>            :     }
+<span class="lineNum">    1403 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">    1404 </span>            : }
+<span class="lineNum">    1405 </span>            : 
+<span class="lineNum">    1406 </span>            : /*
+<span class="lineNum">    1407 </span>            :  * Walk over all public keyrings, check the signatures and replace the
+<span class="lineNum">    1408 </span>            :  * keyring with a new one where the signature cache is then updated.
+<span class="lineNum">    1409 </span>            :  * This is only done for the public keyrings.
+<a name="1410"><span class="lineNum">    1410 </span>            :  */</a>
+<span class="lineNum">    1411 </span>            : int
+<span class="lineNum">    1412 </span><span class="lineNoCov">          0 : keyring_rebuild_cache (ctrl_t ctrl, void *token, int noisy)</span>
+<span class="lineNum">    1413 </span>            : {
+<span class="lineNum">    1414 </span>            :   KEYRING_HANDLE hd;
+<span class="lineNum">    1415 </span>            :   KEYDB_SEARCH_DESC desc;
+<span class="lineNum">    1416 </span><span class="lineNoCov">          0 :   KBNODE keyblock = NULL, node;</span>
+<span class="lineNum">    1417 </span><span class="lineNoCov">          0 :   const char *lastresname = NULL, *resname;</span>
+<span class="lineNum">    1418 </span><span class="lineNoCov">          0 :   IOBUF tmpfp = NULL;</span>
+<span class="lineNum">    1419 </span><span class="lineNoCov">          0 :   char *tmpfilename = NULL;</span>
+<span class="lineNum">    1420 </span><span class="lineNoCov">          0 :   char *bakfilename = NULL;</span>
+<span class="lineNum">    1421 </span>            :   int rc;
+<span class="lineNum">    1422 </span><span class="lineNoCov">          0 :   ulong count = 0, sigcount = 0;</span>
+<span class="lineNum">    1423 </span>            : 
+<span class="lineNum">    1424 </span><span class="lineNoCov">          0 :   hd = keyring_new (token);</span>
+<span class="lineNum">    1425 </span><span class="lineNoCov">          0 :   if (!hd)</span>
+<span class="lineNum">    1426 </span><span class="lineNoCov">          0 :     return gpg_error_from_syserror ();</span>
+<span class="lineNum">    1427 </span><span class="lineNoCov">          0 :   memset (&amp;desc, 0, sizeof desc);</span>
+<span class="lineNum">    1428 </span><span class="lineNoCov">          0 :   desc.mode = KEYDB_SEARCH_MODE_FIRST;</span>
+<span class="lineNum">    1429 </span>            : 
+<span class="lineNum">    1430 </span><span class="lineNoCov">          0 :   rc=keyring_lock (hd, 1);</span>
+<span class="lineNum">    1431 </span><span class="lineNoCov">          0 :   if(rc)</span>
+<span class="lineNum">    1432 </span><span class="lineNoCov">          0 :     goto leave;</span>
+<span class="lineNum">    1433 </span>            : 
+<span class="lineNum">    1434 </span>            :   for (;;)
+<span class="lineNum">    1435 </span>            :     {
+<span class="lineNum">    1436 </span><span class="lineNoCov">          0 :       rc = keyring_search (hd, &amp;desc, 1, NULL, 1 /* ignore_legacy */);</span>
+<span class="lineNum">    1437 </span><span class="lineNoCov">          0 :       if (rc)</span>
+<span class="lineNum">    1438 </span><span class="lineNoCov">          0 :         break;  /* ready.  */</span>
+<span class="lineNum">    1439 </span>            : 
+<span class="lineNum">    1440 </span><span class="lineNoCov">          0 :       desc.mode = KEYDB_SEARCH_MODE_NEXT;</span>
+<span class="lineNum">    1441 </span><span class="lineNoCov">          0 :       resname = keyring_get_resource_name (hd);</span>
+<span class="lineNum">    1442 </span><span class="lineNoCov">          0 :       if (lastresname != resname )</span>
+<span class="lineNum">    1443 </span>            :         { /* we have switched to a new keyring - commit changes */
+<span class="lineNum">    1444 </span><span class="lineNoCov">          0 :           if (tmpfp)</span>
+<span class="lineNum">    1445 </span>            :             {
+<span class="lineNum">    1446 </span><span class="lineNoCov">          0 :               if (iobuf_close (tmpfp))</span>
+<span class="lineNum">    1447 </span>            :                 {
+<span class="lineNum">    1448 </span><span class="lineNoCov">          0 :                   rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1449 </span><span class="lineNoCov">          0 :                   log_error (&quot;error closing '%s': %s\n&quot;,</span>
+<span class="lineNum">    1450 </span><span class="lineNoCov">          0 :                              tmpfilename, strerror (errno));</span>
+<span class="lineNum">    1451 </span><span class="lineNoCov">          0 :                   goto leave;</span>
+<span class="lineNum">    1452 </span>            :                 }
+<span class="lineNum">    1453 </span>            :               /* because we have switched resources, we can be sure that
+<span class="lineNum">    1454 </span>            :                * the original file is closed */
+<span class="lineNum">    1455 </span><span class="lineNoCov">          0 :               tmpfp = NULL;</span>
+<span class="lineNum">    1456 </span>            :             }
+<span class="lineNum">    1457 </span>            :           /* Static analyzer note: BAKFILENAME is never NULL here
+<span class="lineNum">    1458 </span>            :              because it is controlled by LASTRESNAME.  */
+<span class="lineNum">    1459 </span><span class="lineNoCov">          0 :           rc = lastresname? rename_tmp_file (bakfilename, tmpfilename,</span>
+<span class="lineNum">    1460 </span><span class="lineNoCov">          0 :                                              lastresname) : 0;</span>
+<span class="lineNum">    1461 </span><span class="lineNoCov">          0 :           xfree (tmpfilename);  tmpfilename = NULL;</span>
+<span class="lineNum">    1462 </span><span class="lineNoCov">          0 :           xfree (bakfilename);  bakfilename = NULL;</span>
+<span class="lineNum">    1463 </span><span class="lineNoCov">          0 :           if (rc)</span>
+<span class="lineNum">    1464 </span><span class="lineNoCov">          0 :             goto leave;</span>
+<span class="lineNum">    1465 </span><span class="lineNoCov">          0 :           lastresname = resname;</span>
+<span class="lineNum">    1466 </span><span class="lineNoCov">          0 :           if (noisy &amp;&amp; !opt.quiet)</span>
+<span class="lineNum">    1467 </span><span class="lineNoCov">          0 :             log_info (_(&quot;caching keyring '%s'\n&quot;), resname);</span>
+<span class="lineNum">    1468 </span><span class="lineNoCov">          0 :           rc = create_tmp_file (resname, &amp;bakfilename, &amp;tmpfilename, &amp;tmpfp);</span>
+<span class="lineNum">    1469 </span><span class="lineNoCov">          0 :           if (rc)</span>
+<span class="lineNum">    1470 </span><span class="lineNoCov">          0 :             goto leave;</span>
+<span class="lineNum">    1471 </span>            :         }
+<span class="lineNum">    1472 </span>            : 
+<span class="lineNum">    1473 </span><span class="lineNoCov">          0 :       release_kbnode (keyblock);</span>
+<span class="lineNum">    1474 </span><span class="lineNoCov">          0 :       rc = keyring_get_keyblock (hd, &amp;keyblock);</span>
+<span class="lineNum">    1475 </span><span class="lineNoCov">          0 :       if (rc)</span>
+<span class="lineNum">    1476 </span>            :         {
+<span class="lineNum">    1477 </span><span class="lineNoCov">          0 :           if (gpg_err_code (rc) == GPG_ERR_LEGACY_KEY)</span>
+<span class="lineNum">    1478 </span><span class="lineNoCov">          0 :             continue;  /* Skip legacy keys.  */</span>
+<span class="lineNum">    1479 </span><span class="lineNoCov">          0 :           log_error (&quot;keyring_get_keyblock failed: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">    1480 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">    1481 </span>            :         }
+<span class="lineNum">    1482 </span><span class="lineNoCov">          0 :       if ( keyblock-&gt;pkt-&gt;pkttype != PKT_PUBLIC_KEY)</span>
+<span class="lineNum">    1483 </span>            :         {
+<span class="lineNum">    1484 </span>            :           /* We had a few reports about corrupted keyrings; if we have
+<span class="lineNum">    1485 </span>            :              been called directly from the command line we delete such
+<span class="lineNum">    1486 </span>            :              a keyblock instead of bailing out.  */
+<span class="lineNum">    1487 </span><span class="lineNoCov">          0 :           log_error (&quot;unexpected keyblock found (pkttype=%d)%s\n&quot;,</span>
+<span class="lineNum">    1488 </span><span class="lineNoCov">          0 :                      keyblock-&gt;pkt-&gt;pkttype, noisy? &quot; - deleted&quot;:&quot;&quot;);</span>
+<span class="lineNum">    1489 </span><span class="lineNoCov">          0 :           if (noisy)</span>
+<span class="lineNum">    1490 </span><span class="lineNoCov">          0 :             continue;</span>
+<span class="lineNum">    1491 </span><span class="lineNoCov">          0 :           log_info (&quot;Hint: backup your keys and try running '%s'\n&quot;,</span>
+<span class="lineNum">    1492 </span>            :                     &quot;gpg --rebuild-keydb-caches&quot;);
+<span class="lineNum">    1493 </span><span class="lineNoCov">          0 :           rc = gpg_error (GPG_ERR_INV_KEYRING);</span>
+<span class="lineNum">    1494 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">    1495 </span>            :         }
+<span class="lineNum">    1496 </span>            : 
+<span class="lineNum">    1497 </span><span class="lineNoCov">          0 :       if (keyblock-&gt;pkt-&gt;pkt.public_key-&gt;version &lt; 4)</span>
+<span class="lineNum">    1498 </span>            :         {
+<span class="lineNum">    1499 </span>            :           /* We do not copy/cache v3 keys or any other unknown
+<span class="lineNum">    1500 </span>            :              packets.  It is better to remove them from the keyring.
+<span class="lineNum">    1501 </span>            :              The code required to keep them in the keyring would be
+<span class="lineNum">    1502 </span>            :              too complicated.  Given that we do not touch the old
+<span class="lineNum">    1503 </span>            :              secring.gpg a suitable backup for decryption of v3 stuff
+<span class="lineNum">    1504 </span>            :              using an older gpg version will always be available.
+<span class="lineNum">    1505 </span>            :              Note: This test is actually superfluous because we
+<span class="lineNum">    1506 </span>            :              already acted upon GPG_ERR_LEGACY_KEY.      */
+<span class="lineNum">    1507 </span>            :         }
+<span class="lineNum">    1508 </span>            :       else
+<span class="lineNum">    1509 </span>            :         {
+<span class="lineNum">    1510 </span>            :           /* Check all signature to set the signature's cache flags. */
+<span class="lineNum">    1511 </span><span class="lineNoCov">          0 :           for (node=keyblock; node; node=node-&gt;next)</span>
+<span class="lineNum">    1512 </span>            :             {
+<span class="lineNum">    1513 </span>            :               /* Note that this doesn't cache the result of a
+<span class="lineNum">    1514 </span>            :                  revocation issued by a designated revoker.  This is
+<span class="lineNum">    1515 </span>            :                  because the pk in question does not carry the revkeys
+<span class="lineNum">    1516 </span>            :                  as we haven't merged the key and selfsigs.  It is
+<span class="lineNum">    1517 </span>            :                  questionable whether this matters very much since
+<span class="lineNum">    1518 </span>            :                  there are very very few designated revoker revocation
+<span class="lineNum">    1519 </span>            :                  packets out there. */
+<span class="lineNum">    1520 </span><span class="lineNoCov">          0 :               if (node-&gt;pkt-&gt;pkttype == PKT_SIGNATURE)</span>
+<span class="lineNum">    1521 </span>            :                 {
+<span class="lineNum">    1522 </span><span class="lineNoCov">          0 :                   PKT_signature *sig=node-&gt;pkt-&gt;pkt.signature;</span>
+<span class="lineNum">    1523 </span>            : 
+<span class="lineNum">    1524 </span><span class="lineNoCov">          0 :                   if(!opt.no_sig_cache &amp;&amp; sig-&gt;flags.checked &amp;&amp; sig-&gt;flags.valid</span>
+<span class="lineNum">    1525 </span><span class="lineNoCov">          0 :                      &amp;&amp; (openpgp_md_test_algo(sig-&gt;digest_algo)</span>
+<span class="lineNum">    1526 </span><span class="lineNoCov">          0 :                          || openpgp_pk_test_algo(sig-&gt;pubkey_algo)))</span>
+<span class="lineNum">    1527 </span><span class="lineNoCov">          0 :                     sig-&gt;flags.checked=sig-&gt;flags.valid=0;</span>
+<span class="lineNum">    1528 </span>            :                   else
+<span class="lineNum">    1529 </span><span class="lineNoCov">          0 :                     check_key_signature (ctrl, keyblock, node, NULL);</span>
+<span class="lineNum">    1530 </span>            : 
+<span class="lineNum">    1531 </span><span class="lineNoCov">          0 :                   sigcount++;</span>
+<span class="lineNum">    1532 </span>            :                 }
+<span class="lineNum">    1533 </span>            :             }
+<span class="lineNum">    1534 </span>            : 
+<span class="lineNum">    1535 </span>            :           /* Write the keyblock to the temporary file.  */
+<span class="lineNum">    1536 </span><span class="lineNoCov">          0 :           rc = write_keyblock (tmpfp, keyblock);</span>
+<span class="lineNum">    1537 </span><span class="lineNoCov">          0 :           if (rc)</span>
+<span class="lineNum">    1538 </span><span class="lineNoCov">          0 :             goto leave;</span>
+<span class="lineNum">    1539 </span>            : 
+<span class="lineNum">    1540 </span><span class="lineNoCov">          0 :           if ( !(++count % 50) &amp;&amp; noisy &amp;&amp; !opt.quiet)</span>
+<span class="lineNum">    1541 </span><span class="lineNoCov">          0 :             log_info (ngettext(&quot;%lu keys cached so far (%lu signature)\n&quot;,</span>
+<span class="lineNum">    1542 </span>            :                                &quot;%lu keys cached so far (%lu signatures)\n&quot;,
+<span class="lineNum">    1543 </span>            :                                sigcount),
+<span class="lineNum">    1544 </span>            :                       count, sigcount);
+<span class="lineNum">    1545 </span>            :         }
+<span class="lineNum">    1546 </span><span class="lineNoCov">          0 :     } /* end main loop */</span>
+<span class="lineNum">    1547 </span><span class="lineNoCov">          0 :   if (rc == -1)</span>
+<span class="lineNum">    1548 </span><span class="lineNoCov">          0 :     rc = 0;</span>
+<span class="lineNum">    1549 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">    1550 </span>            :     {
+<span class="lineNum">    1551 </span><span class="lineNoCov">          0 :       log_error (&quot;keyring_search failed: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">    1552 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">    1553 </span>            :     }
+<span class="lineNum">    1554 </span>            : 
+<span class="lineNum">    1555 </span><span class="lineNoCov">          0 :   if (noisy || opt.verbose)</span>
+<span class="lineNum">    1556 </span>            :     {
+<span class="lineNum">    1557 </span><span class="lineNoCov">          0 :       log_info (ngettext(&quot;%lu key cached&quot;,</span>
+<span class="lineNum">    1558 </span>            :                          &quot;%lu keys cached&quot;, count), count);
+<span class="lineNum">    1559 </span><span class="lineNoCov">          0 :       log_printf (ngettext(&quot; (%lu signature)\n&quot;,</span>
+<span class="lineNum">    1560 </span>            :                            &quot; (%lu signatures)\n&quot;, sigcount), sigcount);
+<span class="lineNum">    1561 </span>            :     }
+<span class="lineNum">    1562 </span>            : 
+<span class="lineNum">    1563 </span><span class="lineNoCov">          0 :   if (tmpfp)</span>
+<span class="lineNum">    1564 </span>            :     {
+<span class="lineNum">    1565 </span><span class="lineNoCov">          0 :       if (iobuf_close (tmpfp))</span>
+<span class="lineNum">    1566 </span>            :         {
+<span class="lineNum">    1567 </span><span class="lineNoCov">          0 :           rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1568 </span><span class="lineNoCov">          0 :           log_error (&quot;error closing '%s': %s\n&quot;,</span>
+<span class="lineNum">    1569 </span><span class="lineNoCov">          0 :                      tmpfilename, strerror (errno));</span>
+<span class="lineNum">    1570 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">    1571 </span>            :         }
+<span class="lineNum">    1572 </span>            :       /* because we have switched resources, we can be sure that
+<span class="lineNum">    1573 </span>            :        * the original file is closed */
+<span class="lineNum">    1574 </span><span class="lineNoCov">          0 :       tmpfp = NULL;</span>
+<span class="lineNum">    1575 </span>            :     }
+<span class="lineNum">    1576 </span><span class="lineNoCov">          0 :   rc = lastresname? rename_tmp_file (bakfilename, tmpfilename,</span>
+<span class="lineNum">    1577 </span><span class="lineNoCov">          0 :                                      lastresname) : 0;</span>
+<span class="lineNum">    1578 </span><span class="lineNoCov">          0 :   xfree (tmpfilename);  tmpfilename = NULL;</span>
+<span class="lineNum">    1579 </span><span class="lineNoCov">          0 :   xfree (bakfilename);  bakfilename = NULL;</span>
+<span class="lineNum">    1580 </span>            : 
+<span class="lineNum">    1581 </span>            :  leave:
+<span class="lineNum">    1582 </span><span class="lineNoCov">          0 :   if (tmpfp)</span>
+<span class="lineNum">    1583 </span><span class="lineNoCov">          0 :     iobuf_cancel (tmpfp);</span>
+<span class="lineNum">    1584 </span><span class="lineNoCov">          0 :   xfree (tmpfilename);</span>
+<span class="lineNum">    1585 </span><span class="lineNoCov">          0 :   xfree (bakfilename);</span>
+<span class="lineNum">    1586 </span><span class="lineNoCov">          0 :   release_kbnode (keyblock);</span>
+<span class="lineNum">    1587 </span><span class="lineNoCov">          0 :   keyring_lock (hd, 0);</span>
+<span class="lineNum">    1588 </span><span class="lineNoCov">          0 :   keyring_release (hd);</span>
+<span class="lineNum">    1589 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">    1590 </span>            : }
+<span class="lineNum">    1591 </span>            : 
+<span class="lineNum">    1592 </span>            : 
+<span class="lineNum">    1593 </span>            : 
+<span class="lineNum">    1594 </span>            : /****************
+<span class="lineNum">    1595 </span>            :  * Perform insert/delete/update operation.
+<span class="lineNum">    1596 </span>            :  * mode 1 = insert
+<span class="lineNum">    1597 </span>            :  *      2 = delete
+<span class="lineNum">    1598 </span>            :  *      3 = update
+<a name="1599"><span class="lineNum">    1599 </span>            :  */</a>
+<span class="lineNum">    1600 </span>            : static int
+<span class="lineNum">    1601 </span><span class="lineNoCov">          0 : do_copy (int mode, const char *fname, KBNODE root,</span>
+<span class="lineNum">    1602 </span>            :          off_t start_offset, unsigned int n_packets )
+<span class="lineNum">    1603 </span>            : {
+<span class="lineNum">    1604 </span>            :     IOBUF fp, newfp;
+<span class="lineNum">    1605 </span><span class="lineNoCov">          0 :     int rc=0;</span>
+<span class="lineNum">    1606 </span><span class="lineNoCov">          0 :     char *bakfname = NULL;</span>
+<span class="lineNum">    1607 </span><span class="lineNoCov">          0 :     char *tmpfname = NULL;</span>
+<span class="lineNum">    1608 </span>            : 
+<span class="lineNum">    1609 </span>            :     /* Open the source file. Because we do a rename, we have to check the
+<span class="lineNum">    1610 </span>            :        permissions of the file */
+<span class="lineNum">    1611 </span><span class="lineNoCov">          0 :     if (access (fname, W_OK))</span>
+<span class="lineNum">    1612 </span><span class="lineNoCov">          0 :       return gpg_error_from_syserror ();</span>
+<span class="lineNum">    1613 </span>            : 
+<span class="lineNum">    1614 </span><span class="lineNoCov">          0 :     fp = iobuf_open (fname);</span>
+<span class="lineNum">    1615 </span><span class="lineNoCov">          0 :     if (mode == 1 &amp;&amp; !fp &amp;&amp; errno == ENOENT) {</span>
+<span class="lineNum">    1616 </span>            :         /* insert mode but file does not exist: create a new file */
+<span class="lineNum">    1617 </span>            :         KBNODE kbctx, node;
+<span class="lineNum">    1618 </span>            :         mode_t oldmask;
+<span class="lineNum">    1619 </span>            : 
+<span class="lineNum">    1620 </span><span class="lineNoCov">          0 :         oldmask=umask(077);</span>
+<span class="lineNum">    1621 </span><span class="lineNoCov">          0 :         if (is_secured_filename (fname)) {</span>
+<span class="lineNum">    1622 </span><span class="lineNoCov">          0 :             newfp = NULL;</span>
+<span class="lineNum">    1623 </span><span class="lineNoCov">          0 :             gpg_err_set_errno (EPERM);</span>
+<span class="lineNum">    1624 </span>            :         }
+<span class="lineNum">    1625 </span>            :         else
+<span class="lineNum">    1626 </span><span class="lineNoCov">          0 :             newfp = iobuf_create (fname, 1);</span>
+<span class="lineNum">    1627 </span><span class="lineNoCov">          0 :         umask(oldmask);</span>
+<span class="lineNum">    1628 </span><span class="lineNoCov">          0 :         if( !newfp )</span>
+<span class="lineNum">    1629 </span>            :           {
+<span class="lineNum">    1630 </span><span class="lineNoCov">          0 :             rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1631 </span><span class="lineNoCov">          0 :             log_error (_(&quot;can't create '%s': %s\n&quot;), fname, strerror(errno));</span>
+<span class="lineNum">    1632 </span><span class="lineNoCov">          0 :             return rc;</span>
+<span class="lineNum">    1633 </span>            :           }
+<span class="lineNum">    1634 </span><span class="lineNoCov">          0 :         if( !opt.quiet )</span>
+<span class="lineNum">    1635 </span><span class="lineNoCov">          0 :             log_info(_(&quot;%s: keyring created\n&quot;), fname );</span>
+<span class="lineNum">    1636 </span>            : 
+<span class="lineNum">    1637 </span><span class="lineNoCov">          0 :         kbctx=NULL;</span>
+<span class="lineNum">    1638 </span><span class="lineNoCov">          0 :         while ( (node = walk_kbnode( root, &amp;kbctx, 0 )) ) {</span>
+<span class="lineNum">    1639 </span><span class="lineNoCov">          0 :             if( (rc = build_packet( newfp, node-&gt;pkt )) ) {</span>
+<span class="lineNum">    1640 </span><span class="lineNoCov">          0 :                 log_error(&quot;build_packet(%d) failed: %s\n&quot;,</span>
+<span class="lineNum">    1641 </span><span class="lineNoCov">          0 :                             node-&gt;pkt-&gt;pkttype, gpg_strerror (rc) );</span>
+<span class="lineNum">    1642 </span><span class="lineNoCov">          0 :                 iobuf_cancel(newfp);</span>
+<span class="lineNum">    1643 </span><span class="lineNoCov">          0 :                 return rc;</span>
+<span class="lineNum">    1644 </span>            :             }
+<span class="lineNum">    1645 </span>            :         }
+<span class="lineNum">    1646 </span><span class="lineNoCov">          0 :         if( iobuf_close(newfp) ) {</span>
+<span class="lineNum">    1647 </span><span class="lineNoCov">          0 :             rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1648 </span><span class="lineNoCov">          0 :             log_error (&quot;%s: close failed: %s\n&quot;, fname, strerror(errno));</span>
+<span class="lineNum">    1649 </span><span class="lineNoCov">          0 :             return rc;</span>
+<span class="lineNum">    1650 </span>            :         }
+<span class="lineNum">    1651 </span><span class="lineNoCov">          0 :         return 0; /* ready */</span>
+<span class="lineNum">    1652 </span>            :     }
+<span class="lineNum">    1653 </span>            : 
+<span class="lineNum">    1654 </span><span class="lineNoCov">          0 :     if( !fp )</span>
+<span class="lineNum">    1655 </span>            :       {
+<span class="lineNum">    1656 </span><span class="lineNoCov">          0 :         rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1657 </span><span class="lineNoCov">          0 :         log_error(_(&quot;can't open '%s': %s\n&quot;), fname, strerror(errno) );</span>
+<span class="lineNum">    1658 </span><span class="lineNoCov">          0 :         goto leave;</span>
+<span class="lineNum">    1659 </span>            :       }
+<span class="lineNum">    1660 </span>            : 
+<span class="lineNum">    1661 </span>            :     /* Create the new file.  */
+<span class="lineNum">    1662 </span><span class="lineNoCov">          0 :     rc = create_tmp_file (fname, &amp;bakfname, &amp;tmpfname, &amp;newfp);</span>
+<span class="lineNum">    1663 </span><span class="lineNoCov">          0 :     if (rc) {</span>
+<span class="lineNum">    1664 </span><span class="lineNoCov">          0 :         iobuf_close(fp);</span>
+<span class="lineNum">    1665 </span><span class="lineNoCov">          0 :         goto leave;</span>
+<span class="lineNum">    1666 </span>            :     }
+<span class="lineNum">    1667 </span>            : 
+<span class="lineNum">    1668 </span><span class="lineNoCov">          0 :     if( mode == 1 ) { /* insert */</span>
+<span class="lineNum">    1669 </span>            :         /* copy everything to the new file */
+<span class="lineNum">    1670 </span><span class="lineNoCov">          0 :         rc = copy_all_packets (fp, newfp);</span>
+<span class="lineNum">    1671 </span><span class="lineNoCov">          0 :         if( rc != -1 ) {</span>
+<span class="lineNum">    1672 </span><span class="lineNoCov">          0 :             log_error(&quot;%s: copy to '%s' failed: %s\n&quot;,</span>
+<span class="lineNum">    1673 </span>            :                       fname, tmpfname, gpg_strerror (rc) );
+<span class="lineNum">    1674 </span><span class="lineNoCov">          0 :             iobuf_close(fp);</span>
+<span class="lineNum">    1675 </span><span class="lineNoCov">          0 :             iobuf_cancel(newfp);</span>
+<span class="lineNum">    1676 </span><span class="lineNoCov">          0 :             goto leave;</span>
+<span class="lineNum">    1677 </span>            :         }
+<span class="lineNum">    1678 </span>            :     }
+<span class="lineNum">    1679 </span>            : 
+<span class="lineNum">    1680 </span><span class="lineNoCov">          0 :     if( mode == 2 || mode == 3 ) { /* delete or update */</span>
+<span class="lineNum">    1681 </span>            :         /* copy first part to the new file */
+<span class="lineNum">    1682 </span><span class="lineNoCov">          0 :         rc = copy_some_packets( fp, newfp, start_offset );</span>
+<span class="lineNum">    1683 </span><span class="lineNoCov">          0 :         if( rc ) { /* should never get EOF here */</span>
+<span class="lineNum">    1684 </span><span class="lineNoCov">          0 :             log_error (&quot;%s: copy to '%s' failed: %s\n&quot;,</span>
+<span class="lineNum">    1685 </span>            :                        fname, tmpfname, gpg_strerror (rc) );
+<span class="lineNum">    1686 </span><span class="lineNoCov">          0 :             iobuf_close(fp);</span>
+<span class="lineNum">    1687 </span><span class="lineNoCov">          0 :             iobuf_cancel(newfp);</span>
+<span class="lineNum">    1688 </span><span class="lineNoCov">          0 :             goto leave;</span>
+<span class="lineNum">    1689 </span>            :         }
+<span class="lineNum">    1690 </span>            :         /* skip this keyblock */
+<span class="lineNum">    1691 </span><span class="lineNoCov">          0 :         log_assert( n_packets );</span>
+<span class="lineNum">    1692 </span><span class="lineNoCov">          0 :         rc = skip_some_packets( fp, n_packets );</span>
+<span class="lineNum">    1693 </span><span class="lineNoCov">          0 :         if( rc ) {</span>
+<span class="lineNum">    1694 </span><span class="lineNoCov">          0 :             log_error(&quot;%s: skipping %u packets failed: %s\n&quot;,</span>
+<span class="lineNum">    1695 </span>            :                             fname, n_packets, gpg_strerror (rc));
+<span class="lineNum">    1696 </span><span class="lineNoCov">          0 :             iobuf_close(fp);</span>
+<span class="lineNum">    1697 </span><span class="lineNoCov">          0 :             iobuf_cancel(newfp);</span>
+<span class="lineNum">    1698 </span><span class="lineNoCov">          0 :             goto leave;</span>
+<span class="lineNum">    1699 </span>            :         }
+<span class="lineNum">    1700 </span>            :     }
+<span class="lineNum">    1701 </span>            : 
+<span class="lineNum">    1702 </span><span class="lineNoCov">          0 :     if( mode == 1 || mode == 3 ) { /* insert or update */</span>
+<span class="lineNum">    1703 </span><span class="lineNoCov">          0 :         rc = write_keyblock (newfp, root);</span>
+<span class="lineNum">    1704 </span><span class="lineNoCov">          0 :         if (rc) {</span>
+<span class="lineNum">    1705 </span><span class="lineNoCov">          0 :           iobuf_close(fp);</span>
+<span class="lineNum">    1706 </span><span class="lineNoCov">          0 :           iobuf_cancel(newfp);</span>
+<span class="lineNum">    1707 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">    1708 </span>            :         }
+<span class="lineNum">    1709 </span>            :     }
+<span class="lineNum">    1710 </span>            : 
+<span class="lineNum">    1711 </span><span class="lineNoCov">          0 :     if( mode == 2 || mode == 3 ) { /* delete or update */</span>
+<span class="lineNum">    1712 </span>            :         /* copy the rest */
+<span class="lineNum">    1713 </span><span class="lineNoCov">          0 :         rc = copy_all_packets( fp, newfp );</span>
+<span class="lineNum">    1714 </span><span class="lineNoCov">          0 :         if( rc != -1 ) {</span>
+<span class="lineNum">    1715 </span><span class="lineNoCov">          0 :             log_error(&quot;%s: copy to '%s' failed: %s\n&quot;,</span>
+<span class="lineNum">    1716 </span>            :                       fname, tmpfname, gpg_strerror (rc) );
+<span class="lineNum">    1717 </span><span class="lineNoCov">          0 :             iobuf_close(fp);</span>
+<span class="lineNum">    1718 </span><span class="lineNoCov">          0 :             iobuf_cancel(newfp);</span>
+<span class="lineNum">    1719 </span><span class="lineNoCov">          0 :             goto leave;</span>
+<span class="lineNum">    1720 </span>            :         }
+<span class="lineNum">    1721 </span>            :     }
+<span class="lineNum">    1722 </span>            : 
+<span class="lineNum">    1723 </span>            :     /* close both files */
+<span class="lineNum">    1724 </span><span class="lineNoCov">          0 :     if( iobuf_close(fp) ) {</span>
+<span class="lineNum">    1725 </span><span class="lineNoCov">          0 :         rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1726 </span><span class="lineNoCov">          0 :         log_error(&quot;%s: close failed: %s\n&quot;, fname, strerror(errno) );</span>
+<span class="lineNum">    1727 </span><span class="lineNoCov">          0 :         goto leave;</span>
+<span class="lineNum">    1728 </span>            :     }
+<span class="lineNum">    1729 </span><span class="lineNoCov">          0 :     if( iobuf_close(newfp) ) {</span>
+<span class="lineNum">    1730 </span><span class="lineNoCov">          0 :         rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">    1731 </span><span class="lineNoCov">          0 :         log_error(&quot;%s: close failed: %s\n&quot;, tmpfname, strerror(errno) );</span>
+<span class="lineNum">    1732 </span><span class="lineNoCov">          0 :         goto leave;</span>
+<span class="lineNum">    1733 </span>            :     }
+<span class="lineNum">    1734 </span>            : 
+<span class="lineNum">    1735 </span><span class="lineNoCov">          0 :     rc = rename_tmp_file (bakfname, tmpfname, fname);</span>
+<span class="lineNum">    1736 </span>            : 
+<span class="lineNum">    1737 </span>            :   leave:
+<span class="lineNum">    1738 </span><span class="lineNoCov">          0 :     xfree(bakfname);</span>
+<span class="lineNum">    1739 </span><span class="lineNoCov">          0 :     xfree(tmpfname);</span>
+<span class="lineNum">    1740 </span><span class="lineNoCov">          0 :     return rc;</span>
+<span class="lineNum">    1741 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

@@ -1,0 +1,1437 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - sm/keydb.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">sm</a> - keydb.c<span style="font-size: 80%;"> (source / <a href="keydb.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">206</td>
+            <td class="headerCovTableEntry">570</td>
+            <td class="headerCovTableEntryLo">36.1 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 12:47:41</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">13</td>
+            <td class="headerCovTableEntry">32</td>
+            <td class="headerCovTableEntryLo">40.6 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* keydb.c - key database dispatcher</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 2001, 2003, 2004 Free Software Foundation, Inc.
+<span class="lineNum">       3 </span>            :  * Copyright (C) 2014 g10 Code GmbH
+<span class="lineNum">       4 </span>            :  *
+<span class="lineNum">       5 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       6 </span>            :  *
+<span class="lineNum">       7 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       8 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">       9 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">      10 </span>            :  * (at your option) any later version.
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      13 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      14 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      15 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      16 </span>            :  *
+<span class="lineNum">      17 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      18 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      19 </span>            :  */
+<span class="lineNum">      20 </span>            : 
+<span class="lineNum">      21 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      22 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      23 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      24 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      25 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      26 </span>            : #include &lt;assert.h&gt;
+<span class="lineNum">      27 </span>            : #include &lt;sys/types.h&gt;
+<span class="lineNum">      28 </span>            : #include &lt;sys/stat.h&gt;
+<span class="lineNum">      29 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span>            : #include &quot;gpgsm.h&quot;
+<span class="lineNum">      32 </span>            : #include &quot;../kbx/keybox.h&quot;
+<span class="lineNum">      33 </span>            : #include &quot;keydb.h&quot;
+<span class="lineNum">      34 </span>            : #include &quot;../common/i18n.h&quot;
+<span class="lineNum">      35 </span>            : 
+<span class="lineNum">      36 </span>            : static int active_handles;
+<span class="lineNum">      37 </span>            : 
+<span class="lineNum">      38 </span>            : typedef enum {
+<span class="lineNum">      39 </span>            :     KEYDB_RESOURCE_TYPE_NONE = 0,
+<span class="lineNum">      40 </span>            :     KEYDB_RESOURCE_TYPE_KEYBOX
+<span class="lineNum">      41 </span>            : } KeydbResourceType;
+<span class="lineNum">      42 </span>            : #define MAX_KEYDB_RESOURCES 20
+<span class="lineNum">      43 </span>            : 
+<span class="lineNum">      44 </span>            : struct resource_item {
+<span class="lineNum">      45 </span>            :   KeydbResourceType type;
+<span class="lineNum">      46 </span>            :   union {
+<span class="lineNum">      47 </span>            :     KEYBOX_HANDLE kr;
+<span class="lineNum">      48 </span>            :   } u;
+<span class="lineNum">      49 </span>            :   void *token;
+<span class="lineNum">      50 </span>            :   dotlock_t lockhandle;
+<span class="lineNum">      51 </span>            : };
+<span class="lineNum">      52 </span>            : 
+<span class="lineNum">      53 </span>            : static struct resource_item all_resources[MAX_KEYDB_RESOURCES];
+<span class="lineNum">      54 </span>            : static int used_resources;
+<span class="lineNum">      55 </span>            : 
+<span class="lineNum">      56 </span>            : /* Whether we have successfully registered any resource.  */
+<span class="lineNum">      57 </span>            : static int any_registered;
+<span class="lineNum">      58 </span>            : 
+<span class="lineNum">      59 </span>            : 
+<span class="lineNum">      60 </span>            : struct keydb_handle {
+<span class="lineNum">      61 </span>            :   int locked;
+<span class="lineNum">      62 </span>            :   int found;
+<span class="lineNum">      63 </span>            :   int saved_found;
+<span class="lineNum">      64 </span>            :   int current;
+<span class="lineNum">      65 </span>            :   int is_ephemeral;
+<span class="lineNum">      66 </span>            :   int used; /* items in active */
+<span class="lineNum">      67 </span>            :   struct resource_item active[MAX_KEYDB_RESOURCES];
+<span class="lineNum">      68 </span>            : };
+<span class="lineNum">      69 </span>            : 
+<span class="lineNum">      70 </span>            : 
+<span class="lineNum">      71 </span>            : static int lock_all (KEYDB_HANDLE hd);
+<span class="lineNum">      72 </span>            : static void unlock_all (KEYDB_HANDLE hd);
+<span class="lineNum">      73 </span>            : 
+<a name="74"><span class="lineNum">      74 </span>            : </a>
+<span class="lineNum">      75 </span>            : static void
+<span class="lineNum">      76 </span><span class="lineNoCov">          0 : try_make_homedir (const char *fname)</span>
+<span class="lineNum">      77 </span>            : {
+<span class="lineNum">      78 </span><span class="lineNoCov">          0 :   const char *defhome = standard_homedir ();</span>
+<span class="lineNum">      79 </span>            : 
+<span class="lineNum">      80 </span>            :   /* Create the directory only if the supplied directory name is the
+<span class="lineNum">      81 </span>            :      same as the default one.  This way we avoid to create arbitrary
+<span class="lineNum">      82 </span>            :      directories when a non-default home directory is used.  To cope
+<span class="lineNum">      83 </span>            :      with HOME, we do compare only the suffix if we see that the
+<span class="lineNum">      84 </span>            :      default homedir does start with a tilde.  */
+<span class="lineNum">      85 </span><span class="lineNoCov">          0 :   if ( opt.dry_run || opt.no_homedir_creation )</span>
+<span class="lineNum">      86 </span><span class="lineNoCov">          0 :     return;</span>
+<span class="lineNum">      87 </span>            : 
+<span class="lineNum">      88 </span><span class="lineNoCov">          0 :   if (</span>
+<span class="lineNum">      89 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">      90 </span>            :       ( !compare_filenames (fname, defhome) )
+<span class="lineNum">      91 </span>            : #else
+<span class="lineNum">      92 </span><span class="lineNoCov">          0 :       ( *defhome == '~'</span>
+<span class="lineNum">      93 </span><span class="lineNoCov">          0 :         &amp;&amp; (strlen(fname) &gt;= strlen (defhome+1)</span>
+<span class="lineNum">      94 </span><span class="lineNoCov">          0 :             &amp;&amp; !strcmp(fname+strlen(fname)-strlen(defhome+1), defhome+1 ) ))</span>
+<span class="lineNum">      95 </span><span class="lineNoCov">          0 :       || (*defhome != '~'  &amp;&amp; !compare_filenames( fname, defhome ) )</span>
+<span class="lineNum">      96 </span>            : #endif
+<span class="lineNum">      97 </span>            :       )
+<span class="lineNum">      98 </span>            :     {
+<span class="lineNum">      99 </span><span class="lineNoCov">          0 :       if (gnupg_mkdir (fname, &quot;-rwx&quot;))</span>
+<span class="lineNum">     100 </span><span class="lineNoCov">          0 :         log_info (_(&quot;can't create directory '%s': %s\n&quot;),</span>
+<span class="lineNum">     101 </span><span class="lineNoCov">          0 :                   fname, strerror(errno) );</span>
+<span class="lineNum">     102 </span><span class="lineNoCov">          0 :       else if (!opt.quiet )</span>
+<span class="lineNum">     103 </span><span class="lineNoCov">          0 :         log_info (_(&quot;directory '%s' created\n&quot;), fname);</span>
+<span class="lineNum">     104 </span>            :     }
+<span class="lineNum">     105 </span>            : }
+<span class="lineNum">     106 </span>            : 
+<span class="lineNum">     107 </span>            : 
+<span class="lineNum">     108 </span>            : /* Handle the creation of a keybox if it does not yet exist.  Take
+<span class="lineNum">     109 </span>            :    into acount that other processes might have the keybox already
+<span class="lineNum">     110 </span>            :    locked.  This lock check does not work if the directory itself is
+<span class="lineNum">     111 </span>            :    not yet available.  If R_CREATED is not NULL it will be set to true
+<a name="112"><span class="lineNum">     112 </span>            :    if the function created a new keybox.  */</a>
+<span class="lineNum">     113 </span>            : static gpg_error_t
+<span class="lineNum">     114 </span><span class="lineCov">          3 : maybe_create_keybox (char *filename, int force, int *r_created)</span>
+<span class="lineNum">     115 </span>            : {
+<span class="lineNum">     116 </span><span class="lineCov">          3 :   dotlock_t lockhd = NULL;</span>
+<span class="lineNum">     117 </span>            :   FILE *fp;
+<span class="lineNum">     118 </span>            :   int rc;
+<span class="lineNum">     119 </span>            :   mode_t oldmask;
+<span class="lineNum">     120 </span>            :   char *last_slash_in_filename;
+<span class="lineNum">     121 </span>            :   int save_slash;
+<span class="lineNum">     122 </span>            : 
+<span class="lineNum">     123 </span><span class="lineCov">          3 :   if (r_created)</span>
+<span class="lineNum">     124 </span><span class="lineCov">          3 :     *r_created = 0;</span>
+<span class="lineNum">     125 </span>            : 
+<span class="lineNum">     126 </span>            :   /* A quick test whether the filename already exists. */
+<span class="lineNum">     127 </span><span class="lineCov">          3 :   if (!access (filename, F_OK))</span>
+<span class="lineNum">     128 </span><span class="lineCov">          2 :     return !access (filename, R_OK)? 0 : gpg_error (GPG_ERR_EACCES);</span>
+<span class="lineNum">     129 </span>            : 
+<span class="lineNum">     130 </span>            :   /* If we don't want to create a new file at all, there is no need to
+<span class="lineNum">     131 </span>            :      go any further - bail out right here.  */
+<span class="lineNum">     132 </span><span class="lineCov">          1 :   if (!force)</span>
+<span class="lineNum">     133 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_ENOENT);</span>
+<span class="lineNum">     134 </span>            : 
+<span class="lineNum">     135 </span>            :   /* First of all we try to create the home directory.  Note, that we
+<span class="lineNum">     136 </span>            :      don't do any locking here because any sane application of gpg
+<span class="lineNum">     137 </span>            :      would create the home directory by itself and not rely on gpg's
+<span class="lineNum">     138 </span>            :      tricky auto-creation which is anyway only done for some home
+<span class="lineNum">     139 </span>            :      directory name patterns. */
+<span class="lineNum">     140 </span><span class="lineCov">          1 :   last_slash_in_filename = strrchr (filename, DIRSEP_C);</span>
+<span class="lineNum">     141 </span>            : #if HAVE_W32_SYSTEM
+<span class="lineNum">     142 </span>            :   {
+<span class="lineNum">     143 </span>            :     /* Windows may either have a slash or a backslash.  Take care of it.  */
+<span class="lineNum">     144 </span>            :     char *p = strrchr (filename, '/');
+<span class="lineNum">     145 </span>            :     if (!last_slash_in_filename || p &gt; last_slash_in_filename)
+<span class="lineNum">     146 </span>            :       last_slash_in_filename = p;
+<span class="lineNum">     147 </span>            :   }
+<span class="lineNum">     148 </span>            : #endif /*HAVE_W32_SYSTEM*/
+<span class="lineNum">     149 </span><span class="lineCov">          1 :   if (!last_slash_in_filename)</span>
+<span class="lineNum">     150 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_ENOENT);  /* No slash at all - should</span>
+<span class="lineNum">     151 </span>            :                                            not happen though.  */
+<span class="lineNum">     152 </span><span class="lineCov">          1 :   save_slash = *last_slash_in_filename;</span>
+<span class="lineNum">     153 </span><span class="lineCov">          1 :   *last_slash_in_filename = 0;</span>
+<span class="lineNum">     154 </span><span class="lineCov">          1 :   if (access(filename, F_OK))</span>
+<span class="lineNum">     155 </span>            :     {
+<span class="lineNum">     156 </span>            :       static int tried;
+<span class="lineNum">     157 </span>            : 
+<span class="lineNum">     158 </span><span class="lineNoCov">          0 :       if (!tried)</span>
+<span class="lineNum">     159 </span>            :         {
+<span class="lineNum">     160 </span><span class="lineNoCov">          0 :           tried = 1;</span>
+<span class="lineNum">     161 </span><span class="lineNoCov">          0 :           try_make_homedir (filename);</span>
+<span class="lineNum">     162 </span>            :         }
+<span class="lineNum">     163 </span><span class="lineNoCov">          0 :       if (access (filename, F_OK))</span>
+<span class="lineNum">     164 </span>            :         {
+<span class="lineNum">     165 </span><span class="lineNoCov">          0 :           rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">     166 </span><span class="lineNoCov">          0 :           *last_slash_in_filename = save_slash;</span>
+<span class="lineNum">     167 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     168 </span>            :         }
+<span class="lineNum">     169 </span>            :     }
+<span class="lineNum">     170 </span><span class="lineCov">          1 :   *last_slash_in_filename = save_slash;</span>
+<span class="lineNum">     171 </span>            : 
+<span class="lineNum">     172 </span>            :   /* To avoid races with other instances of gpg trying to create or
+<span class="lineNum">     173 </span>            :      update the keybox (it is removed during an update for a short
+<span class="lineNum">     174 </span>            :      time), we do the next stuff in a locked state. */
+<span class="lineNum">     175 </span><span class="lineCov">          1 :   lockhd = dotlock_create (filename, 0);</span>
+<span class="lineNum">     176 </span><span class="lineCov">          1 :   if (!lockhd)</span>
+<span class="lineNum">     177 </span>            :     {
+<span class="lineNum">     178 </span>            :       /* A reason for this to fail is that the directory is not
+<span class="lineNum">     179 </span>            :          writable. However, this whole locking stuff does not make
+<span class="lineNum">     180 </span>            :          sense if this is the case. An empty non-writable directory
+<span class="lineNum">     181 </span>            :          with no keyring is not really useful at all. */
+<span class="lineNum">     182 </span><span class="lineNoCov">          0 :       if (opt.verbose)</span>
+<span class="lineNum">     183 </span><span class="lineNoCov">          0 :         log_info (&quot;can't allocate lock for '%s'\n&quot;, filename );</span>
+<span class="lineNum">     184 </span>            : 
+<span class="lineNum">     185 </span><span class="lineNoCov">          0 :       if (!force)</span>
+<span class="lineNum">     186 </span><span class="lineNoCov">          0 :         return gpg_error (GPG_ERR_ENOENT);</span>
+<span class="lineNum">     187 </span>            :       else
+<span class="lineNum">     188 </span><span class="lineNoCov">          0 :         return gpg_error (GPG_ERR_GENERAL);</span>
+<span class="lineNum">     189 </span>            :     }
+<span class="lineNum">     190 </span>            : 
+<span class="lineNum">     191 </span><span class="lineCov">          1 :   if ( dotlock_take (lockhd, -1) )</span>
+<span class="lineNum">     192 </span>            :     {
+<span class="lineNum">     193 </span>            :       /* This is something bad.  Probably a stale lockfile.  */
+<span class="lineNum">     194 </span><span class="lineNoCov">          0 :       log_info (&quot;can't lock '%s'\n&quot;, filename);</span>
+<span class="lineNum">     195 </span><span class="lineNoCov">          0 :       rc = gpg_error (GPG_ERR_GENERAL);</span>
+<span class="lineNum">     196 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     197 </span>            :     }
+<span class="lineNum">     198 </span>            : 
+<span class="lineNum">     199 </span>            :   /* Now the real test while we are locked. */
+<span class="lineNum">     200 </span><span class="lineCov">          1 :   if (!access(filename, F_OK))</span>
+<span class="lineNum">     201 </span>            :     {
+<span class="lineNum">     202 </span><span class="lineNoCov">          0 :       rc = 0;  /* Okay, we may access the file now.  */</span>
+<span class="lineNum">     203 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     204 </span>            :     }
+<span class="lineNum">     205 </span>            : 
+<span class="lineNum">     206 </span>            :   /* The file does not yet exist, create it now. */
+<span class="lineNum">     207 </span><span class="lineCov">          1 :   oldmask = umask (077);</span>
+<span class="lineNum">     208 </span><span class="lineCov">          1 :   fp = fopen (filename, &quot;w&quot;);</span>
+<span class="lineNum">     209 </span><span class="lineCov">          1 :   if (!fp)</span>
+<span class="lineNum">     210 </span>            :     {
+<span class="lineNum">     211 </span><span class="lineNoCov">          0 :       rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">     212 </span><span class="lineNoCov">          0 :       umask (oldmask);</span>
+<span class="lineNum">     213 </span><span class="lineNoCov">          0 :       log_error (_(&quot;error creating keybox '%s': %s\n&quot;),</span>
+<span class="lineNum">     214 </span>            :                  filename, gpg_strerror (rc));
+<span class="lineNum">     215 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     216 </span>            :     }
+<span class="lineNum">     217 </span><span class="lineCov">          1 :   umask (oldmask);</span>
+<span class="lineNum">     218 </span>            : 
+<span class="lineNum">     219 </span>            :   /* Make sure that at least one record is in a new keybox file, so
+<span class="lineNum">     220 </span>            :      that the detection magic for OpenPGP keyboxes works the next time
+<span class="lineNum">     221 </span>            :      it is used.  */
+<span class="lineNum">     222 </span><span class="lineCov">          1 :   rc = _keybox_write_header_blob (fp, 0);</span>
+<span class="lineNum">     223 </span><span class="lineCov">          1 :   if (rc)</span>
+<span class="lineNum">     224 </span>            :     {
+<span class="lineNum">     225 </span><span class="lineNoCov">          0 :       fclose (fp);</span>
+<span class="lineNum">     226 </span><span class="lineNoCov">          0 :       log_error (_(&quot;error creating keybox '%s': %s\n&quot;),</span>
+<span class="lineNum">     227 </span>            :                  filename, gpg_strerror (rc));
+<span class="lineNum">     228 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     229 </span>            :     }
+<span class="lineNum">     230 </span>            : 
+<span class="lineNum">     231 </span><span class="lineCov">          1 :   if (!opt.quiet)</span>
+<span class="lineNum">     232 </span><span class="lineCov">          1 :     log_info (_(&quot;keybox '%s' created\n&quot;), filename);</span>
+<span class="lineNum">     233 </span><span class="lineCov">          1 :   if (r_created)</span>
+<span class="lineNum">     234 </span><span class="lineCov">          1 :     *r_created = 1;</span>
+<span class="lineNum">     235 </span>            : 
+<span class="lineNum">     236 </span><span class="lineCov">          1 :   fclose (fp);</span>
+<span class="lineNum">     237 </span><span class="lineCov">          1 :   rc = 0;</span>
+<span class="lineNum">     238 </span>            : 
+<span class="lineNum">     239 </span>            :  leave:
+<span class="lineNum">     240 </span><span class="lineCov">          1 :   if (lockhd)</span>
+<span class="lineNum">     241 </span>            :     {
+<span class="lineNum">     242 </span><span class="lineCov">          1 :       dotlock_release (lockhd);</span>
+<span class="lineNum">     243 </span><span class="lineCov">          1 :       dotlock_destroy (lockhd);</span>
+<span class="lineNum">     244 </span>            :     }
+<span class="lineNum">     245 </span><span class="lineCov">          1 :   return rc;</span>
+<span class="lineNum">     246 </span>            : }
+<span class="lineNum">     247 </span>            : 
+<span class="lineNum">     248 </span>            : 
+<span class="lineNum">     249 </span>            : /*
+<span class="lineNum">     250 </span>            :  * Register a resource (which currently may only be a keybox file).
+<span class="lineNum">     251 </span>            :  * The first keybox which is added by this function is created if it
+<span class="lineNum">     252 </span>            :  * does not exist.  If AUTO_CREATED is not NULL it will be set to true
+<span class="lineNum">     253 </span>            :  * if the function has created a new keybox.
+<a name="254"><span class="lineNum">     254 </span>            :  */</a>
+<span class="lineNum">     255 </span>            : gpg_error_t
+<span class="lineNum">     256 </span><span class="lineCov">          3 : keydb_add_resource (ctrl_t ctrl, const char *url, int force, int *auto_created)</span>
+<span class="lineNum">     257 </span>            : {
+<span class="lineNum">     258 </span><span class="lineCov">          3 :   const char *resname = url;</span>
+<span class="lineNum">     259 </span><span class="lineCov">          3 :   char *filename = NULL;</span>
+<span class="lineNum">     260 </span><span class="lineCov">          3 :   gpg_error_t err = 0;</span>
+<span class="lineNum">     261 </span><span class="lineCov">          3 :   KeydbResourceType rt = KEYDB_RESOURCE_TYPE_NONE;</span>
+<span class="lineNum">     262 </span>            : 
+<span class="lineNum">     263 </span><span class="lineCov">          3 :   if (auto_created)</span>
+<span class="lineNum">     264 </span><span class="lineCov">          3 :     *auto_created = 0;</span>
+<span class="lineNum">     265 </span>            : 
+<span class="lineNum">     266 </span>            :   /* Do we have an URL?
+<span class="lineNum">     267 </span>            :      gnupg-kbx:filename := this is a plain keybox
+<span class="lineNum">     268 </span>            :      filename := See what it is, but create as plain keybox.
+<span class="lineNum">     269 </span>            :   */
+<span class="lineNum">     270 </span><span class="lineCov">          3 :   if (strlen (resname) &gt; 10)</span>
+<span class="lineNum">     271 </span>            :     {
+<span class="lineNum">     272 </span><span class="lineCov">          3 :       if (!strncmp (resname, &quot;gnupg-kbx:&quot;, 10) )</span>
+<span class="lineNum">     273 </span>            :         {
+<span class="lineNum">     274 </span><span class="lineNoCov">          0 :           rt = KEYDB_RESOURCE_TYPE_KEYBOX;</span>
+<span class="lineNum">     275 </span><span class="lineNoCov">          0 :           resname += 10;</span>
+<span class="lineNum">     276 </span>            :         }
+<span class="lineNum">     277 </span>            : #if !defined(HAVE_DRIVE_LETTERS) &amp;&amp; !defined(__riscos__)
+<span class="lineNum">     278 </span><span class="lineCov">          3 :       else if (strchr (resname, ':'))</span>
+<span class="lineNum">     279 </span>            :         {
+<span class="lineNum">     280 </span><span class="lineNoCov">          0 :           log_error (&quot;invalid key resource URL '%s'\n&quot;, url );</span>
+<span class="lineNum">     281 </span><span class="lineNoCov">          0 :           err = gpg_error (GPG_ERR_GENERAL);</span>
+<span class="lineNum">     282 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     283 </span>            :         }
+<span class="lineNum">     284 </span>            : #endif /* !HAVE_DRIVE_LETTERS &amp;&amp; !__riscos__ */
+<span class="lineNum">     285 </span>            :     }
+<span class="lineNum">     286 </span>            : 
+<span class="lineNum">     287 </span><span class="lineCov">          3 :   if (*resname != DIRSEP_C )</span>
+<span class="lineNum">     288 </span>            :     { /* do tilde expansion etc */
+<span class="lineNum">     289 </span><span class="lineCov">          3 :       if (strchr(resname, DIRSEP_C) )</span>
+<span class="lineNum">     290 </span><span class="lineNoCov">          0 :         filename = make_filename (resname, NULL);</span>
+<span class="lineNum">     291 </span>            :       else
+<span class="lineNum">     292 </span><span class="lineCov">          3 :         filename = make_filename (gnupg_homedir (), resname, NULL);</span>
+<span class="lineNum">     293 </span>            :     }
+<span class="lineNum">     294 </span>            :   else
+<span class="lineNum">     295 </span><span class="lineNoCov">          0 :     filename = xstrdup (resname);</span>
+<span class="lineNum">     296 </span>            : 
+<span class="lineNum">     297 </span><span class="lineCov">          3 :   if (!force)</span>
+<span class="lineNum">     298 </span><span class="lineCov">          3 :     force = !any_registered;</span>
+<span class="lineNum">     299 </span>            : 
+<span class="lineNum">     300 </span>            :   /* see whether we can determine the filetype */
+<span class="lineNum">     301 </span><span class="lineCov">          3 :   if (rt == KEYDB_RESOURCE_TYPE_NONE)</span>
+<span class="lineNum">     302 </span>            :     {
+<span class="lineNum">     303 </span><span class="lineCov">          3 :       FILE *fp = fopen( filename, &quot;rb&quot; );</span>
+<span class="lineNum">     304 </span>            : 
+<span class="lineNum">     305 </span><span class="lineCov">          3 :       if (fp)</span>
+<span class="lineNum">     306 </span>            :         {
+<span class="lineNum">     307 </span>            :           u32 magic;
+<span class="lineNum">     308 </span>            : 
+<span class="lineNum">     309 </span>            :           /* FIXME: check for the keybox magic */
+<span class="lineNum">     310 </span><span class="lineCov">          2 :           if (fread (&amp;magic, 4, 1, fp) == 1 )</span>
+<span class="lineNum">     311 </span>            :             {
+<span class="lineNum">     312 </span><span class="lineCov">          2 :               if (magic == 0x13579ace || magic == 0xce9a5713)</span>
+<span class="lineNum">     313 </span>            :                 ; /* GDBM magic - no more support */
+<span class="lineNum">     314 </span>            :               else
+<span class="lineNum">     315 </span><span class="lineCov">          2 :                 rt = KEYDB_RESOURCE_TYPE_KEYBOX;</span>
+<span class="lineNum">     316 </span>            :             }
+<span class="lineNum">     317 </span>            :           else /* maybe empty: assume keybox */
+<span class="lineNum">     318 </span><span class="lineNoCov">          0 :             rt = KEYDB_RESOURCE_TYPE_KEYBOX;</span>
+<span class="lineNum">     319 </span><span class="lineCov">          2 :           fclose (fp);</span>
+<span class="lineNum">     320 </span>            :         }
+<span class="lineNum">     321 </span>            :       else /* no file yet: create keybox */
+<span class="lineNum">     322 </span><span class="lineCov">          1 :         rt = KEYDB_RESOURCE_TYPE_KEYBOX;</span>
+<span class="lineNum">     323 </span>            :     }
+<span class="lineNum">     324 </span>            : 
+<span class="lineNum">     325 </span><span class="lineCov">          3 :   switch (rt)</span>
+<span class="lineNum">     326 </span>            :     {
+<span class="lineNum">     327 </span>            :     case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     328 </span><span class="lineNoCov">          0 :       log_error (&quot;unknown type of key resource '%s'\n&quot;, url );</span>
+<span class="lineNum">     329 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_GENERAL);</span>
+<span class="lineNum">     330 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     331 </span>            : 
+<span class="lineNum">     332 </span>            :     case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     333 </span><span class="lineCov">          3 :       err = maybe_create_keybox (filename, force, auto_created);</span>
+<span class="lineNum">     334 </span><span class="lineCov">          3 :       if (err)</span>
+<span class="lineNum">     335 </span><span class="lineNoCov">          0 :         goto leave;</span>
+<span class="lineNum">     336 </span>            :       /* Now register the file */
+<span class="lineNum">     337 </span>            :       {
+<span class="lineNum">     338 </span>            :         void *token;
+<span class="lineNum">     339 </span>            : 
+<span class="lineNum">     340 </span><span class="lineCov">          3 :         err = keybox_register_file (filename, 0, &amp;token);</span>
+<span class="lineNum">     341 </span><span class="lineCov">          3 :         if (gpg_err_code (err) == GPG_ERR_EEXIST)</span>
+<span class="lineNum">     342 </span>            :           ; /* Already registered - ignore.  */
+<span class="lineNum">     343 </span><span class="lineCov">          3 :         else if (err)</span>
+<span class="lineNum">     344 </span>            :           ; /* Other error.  */
+<span class="lineNum">     345 </span><span class="lineCov">          3 :         else if (used_resources &gt;= MAX_KEYDB_RESOURCES)</span>
+<span class="lineNum">     346 </span><span class="lineNoCov">          0 :           err = gpg_error (GPG_ERR_RESOURCE_LIMIT);</span>
+<span class="lineNum">     347 </span>            :         else
+<span class="lineNum">     348 </span>            :           {
+<span class="lineNum">     349 </span><span class="lineCov">          3 :             all_resources[used_resources].type = rt;</span>
+<span class="lineNum">     350 </span><span class="lineCov">          3 :             all_resources[used_resources].u.kr = NULL; /* Not used here */</span>
+<span class="lineNum">     351 </span><span class="lineCov">          3 :             all_resources[used_resources].token = token;</span>
+<span class="lineNum">     352 </span>            : 
+<span class="lineNum">     353 </span><span class="lineCov">          3 :             all_resources[used_resources].lockhandle</span>
+<span class="lineNum">     354 </span><span class="lineCov">          3 :               = dotlock_create (filename, 0);</span>
+<span class="lineNum">     355 </span><span class="lineCov">          3 :             if (!all_resources[used_resources].lockhandle)</span>
+<span class="lineNum">     356 </span><span class="lineNoCov">          0 :               log_fatal ( _(&quot;can't create lock for '%s'\n&quot;), filename);</span>
+<span class="lineNum">     357 </span>            : 
+<span class="lineNum">     358 </span>            :             /* Do a compress run if needed and the file is not locked. */
+<span class="lineNum">     359 </span><span class="lineCov">          3 :             if (!dotlock_take (all_resources[used_resources].lockhandle, 0))</span>
+<span class="lineNum">     360 </span>            :               {
+<span class="lineNum">     361 </span><span class="lineCov">          3 :                 KEYBOX_HANDLE kbxhd = keybox_new_x509 (token, 0);</span>
+<span class="lineNum">     362 </span>            : 
+<span class="lineNum">     363 </span><span class="lineCov">          3 :                 if (kbxhd)</span>
+<span class="lineNum">     364 </span>            :                   {
+<span class="lineNum">     365 </span><span class="lineCov">          3 :                     keybox_compress (kbxhd);</span>
+<span class="lineNum">     366 </span><span class="lineCov">          3 :                     keybox_release (kbxhd);</span>
+<span class="lineNum">     367 </span>            :                   }
+<span class="lineNum">     368 </span><span class="lineCov">          3 :                 dotlock_release (all_resources[used_resources].lockhandle);</span>
+<span class="lineNum">     369 </span>            :               }
+<span class="lineNum">     370 </span>            : 
+<span class="lineNum">     371 </span><span class="lineCov">          3 :             used_resources++;</span>
+<span class="lineNum">     372 </span>            :           }
+<span class="lineNum">     373 </span>            :       }
+<span class="lineNum">     374 </span><span class="lineCov">          3 :       break;</span>
+<span class="lineNum">     375 </span>            : 
+<span class="lineNum">     376 </span>            :     default:
+<span class="lineNum">     377 </span><span class="lineNoCov">          0 :       log_error (&quot;resource type of '%s' not supported\n&quot;, url);</span>
+<span class="lineNum">     378 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_NOT_SUPPORTED);</span>
+<span class="lineNum">     379 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     380 </span>            :     }
+<span class="lineNum">     381 </span>            : 
+<span class="lineNum">     382 </span>            :   /* fixme: check directory permissions and print a warning */
+<span class="lineNum">     383 </span>            : 
+<span class="lineNum">     384 </span>            :  leave:
+<span class="lineNum">     385 </span><span class="lineCov">          3 :   if (err)</span>
+<span class="lineNum">     386 </span>            :     {
+<span class="lineNum">     387 </span><span class="lineNoCov">          0 :       log_error (&quot;keyblock resource '%s': %s\n&quot;, filename, gpg_strerror (err));</span>
+<span class="lineNum">     388 </span><span class="lineNoCov">          0 :       gpgsm_status_with_error (ctrl, STATUS_ERROR,</span>
+<span class="lineNum">     389 </span>            :                                &quot;add_keyblock_resource&quot;, err);
+<span class="lineNum">     390 </span>            :     }
+<span class="lineNum">     391 </span>            :   else
+<span class="lineNum">     392 </span><span class="lineCov">          3 :     any_registered = 1;</span>
+<span class="lineNum">     393 </span><span class="lineCov">          3 :   xfree (filename);</span>
+<span class="lineNum">     394 </span><span class="lineCov">          3 :   return err;</span>
+<span class="lineNum">     395 </span>            : }
+<span class="lineNum">     396 </span>            : 
+<a name="397"><span class="lineNum">     397 </span>            : </a>
+<span class="lineNum">     398 </span>            : KEYDB_HANDLE
+<span class="lineNum">     399 </span><span class="lineCov">          9 : keydb_new (void)</span>
+<span class="lineNum">     400 </span>            : {
+<span class="lineNum">     401 </span>            :   KEYDB_HANDLE hd;
+<span class="lineNum">     402 </span>            :   int i, j;
+<span class="lineNum">     403 </span>            : 
+<span class="lineNum">     404 </span><span class="lineCov">          9 :   hd = xcalloc (1, sizeof *hd);</span>
+<span class="lineNum">     405 </span><span class="lineCov">          9 :   hd-&gt;found = -1;</span>
+<span class="lineNum">     406 </span><span class="lineCov">          9 :   hd-&gt;saved_found = -1;</span>
+<span class="lineNum">     407 </span>            : 
+<span class="lineNum">     408 </span><span class="lineCov">          9 :   assert (used_resources &lt;= MAX_KEYDB_RESOURCES);</span>
+<span class="lineNum">     409 </span><span class="lineCov">         18 :   for (i=j=0; i &lt; used_resources; i++)</span>
+<span class="lineNum">     410 </span>            :     {
+<span class="lineNum">     411 </span><span class="lineCov">          9 :       switch (all_resources[i].type)</span>
+<span class="lineNum">     412 </span>            :         {
+<span class="lineNum">     413 </span>            :         case KEYDB_RESOURCE_TYPE_NONE: /* ignore */
+<span class="lineNum">     414 </span><span class="lineNoCov">          0 :           break;</span>
+<span class="lineNum">     415 </span>            :         case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     416 </span><span class="lineCov">          9 :           hd-&gt;active[j].type   = all_resources[i].type;</span>
+<span class="lineNum">     417 </span><span class="lineCov">          9 :           hd-&gt;active[j].token  = all_resources[i].token;</span>
+<span class="lineNum">     418 </span><span class="lineCov">          9 :           hd-&gt;active[j].lockhandle = all_resources[i].lockhandle;</span>
+<span class="lineNum">     419 </span><span class="lineCov">          9 :           hd-&gt;active[j].u.kr = keybox_new_x509 (all_resources[i].token, 0);</span>
+<span class="lineNum">     420 </span><span class="lineCov">          9 :           if (!hd-&gt;active[j].u.kr)</span>
+<span class="lineNum">     421 </span>            :             {
+<span class="lineNum">     422 </span><span class="lineNoCov">          0 :               xfree (hd);</span>
+<span class="lineNum">     423 </span><span class="lineNoCov">          0 :               return NULL; /* fixme: release all previously allocated handles*/</span>
+<span class="lineNum">     424 </span>            :             }
+<span class="lineNum">     425 </span><span class="lineCov">          9 :           j++;</span>
+<span class="lineNum">     426 </span><span class="lineCov">          9 :           break;</span>
+<span class="lineNum">     427 </span>            :         }
+<span class="lineNum">     428 </span>            :     }
+<span class="lineNum">     429 </span><span class="lineCov">          9 :   hd-&gt;used = j;</span>
+<span class="lineNum">     430 </span>            : 
+<span class="lineNum">     431 </span><span class="lineCov">          9 :   active_handles++;</span>
+<span class="lineNum">     432 </span><span class="lineCov">          9 :   return hd;</span>
+<span class="lineNum">     433 </span>            : }
+<a name="434"><span class="lineNum">     434 </span>            : </a>
+<span class="lineNum">     435 </span>            : void
+<span class="lineNum">     436 </span><span class="lineCov">          9 : keydb_release (KEYDB_HANDLE hd)</span>
+<span class="lineNum">     437 </span>            : {
+<span class="lineNum">     438 </span>            :   int i;
+<span class="lineNum">     439 </span>            : 
+<span class="lineNum">     440 </span><span class="lineCov">          9 :   if (!hd)</span>
+<span class="lineNum">     441 </span><span class="lineNoCov">          0 :     return;</span>
+<span class="lineNum">     442 </span><span class="lineCov">          9 :   assert (active_handles &gt; 0);</span>
+<span class="lineNum">     443 </span><span class="lineCov">          9 :   active_handles--;</span>
+<span class="lineNum">     444 </span>            : 
+<span class="lineNum">     445 </span><span class="lineCov">          9 :   unlock_all (hd);</span>
+<span class="lineNum">     446 </span><span class="lineCov">         18 :   for (i=0; i &lt; hd-&gt;used; i++)</span>
+<span class="lineNum">     447 </span>            :     {
+<span class="lineNum">     448 </span><span class="lineCov">          9 :       switch (hd-&gt;active[i].type)</span>
+<span class="lineNum">     449 </span>            :         {
+<span class="lineNum">     450 </span>            :         case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     451 </span><span class="lineNoCov">          0 :           break;</span>
+<span class="lineNum">     452 </span>            :         case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     453 </span><span class="lineCov">          9 :           keybox_release (hd-&gt;active[i].u.kr);</span>
+<span class="lineNum">     454 </span><span class="lineCov">          9 :           break;</span>
+<span class="lineNum">     455 </span>            :         }
+<span class="lineNum">     456 </span>            :     }
+<span class="lineNum">     457 </span>            : 
+<span class="lineNum">     458 </span><span class="lineCov">          9 :     xfree (hd);</span>
+<span class="lineNum">     459 </span>            : }
+<span class="lineNum">     460 </span>            : 
+<span class="lineNum">     461 </span>            : 
+<span class="lineNum">     462 </span>            : /* Return the name of the current resource.  This is function first
+<span class="lineNum">     463 </span>            :    looks for the last found found, then for the current search
+<span class="lineNum">     464 </span>            :    position, and last returns the first available resource.  The
+<span class="lineNum">     465 </span>            :    returned string is only valid as long as the handle exists.  This
+<span class="lineNum">     466 </span>            :    function does only return NULL if no handle is specified, in all
+<a name="467"><span class="lineNum">     467 </span>            :    other error cases an empty string is returned.  */</a>
+<span class="lineNum">     468 </span>            : const char *
+<span class="lineNum">     469 </span><span class="lineNoCov">          0 : keydb_get_resource_name (KEYDB_HANDLE hd)</span>
+<span class="lineNum">     470 </span>            : {
+<span class="lineNum">     471 </span>            :   int idx;
+<span class="lineNum">     472 </span><span class="lineNoCov">          0 :   const char *s = NULL;</span>
+<span class="lineNum">     473 </span>            : 
+<span class="lineNum">     474 </span><span class="lineNoCov">          0 :   if (!hd)</span>
+<span class="lineNum">     475 </span><span class="lineNoCov">          0 :     return NULL;</span>
+<span class="lineNum">     476 </span>            : 
+<span class="lineNum">     477 </span><span class="lineNoCov">          0 :   if ( hd-&gt;found &gt;= 0 &amp;&amp; hd-&gt;found &lt; hd-&gt;used)</span>
+<span class="lineNum">     478 </span><span class="lineNoCov">          0 :     idx = hd-&gt;found;</span>
+<span class="lineNum">     479 </span><span class="lineNoCov">          0 :   else if ( hd-&gt;current &gt;= 0 &amp;&amp; hd-&gt;current &lt; hd-&gt;used)</span>
+<span class="lineNum">     480 </span><span class="lineNoCov">          0 :     idx = hd-&gt;current;</span>
+<span class="lineNum">     481 </span>            :   else
+<span class="lineNum">     482 </span><span class="lineNoCov">          0 :     idx = 0;</span>
+<span class="lineNum">     483 </span>            : 
+<span class="lineNum">     484 </span><span class="lineNoCov">          0 :   switch (hd-&gt;active[idx].type)</span>
+<span class="lineNum">     485 </span>            :     {
+<span class="lineNum">     486 </span>            :     case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     487 </span><span class="lineNoCov">          0 :       s = NULL;</span>
+<span class="lineNum">     488 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     489 </span>            :     case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     490 </span><span class="lineNoCov">          0 :       s = keybox_get_resource_name (hd-&gt;active[idx].u.kr);</span>
+<span class="lineNum">     491 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     492 </span>            :     }
+<span class="lineNum">     493 </span>            : 
+<span class="lineNum">     494 </span><span class="lineNoCov">          0 :   return s? s: &quot;&quot;;</span>
+<span class="lineNum">     495 </span>            : }
+<span class="lineNum">     496 </span>            : 
+<a name="497"><span class="lineNum">     497 </span>            : /* Switch the handle into ephemeral mode and return the original value. */</a>
+<span class="lineNum">     498 </span>            : int
+<span class="lineNum">     499 </span><span class="lineCov">          6 : keydb_set_ephemeral (KEYDB_HANDLE hd, int yes)</span>
+<span class="lineNum">     500 </span>            : {
+<span class="lineNum">     501 </span>            :   int i;
+<span class="lineNum">     502 </span>            : 
+<span class="lineNum">     503 </span><span class="lineCov">          6 :   if (!hd)</span>
+<span class="lineNum">     504 </span><span class="lineNoCov">          0 :     return 0;</span>
+<span class="lineNum">     505 </span>            : 
+<span class="lineNum">     506 </span><span class="lineCov">          6 :   yes = !!yes;</span>
+<span class="lineNum">     507 </span><span class="lineCov">          6 :   if (hd-&gt;is_ephemeral != yes)</span>
+<span class="lineNum">     508 </span>            :     {
+<span class="lineNum">     509 </span><span class="lineCov">         12 :       for (i=0; i &lt; hd-&gt;used; i++)</span>
+<span class="lineNum">     510 </span>            :         {
+<span class="lineNum">     511 </span><span class="lineCov">          6 :           switch (hd-&gt;active[i].type)</span>
+<span class="lineNum">     512 </span>            :             {
+<span class="lineNum">     513 </span>            :             case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     514 </span><span class="lineNoCov">          0 :               break;</span>
+<span class="lineNum">     515 </span>            :             case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     516 </span><span class="lineCov">          6 :               keybox_set_ephemeral (hd-&gt;active[i].u.kr, yes);</span>
+<span class="lineNum">     517 </span><span class="lineCov">          6 :               break;</span>
+<span class="lineNum">     518 </span>            :             }
+<span class="lineNum">     519 </span>            :         }
+<span class="lineNum">     520 </span>            :     }
+<span class="lineNum">     521 </span>            : 
+<span class="lineNum">     522 </span><span class="lineCov">          6 :   i = hd-&gt;is_ephemeral;</span>
+<span class="lineNum">     523 </span><span class="lineCov">          6 :   hd-&gt;is_ephemeral = yes;</span>
+<span class="lineNum">     524 </span><span class="lineCov">          6 :   return i;</span>
+<span class="lineNum">     525 </span>            : }
+<span class="lineNum">     526 </span>            : 
+<span class="lineNum">     527 </span>            : 
+<span class="lineNum">     528 </span>            : /* If the keyring has not yet been locked, lock it now.  This
+<span class="lineNum">     529 </span>            :    operation is required before any update operation; it is optional
+<span class="lineNum">     530 </span>            :    for an insert operation.  The lock is released with
+<a name="531"><span class="lineNum">     531 </span>            :    keydb_released. */</a>
+<span class="lineNum">     532 </span>            : gpg_error_t
+<span class="lineNum">     533 </span><span class="lineNoCov">          0 : keydb_lock (KEYDB_HANDLE hd)</span>
+<span class="lineNum">     534 </span>            : {
+<span class="lineNum">     535 </span><span class="lineNoCov">          0 :   if (!hd)</span>
+<span class="lineNum">     536 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_INV_HANDLE);</span>
+<span class="lineNum">     537 </span><span class="lineNoCov">          0 :   if (hd-&gt;locked)</span>
+<span class="lineNum">     538 </span><span class="lineNoCov">          0 :     return 0; /* Already locked. */</span>
+<span class="lineNum">     539 </span><span class="lineNoCov">          0 :   return lock_all (hd);</span>
+<span class="lineNum">     540 </span>            : }
+<span class="lineNum">     541 </span>            : 
+<span class="lineNum">     542 </span>            : 
+<a name="543"><span class="lineNum">     543 </span>            : </a>
+<span class="lineNum">     544 </span>            : static int
+<span class="lineNum">     545 </span><span class="lineCov">          3 : lock_all (KEYDB_HANDLE hd)</span>
+<span class="lineNum">     546 </span>            : {
+<span class="lineNum">     547 </span><span class="lineCov">          3 :   int i, rc = 0;</span>
+<span class="lineNum">     548 </span>            : 
+<span class="lineNum">     549 </span>            :   /* Fixme: This locking scheme may lead to deadlock if the resources
+<span class="lineNum">     550 </span>            :      are not added in the same order by all processes.  We are
+<span class="lineNum">     551 </span>            :      currently only allowing one resource so it is not a problem. */
+<span class="lineNum">     552 </span><span class="lineCov">          6 :   for (i=0; i &lt; hd-&gt;used; i++)</span>
+<span class="lineNum">     553 </span>            :     {
+<span class="lineNum">     554 </span><span class="lineCov">          3 :       switch (hd-&gt;active[i].type)</span>
+<span class="lineNum">     555 </span>            :         {
+<span class="lineNum">     556 </span>            :         case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     557 </span><span class="lineNoCov">          0 :           break;</span>
+<span class="lineNum">     558 </span>            :         case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     559 </span><span class="lineCov">          3 :           if (hd-&gt;active[i].lockhandle)</span>
+<span class="lineNum">     560 </span><span class="lineCov">          3 :             rc = dotlock_take (hd-&gt;active[i].lockhandle, -1);</span>
+<span class="lineNum">     561 </span><span class="lineCov">          3 :           break;</span>
+<span class="lineNum">     562 </span>            :         }
+<span class="lineNum">     563 </span><span class="lineCov">          3 :       if (rc)</span>
+<span class="lineNum">     564 </span><span class="lineNoCov">          0 :         break;</span>
+<span class="lineNum">     565 </span>            :     }
+<span class="lineNum">     566 </span>            : 
+<span class="lineNum">     567 </span><span class="lineCov">          3 :     if (rc)</span>
+<span class="lineNum">     568 </span>            :       {
+<span class="lineNum">     569 </span>            :         /* revert the already set locks */
+<span class="lineNum">     570 </span><span class="lineNoCov">          0 :         for (i--; i &gt;= 0; i--)</span>
+<span class="lineNum">     571 </span>            :           {
+<span class="lineNum">     572 </span><span class="lineNoCov">          0 :             switch (hd-&gt;active[i].type)</span>
+<span class="lineNum">     573 </span>            :               {
+<span class="lineNum">     574 </span>            :               case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     575 </span><span class="lineNoCov">          0 :                 break;</span>
+<span class="lineNum">     576 </span>            :               case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     577 </span><span class="lineNoCov">          0 :                 if (hd-&gt;active[i].lockhandle)</span>
+<span class="lineNum">     578 </span><span class="lineNoCov">          0 :                   dotlock_release (hd-&gt;active[i].lockhandle);</span>
+<span class="lineNum">     579 </span><span class="lineNoCov">          0 :                 break;</span>
+<span class="lineNum">     580 </span>            :               }
+<span class="lineNum">     581 </span>            :           }
+<span class="lineNum">     582 </span>            :       }
+<span class="lineNum">     583 </span>            :     else
+<span class="lineNum">     584 </span><span class="lineCov">          3 :       hd-&gt;locked = 1;</span>
+<span class="lineNum">     585 </span>            : 
+<span class="lineNum">     586 </span>            :     /* make_dotlock () does not yet guarantee that errno is set, thus
+<span class="lineNum">     587 </span>            :        we can't rely on the error reason and will simply use
+<span class="lineNum">     588 </span>            :        EACCES. */
+<span class="lineNum">     589 </span><span class="lineCov">          3 :     return rc? gpg_error (GPG_ERR_EACCES) : 0;</span>
+<span class="lineNum">     590 </span>            : }
+<a name="591"><span class="lineNum">     591 </span>            : </a>
+<span class="lineNum">     592 </span>            : static void
+<span class="lineNum">     593 </span><span class="lineCov">         12 : unlock_all (KEYDB_HANDLE hd)</span>
+<span class="lineNum">     594 </span>            : {
+<span class="lineNum">     595 </span>            :   int i;
+<span class="lineNum">     596 </span>            : 
+<span class="lineNum">     597 </span><span class="lineCov">         12 :   if (!hd-&gt;locked)</span>
+<span class="lineNum">     598 </span><span class="lineCov">          9 :     return;</span>
+<span class="lineNum">     599 </span>            : 
+<span class="lineNum">     600 </span><span class="lineCov">          6 :   for (i=hd-&gt;used-1; i &gt;= 0; i--)</span>
+<span class="lineNum">     601 </span>            :     {
+<span class="lineNum">     602 </span><span class="lineCov">          3 :       switch (hd-&gt;active[i].type)</span>
+<span class="lineNum">     603 </span>            :         {
+<span class="lineNum">     604 </span>            :         case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     605 </span><span class="lineNoCov">          0 :           break;</span>
+<span class="lineNum">     606 </span>            :         case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     607 </span><span class="lineCov">          3 :           if (hd-&gt;active[i].lockhandle)</span>
+<span class="lineNum">     608 </span><span class="lineCov">          3 :             dotlock_release (hd-&gt;active[i].lockhandle);</span>
+<span class="lineNum">     609 </span><span class="lineCov">          3 :           break;</span>
+<span class="lineNum">     610 </span>            :         }
+<span class="lineNum">     611 </span>            :     }
+<span class="lineNum">     612 </span><span class="lineCov">          3 :   hd-&gt;locked = 0;</span>
+<span class="lineNum">     613 </span>            : }
+<span class="lineNum">     614 </span>            : 
+<span class="lineNum">     615 </span>            : 
+<span class="lineNum">     616 </span>            : 
+<a name="617"><span class="lineNum">     617 </span>            : /* Push the last found state if any.  */</a>
+<span class="lineNum">     618 </span>            : void
+<span class="lineNum">     619 </span><span class="lineNoCov">          0 : keydb_push_found_state (KEYDB_HANDLE hd)</span>
+<span class="lineNum">     620 </span>            : {
+<span class="lineNum">     621 </span><span class="lineNoCov">          0 :   if (!hd)</span>
+<span class="lineNum">     622 </span><span class="lineNoCov">          0 :     return;</span>
+<span class="lineNum">     623 </span>            : 
+<span class="lineNum">     624 </span><span class="lineNoCov">          0 :   if (hd-&gt;found &lt; 0 || hd-&gt;found &gt;= hd-&gt;used)</span>
+<span class="lineNum">     625 </span>            :     {
+<span class="lineNum">     626 </span><span class="lineNoCov">          0 :       hd-&gt;saved_found = -1;</span>
+<span class="lineNum">     627 </span><span class="lineNoCov">          0 :       return;</span>
+<span class="lineNum">     628 </span>            :     }
+<span class="lineNum">     629 </span>            : 
+<span class="lineNum">     630 </span><span class="lineNoCov">          0 :   switch (hd-&gt;active[hd-&gt;found].type)</span>
+<span class="lineNum">     631 </span>            :     {
+<span class="lineNum">     632 </span>            :     case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     633 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     634 </span>            :     case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     635 </span><span class="lineNoCov">          0 :       keybox_push_found_state (hd-&gt;active[hd-&gt;found].u.kr);</span>
+<span class="lineNum">     636 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     637 </span>            :     }
+<span class="lineNum">     638 </span>            : 
+<span class="lineNum">     639 </span><span class="lineNoCov">          0 :   hd-&gt;saved_found = hd-&gt;found;</span>
+<span class="lineNum">     640 </span><span class="lineNoCov">          0 :   hd-&gt;found = -1;</span>
+<span class="lineNum">     641 </span>            : }
+<span class="lineNum">     642 </span>            : 
+<span class="lineNum">     643 </span>            : 
+<a name="644"><span class="lineNum">     644 </span>            : /* Pop the last found state.  */</a>
+<span class="lineNum">     645 </span>            : void
+<span class="lineNum">     646 </span><span class="lineNoCov">          0 : keydb_pop_found_state (KEYDB_HANDLE hd)</span>
+<span class="lineNum">     647 </span>            : {
+<span class="lineNum">     648 </span><span class="lineNoCov">          0 :   if (!hd)</span>
+<span class="lineNum">     649 </span><span class="lineNoCov">          0 :     return;</span>
+<span class="lineNum">     650 </span>            : 
+<span class="lineNum">     651 </span><span class="lineNoCov">          0 :   hd-&gt;found = hd-&gt;saved_found;</span>
+<span class="lineNum">     652 </span><span class="lineNoCov">          0 :   hd-&gt;saved_found = -1;</span>
+<span class="lineNum">     653 </span><span class="lineNoCov">          0 :   if (hd-&gt;found &lt; 0 || hd-&gt;found &gt;= hd-&gt;used)</span>
+<span class="lineNum">     654 </span><span class="lineNoCov">          0 :     return;</span>
+<span class="lineNum">     655 </span>            : 
+<span class="lineNum">     656 </span><span class="lineNoCov">          0 :   switch (hd-&gt;active[hd-&gt;found].type)</span>
+<span class="lineNum">     657 </span>            :     {
+<span class="lineNum">     658 </span>            :     case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     659 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     660 </span>            :     case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     661 </span><span class="lineNoCov">          0 :       keybox_pop_found_state (hd-&gt;active[hd-&gt;found].u.kr);</span>
+<span class="lineNum">     662 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     663 </span>            :     }
+<span class="lineNum">     664 </span>            : }
+<span class="lineNum">     665 </span>            : 
+<span class="lineNum">     666 </span>            : 
+<span class="lineNum">     667 </span>            : 
+<span class="lineNum">     668 </span>            : /*
+<span class="lineNum">     669 </span>            :   Return the last found object.  Caller must free it.  The returned
+<span class="lineNum">     670 </span>            :   keyblock has the kbode flag bit 0 set for the node with the public
+<span class="lineNum">     671 </span>            :   key used to locate the keyblock or flag bit 1 set for the user ID
+<a name="672"><span class="lineNum">     672 </span>            :   node.  */</a>
+<span class="lineNum">     673 </span>            : int
+<span class="lineNum">     674 </span><span class="lineNoCov">          0 : keydb_get_cert (KEYDB_HANDLE hd, ksba_cert_t *r_cert)</span>
+<span class="lineNum">     675 </span>            : {
+<span class="lineNum">     676 </span><span class="lineNoCov">          0 :   int rc = 0;</span>
+<span class="lineNum">     677 </span>            : 
+<span class="lineNum">     678 </span><span class="lineNoCov">          0 :   if (!hd)</span>
+<span class="lineNum">     679 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_INV_VALUE);</span>
+<span class="lineNum">     680 </span>            : 
+<span class="lineNum">     681 </span><span class="lineNoCov">          0 :   if ( hd-&gt;found &lt; 0 || hd-&gt;found &gt;= hd-&gt;used)</span>
+<span class="lineNum">     682 </span><span class="lineNoCov">          0 :     return -1; /* nothing found */</span>
+<span class="lineNum">     683 </span>            : 
+<span class="lineNum">     684 </span><span class="lineNoCov">          0 :   switch (hd-&gt;active[hd-&gt;found].type)</span>
+<span class="lineNum">     685 </span>            :     {
+<span class="lineNum">     686 </span>            :     case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     687 </span><span class="lineNoCov">          0 :       rc = gpg_error (GPG_ERR_GENERAL); /* oops */</span>
+<span class="lineNum">     688 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     689 </span>            :     case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     690 </span><span class="lineNoCov">          0 :       rc = keybox_get_cert (hd-&gt;active[hd-&gt;found].u.kr, r_cert);</span>
+<span class="lineNum">     691 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     692 </span>            :     }
+<span class="lineNum">     693 </span>            : 
+<span class="lineNum">     694 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     695 </span>            : }
+<span class="lineNum">     696 </span>            : 
+<span class="lineNum">     697 </span>            : /* Return a flag of the last found object. WHICH is the flag requested;
+<span class="lineNum">     698 </span>            :    it should be one of the KEYBOX_FLAG_ values.  If the operation is
+<span class="lineNum">     699 </span>            :    successful, the flag value will be stored at the address given by
+<a name="700"><span class="lineNum">     700 </span>            :    VALUE.  Return 0 on success or an error code. */</a>
+<span class="lineNum">     701 </span>            : gpg_error_t
+<span class="lineNum">     702 </span><span class="lineNoCov">          0 : keydb_get_flags (KEYDB_HANDLE hd, int which, int idx, unsigned int *value)</span>
+<span class="lineNum">     703 </span>            : {
+<span class="lineNum">     704 </span><span class="lineNoCov">          0 :   int err = 0;</span>
+<span class="lineNum">     705 </span>            : 
+<span class="lineNum">     706 </span><span class="lineNoCov">          0 :   if (!hd)</span>
+<span class="lineNum">     707 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_INV_VALUE);</span>
+<span class="lineNum">     708 </span>            : 
+<span class="lineNum">     709 </span><span class="lineNoCov">          0 :   if ( hd-&gt;found &lt; 0 || hd-&gt;found &gt;= hd-&gt;used)</span>
+<span class="lineNum">     710 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_NOTHING_FOUND);</span>
+<span class="lineNum">     711 </span>            : 
+<span class="lineNum">     712 </span><span class="lineNoCov">          0 :   switch (hd-&gt;active[hd-&gt;found].type)</span>
+<span class="lineNum">     713 </span>            :     {
+<span class="lineNum">     714 </span>            :     case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     715 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_GENERAL); /* oops */</span>
+<span class="lineNum">     716 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     717 </span>            :     case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     718 </span><span class="lineNoCov">          0 :       err = keybox_get_flags (hd-&gt;active[hd-&gt;found].u.kr, which, idx, value);</span>
+<span class="lineNum">     719 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     720 </span>            :     }
+<span class="lineNum">     721 </span>            : 
+<span class="lineNum">     722 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     723 </span>            : }
+<span class="lineNum">     724 </span>            : 
+<span class="lineNum">     725 </span>            : /* Set a flag of the last found object. WHICH is the flag to be set; it
+<span class="lineNum">     726 </span>            :    should be one of the KEYBOX_FLAG_ values.  If the operation is
+<span class="lineNum">     727 </span>            :    successful, the flag value will be stored in the keybox.  Note,
+<span class="lineNum">     728 </span>            :    that some flag values can't be updated and thus may return an
+<span class="lineNum">     729 </span>            :    error, some other flag values may be masked out before an update.
+<a name="730"><span class="lineNum">     730 </span>            :    Returns 0 on success or an error code. */</a>
+<span class="lineNum">     731 </span>            : gpg_error_t
+<span class="lineNum">     732 </span><span class="lineNoCov">          0 : keydb_set_flags (KEYDB_HANDLE hd, int which, int idx, unsigned int value)</span>
+<span class="lineNum">     733 </span>            : {
+<span class="lineNum">     734 </span><span class="lineNoCov">          0 :   int err = 0;</span>
+<span class="lineNum">     735 </span>            : 
+<span class="lineNum">     736 </span><span class="lineNoCov">          0 :   if (!hd)</span>
+<span class="lineNum">     737 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_INV_VALUE);</span>
+<span class="lineNum">     738 </span>            : 
+<span class="lineNum">     739 </span><span class="lineNoCov">          0 :   if ( hd-&gt;found &lt; 0 || hd-&gt;found &gt;= hd-&gt;used)</span>
+<span class="lineNum">     740 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_NOTHING_FOUND);</span>
+<span class="lineNum">     741 </span>            : 
+<span class="lineNum">     742 </span><span class="lineNoCov">          0 :   if (!hd-&gt;locked)</span>
+<span class="lineNum">     743 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_NOT_LOCKED);</span>
+<span class="lineNum">     744 </span>            : 
+<span class="lineNum">     745 </span><span class="lineNoCov">          0 :   switch (hd-&gt;active[hd-&gt;found].type)</span>
+<span class="lineNum">     746 </span>            :     {
+<span class="lineNum">     747 </span>            :     case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     748 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_GENERAL); /* oops */</span>
+<span class="lineNum">     749 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     750 </span>            :     case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     751 </span><span class="lineNoCov">          0 :       err = keybox_set_flags (hd-&gt;active[hd-&gt;found].u.kr, which, idx, value);</span>
+<span class="lineNum">     752 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     753 </span>            :     }
+<span class="lineNum">     754 </span>            : 
+<span class="lineNum">     755 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     756 </span>            : }
+<span class="lineNum">     757 </span>            : 
+<span class="lineNum">     758 </span>            : /*
+<span class="lineNum">     759 </span>            :  * Insert a new Certificate into one of the resources.
+<a name="760"><span class="lineNum">     760 </span>            :  */</a>
+<span class="lineNum">     761 </span>            : int
+<span class="lineNum">     762 </span><span class="lineCov">          3 : keydb_insert_cert (KEYDB_HANDLE hd, ksba_cert_t cert)</span>
+<span class="lineNum">     763 </span>            : {
+<span class="lineNum">     764 </span><span class="lineCov">          3 :   int rc = -1;</span>
+<span class="lineNum">     765 </span>            :   int idx;
+<span class="lineNum">     766 </span>            :   unsigned char digest[20];
+<span class="lineNum">     767 </span>            : 
+<span class="lineNum">     768 </span><span class="lineCov">          3 :   if (!hd)</span>
+<span class="lineNum">     769 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_INV_VALUE);</span>
+<span class="lineNum">     770 </span>            : 
+<span class="lineNum">     771 </span><span class="lineCov">          3 :   if (opt.dry_run)</span>
+<span class="lineNum">     772 </span><span class="lineNoCov">          0 :     return 0;</span>
+<span class="lineNum">     773 </span>            : 
+<span class="lineNum">     774 </span><span class="lineCov">          3 :   if ( hd-&gt;found &gt;= 0 &amp;&amp; hd-&gt;found &lt; hd-&gt;used)</span>
+<span class="lineNum">     775 </span><span class="lineNoCov">          0 :     idx = hd-&gt;found;</span>
+<span class="lineNum">     776 </span><span class="lineCov">          3 :   else if ( hd-&gt;current &gt;= 0 &amp;&amp; hd-&gt;current &lt; hd-&gt;used)</span>
+<span class="lineNum">     777 </span><span class="lineCov">          3 :     idx = hd-&gt;current;</span>
+<span class="lineNum">     778 </span>            :   else
+<span class="lineNum">     779 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_GENERAL);</span>
+<span class="lineNum">     780 </span>            : 
+<span class="lineNum">     781 </span><span class="lineCov">          3 :   if (!hd-&gt;locked)</span>
+<span class="lineNum">     782 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_NOT_LOCKED);</span>
+<span class="lineNum">     783 </span>            : 
+<span class="lineNum">     784 </span><span class="lineCov">          3 :   gpgsm_get_fingerprint (cert, GCRY_MD_SHA1, digest, NULL); /* kludge*/</span>
+<span class="lineNum">     785 </span>            : 
+<span class="lineNum">     786 </span><span class="lineCov">          3 :   switch (hd-&gt;active[idx].type)</span>
+<span class="lineNum">     787 </span>            :     {
+<span class="lineNum">     788 </span>            :     case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     789 </span><span class="lineNoCov">          0 :       rc = gpg_error (GPG_ERR_GENERAL);</span>
+<span class="lineNum">     790 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     791 </span>            :     case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     792 </span><span class="lineCov">          3 :       rc = keybox_insert_cert (hd-&gt;active[idx].u.kr, cert, digest);</span>
+<span class="lineNum">     793 </span><span class="lineCov">          3 :       break;</span>
+<span class="lineNum">     794 </span>            :     }
+<span class="lineNum">     795 </span>            : 
+<span class="lineNum">     796 </span><span class="lineCov">          3 :   unlock_all (hd);</span>
+<span class="lineNum">     797 </span><span class="lineCov">          3 :   return rc;</span>
+<span class="lineNum">     798 </span>            : }
+<span class="lineNum">     799 </span>            : 
+<span class="lineNum">     800 </span>            : 
+<span class="lineNum">     801 </span>            : 
+<a name="802"><span class="lineNum">     802 </span>            : /* Update the current keyblock with KB.  */</a>
+<span class="lineNum">     803 </span>            : int
+<span class="lineNum">     804 </span><span class="lineNoCov">          0 : keydb_update_cert (KEYDB_HANDLE hd, ksba_cert_t cert)</span>
+<span class="lineNum">     805 </span>            : {
+<span class="lineNum">     806 </span><span class="lineNoCov">          0 :   int rc = 0;</span>
+<span class="lineNum">     807 </span>            :   unsigned char digest[20];
+<span class="lineNum">     808 </span>            : 
+<span class="lineNum">     809 </span><span class="lineNoCov">          0 :   if (!hd)</span>
+<span class="lineNum">     810 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_INV_VALUE);</span>
+<span class="lineNum">     811 </span>            : 
+<span class="lineNum">     812 </span><span class="lineNoCov">          0 :   if ( hd-&gt;found &lt; 0 || hd-&gt;found &gt;= hd-&gt;used)</span>
+<span class="lineNum">     813 </span><span class="lineNoCov">          0 :     return -1; /* nothing found */</span>
+<span class="lineNum">     814 </span>            : 
+<span class="lineNum">     815 </span><span class="lineNoCov">          0 :   if (opt.dry_run)</span>
+<span class="lineNum">     816 </span><span class="lineNoCov">          0 :     return 0;</span>
+<span class="lineNum">     817 </span>            : 
+<span class="lineNum">     818 </span><span class="lineNoCov">          0 :   rc = lock_all (hd);</span>
+<span class="lineNum">     819 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     820 </span><span class="lineNoCov">          0 :     return rc;</span>
+<span class="lineNum">     821 </span>            : 
+<span class="lineNum">     822 </span><span class="lineNoCov">          0 :   gpgsm_get_fingerprint (cert, GCRY_MD_SHA1, digest, NULL); /* kludge*/</span>
+<span class="lineNum">     823 </span>            : 
+<span class="lineNum">     824 </span><span class="lineNoCov">          0 :   switch (hd-&gt;active[hd-&gt;found].type)</span>
+<span class="lineNum">     825 </span>            :     {
+<span class="lineNum">     826 </span>            :     case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     827 </span><span class="lineNoCov">          0 :       rc = gpg_error (GPG_ERR_GENERAL); /* oops */</span>
+<span class="lineNum">     828 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     829 </span>            :     case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     830 </span><span class="lineNoCov">          0 :       rc = keybox_update_cert (hd-&gt;active[hd-&gt;found].u.kr, cert, digest);</span>
+<span class="lineNum">     831 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     832 </span>            :     }
+<span class="lineNum">     833 </span>            : 
+<span class="lineNum">     834 </span><span class="lineNoCov">          0 :   unlock_all (hd);</span>
+<span class="lineNum">     835 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     836 </span>            : }
+<span class="lineNum">     837 </span>            : 
+<span class="lineNum">     838 </span>            : 
+<span class="lineNum">     839 </span>            : /*
+<span class="lineNum">     840 </span>            :  * The current keyblock or cert will be deleted.
+<a name="841"><span class="lineNum">     841 </span>            :  */</a>
+<span class="lineNum">     842 </span>            : int
+<span class="lineNum">     843 </span><span class="lineNoCov">          0 : keydb_delete (KEYDB_HANDLE hd, int unlock)</span>
+<span class="lineNum">     844 </span>            : {
+<span class="lineNum">     845 </span><span class="lineNoCov">          0 :   int rc = -1;</span>
+<span class="lineNum">     846 </span>            : 
+<span class="lineNum">     847 </span><span class="lineNoCov">          0 :   if (!hd)</span>
+<span class="lineNum">     848 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_INV_VALUE);</span>
+<span class="lineNum">     849 </span>            : 
+<span class="lineNum">     850 </span><span class="lineNoCov">          0 :   if ( hd-&gt;found &lt; 0 || hd-&gt;found &gt;= hd-&gt;used)</span>
+<span class="lineNum">     851 </span><span class="lineNoCov">          0 :     return -1; /* nothing found */</span>
+<span class="lineNum">     852 </span>            : 
+<span class="lineNum">     853 </span><span class="lineNoCov">          0 :   if( opt.dry_run )</span>
+<span class="lineNum">     854 </span><span class="lineNoCov">          0 :     return 0;</span>
+<span class="lineNum">     855 </span>            : 
+<span class="lineNum">     856 </span><span class="lineNoCov">          0 :   if (!hd-&gt;locked)</span>
+<span class="lineNum">     857 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_NOT_LOCKED);</span>
+<span class="lineNum">     858 </span>            : 
+<span class="lineNum">     859 </span><span class="lineNoCov">          0 :   switch (hd-&gt;active[hd-&gt;found].type)</span>
+<span class="lineNum">     860 </span>            :     {
+<span class="lineNum">     861 </span>            :     case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     862 </span><span class="lineNoCov">          0 :       rc = gpg_error (GPG_ERR_GENERAL);</span>
+<span class="lineNum">     863 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     864 </span>            :     case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     865 </span><span class="lineNoCov">          0 :       rc = keybox_delete (hd-&gt;active[hd-&gt;found].u.kr);</span>
+<span class="lineNum">     866 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     867 </span>            :     }
+<span class="lineNum">     868 </span>            : 
+<span class="lineNum">     869 </span><span class="lineNoCov">          0 :   if (unlock)</span>
+<span class="lineNum">     870 </span><span class="lineNoCov">          0 :     unlock_all (hd);</span>
+<span class="lineNum">     871 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     872 </span>            : }
+<span class="lineNum">     873 </span>            : 
+<span class="lineNum">     874 </span>            : 
+<span class="lineNum">     875 </span>            : 
+<span class="lineNum">     876 </span>            : /*
+<span class="lineNum">     877 </span>            :  * Locate the default writable key resource, so that the next
+<span class="lineNum">     878 </span>            :  * operation (which is only relevant for inserts) will be done on this
+<span class="lineNum">     879 </span>            :  * resource.
+<a name="880"><span class="lineNum">     880 </span>            :  */</a>
+<span class="lineNum">     881 </span>            : int
+<span class="lineNum">     882 </span><span class="lineCov">          3 : keydb_locate_writable (KEYDB_HANDLE hd, const char *reserved)</span>
+<span class="lineNum">     883 </span>            : {
+<span class="lineNum">     884 </span>            :   int rc;
+<span class="lineNum">     885 </span>            : 
+<span class="lineNum">     886 </span>            :   (void)reserved;
+<span class="lineNum">     887 </span>            : 
+<span class="lineNum">     888 </span><span class="lineCov">          3 :   if (!hd)</span>
+<span class="lineNum">     889 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_INV_VALUE);</span>
+<span class="lineNum">     890 </span>            : 
+<span class="lineNum">     891 </span><span class="lineCov">          3 :   rc = keydb_search_reset (hd); /* this does reset hd-&gt;current */</span>
+<span class="lineNum">     892 </span><span class="lineCov">          3 :   if (rc)</span>
+<span class="lineNum">     893 </span><span class="lineNoCov">          0 :     return rc;</span>
+<span class="lineNum">     894 </span>            : 
+<span class="lineNum">     895 </span><span class="lineCov">          3 :   for ( ; hd-&gt;current &gt;= 0 &amp;&amp; hd-&gt;current &lt; hd-&gt;used; hd-&gt;current++)</span>
+<span class="lineNum">     896 </span>            :     {
+<span class="lineNum">     897 </span><span class="lineCov">          3 :       switch (hd-&gt;active[hd-&gt;current].type)</span>
+<span class="lineNum">     898 </span>            :         {
+<span class="lineNum">     899 </span>            :         case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     900 </span><span class="lineNoCov">          0 :           BUG();</span>
+<span class="lineNum">     901 </span>            :           break;
+<span class="lineNum">     902 </span>            :         case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     903 </span><span class="lineCov">          3 :           if (keybox_is_writable (hd-&gt;active[hd-&gt;current].token))</span>
+<span class="lineNum">     904 </span><span class="lineCov">          3 :             return 0; /* found (hd-&gt;current is set to it) */</span>
+<span class="lineNum">     905 </span><span class="lineNoCov">          0 :           break;</span>
+<span class="lineNum">     906 </span>            :         }
+<span class="lineNum">     907 </span>            :     }
+<span class="lineNum">     908 </span>            : 
+<span class="lineNum">     909 </span><span class="lineNoCov">          0 :   return -1;</span>
+<span class="lineNum">     910 </span>            : }
+<span class="lineNum">     911 </span>            : 
+<span class="lineNum">     912 </span>            : /*
+<span class="lineNum">     913 </span>            :  * Rebuild the caches of all key resources.
+<a name="914"><span class="lineNum">     914 </span>            :  */</a>
+<span class="lineNum">     915 </span>            : void
+<span class="lineNum">     916 </span><span class="lineNoCov">          0 : keydb_rebuild_caches (void)</span>
+<span class="lineNum">     917 </span>            : {
+<span class="lineNum">     918 </span>            :   int i;
+<span class="lineNum">     919 </span>            : 
+<span class="lineNum">     920 </span><span class="lineNoCov">          0 :   for (i=0; i &lt; used_resources; i++)</span>
+<span class="lineNum">     921 </span>            :     {
+<span class="lineNum">     922 </span><span class="lineNoCov">          0 :       switch (all_resources[i].type)</span>
+<span class="lineNum">     923 </span>            :         {
+<span class="lineNum">     924 </span>            :         case KEYDB_RESOURCE_TYPE_NONE: /* ignore */
+<span class="lineNum">     925 </span><span class="lineNoCov">          0 :           break;</span>
+<span class="lineNum">     926 </span>            :         case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     927 </span>            : /*            rc = keybox_rebuild_cache (all_resources[i].token); */
+<span class="lineNum">     928 </span>            : /*            if (rc) */
+<span class="lineNum">     929 </span>            : /*              log_error (_(&quot;failed to rebuild keybox cache: %s\n&quot;), */
+<span class="lineNum">     930 </span>            : /*                         g10_errstr (rc)); */
+<span class="lineNum">     931 </span><span class="lineNoCov">          0 :           break;</span>
+<span class="lineNum">     932 </span>            :         }
+<span class="lineNum">     933 </span>            :     }
+<span class="lineNum">     934 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     935 </span>            : 
+<span class="lineNum">     936 </span>            : 
+<span class="lineNum">     937 </span>            : 
+<span class="lineNum">     938 </span>            : /*
+<span class="lineNum">     939 </span>            :  * Start the next search on this handle right at the beginning
+<a name="940"><span class="lineNum">     940 </span>            :  */</a>
+<span class="lineNum">     941 </span>            : gpg_error_t
+<span class="lineNum">     942 </span><span class="lineCov">          3 : keydb_search_reset (KEYDB_HANDLE hd)</span>
+<span class="lineNum">     943 </span>            : {
+<span class="lineNum">     944 </span>            :   int i;
+<span class="lineNum">     945 </span><span class="lineCov">          3 :   gpg_error_t rc = 0;</span>
+<span class="lineNum">     946 </span>            : 
+<span class="lineNum">     947 </span><span class="lineCov">          3 :   if (!hd)</span>
+<span class="lineNum">     948 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_INV_VALUE);</span>
+<span class="lineNum">     949 </span>            : 
+<span class="lineNum">     950 </span><span class="lineCov">          3 :   hd-&gt;current = 0;</span>
+<span class="lineNum">     951 </span><span class="lineCov">          3 :   hd-&gt;found = -1;</span>
+<span class="lineNum">     952 </span>            :   /* and reset all resources */
+<span class="lineNum">     953 </span><span class="lineCov">          6 :   for (i=0; !rc &amp;&amp; i &lt; hd-&gt;used; i++)</span>
+<span class="lineNum">     954 </span>            :     {
+<span class="lineNum">     955 </span><span class="lineCov">          3 :       switch (hd-&gt;active[i].type)</span>
+<span class="lineNum">     956 </span>            :         {
+<span class="lineNum">     957 </span>            :         case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     958 </span><span class="lineNoCov">          0 :           break;</span>
+<span class="lineNum">     959 </span>            :         case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     960 </span><span class="lineCov">          3 :           rc = keybox_search_reset (hd-&gt;active[i].u.kr);</span>
+<span class="lineNum">     961 </span><span class="lineCov">          3 :           break;</span>
+<span class="lineNum">     962 </span>            :         }
+<span class="lineNum">     963 </span>            :     }
+<span class="lineNum">     964 </span><span class="lineCov">          3 :   return rc;</span>
+<span class="lineNum">     965 </span>            : }
+<span class="lineNum">     966 </span>            : 
+<span class="lineNum">     967 </span>            : /*
+<span class="lineNum">     968 </span>            :  * Search through all keydb resources, starting at the current position,
+<span class="lineNum">     969 </span>            :  * for a keyblock which contains one of the keys described in the DESC array.
+<a name="970"><span class="lineNum">     970 </span>            :  */</a>
+<span class="lineNum">     971 </span>            : int
+<span class="lineNum">     972 </span><span class="lineCov">          3 : keydb_search (ctrl_t ctrl, KEYDB_HANDLE hd,</span>
+<span class="lineNum">     973 </span>            :               KEYDB_SEARCH_DESC *desc, size_t ndesc)
+<span class="lineNum">     974 </span>            : {
+<span class="lineNum">     975 </span><span class="lineCov">          3 :   int rc = -1;</span>
+<span class="lineNum">     976 </span>            :   unsigned long skipped;
+<span class="lineNum">     977 </span>            : 
+<span class="lineNum">     978 </span><span class="lineCov">          3 :   if (!hd)</span>
+<span class="lineNum">     979 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_INV_VALUE);</span>
+<span class="lineNum">     980 </span>            : 
+<span class="lineNum">     981 </span><span class="lineCov">          3 :   if (!any_registered)</span>
+<span class="lineNum">     982 </span>            :     {
+<span class="lineNum">     983 </span><span class="lineNoCov">          0 :       gpgsm_status_with_error (ctrl, STATUS_ERROR, &quot;keydb_search&quot;,</span>
+<span class="lineNum">     984 </span>            :                                gpg_error (GPG_ERR_KEYRING_OPEN));
+<span class="lineNum">     985 </span><span class="lineNoCov">          0 :       return gpg_error (GPG_ERR_NOT_FOUND);</span>
+<span class="lineNum">     986 </span>            :     }
+<span class="lineNum">     987 </span>            : 
+<span class="lineNum">     988 </span><span class="lineCov">          9 :   while (rc == -1 &amp;&amp; hd-&gt;current &gt;= 0 &amp;&amp; hd-&gt;current &lt; hd-&gt;used)</span>
+<span class="lineNum">     989 </span>            :     {
+<span class="lineNum">     990 </span><span class="lineCov">          3 :       switch (hd-&gt;active[hd-&gt;current].type)</span>
+<span class="lineNum">     991 </span>            :         {
+<span class="lineNum">     992 </span>            :         case KEYDB_RESOURCE_TYPE_NONE:
+<span class="lineNum">     993 </span><span class="lineNoCov">          0 :           BUG(); /* we should never see it here */</span>
+<span class="lineNum">     994 </span>            :           break;
+<span class="lineNum">     995 </span>            :         case KEYDB_RESOURCE_TYPE_KEYBOX:
+<span class="lineNum">     996 </span><span class="lineCov">          3 :           rc = keybox_search (hd-&gt;active[hd-&gt;current].u.kr, desc, ndesc,</span>
+<span class="lineNum">     997 </span>            :                               KEYBOX_BLOBTYPE_X509,
+<span class="lineNum">     998 </span>            :                               NULL, &amp;skipped);
+<span class="lineNum">     999 </span><span class="lineCov">          3 :           break;</span>
+<span class="lineNum">    1000 </span>            :         }
+<span class="lineNum">    1001 </span><span class="lineCov">          3 :       if (rc == -1 || gpg_err_code (rc) == GPG_ERR_EOF)</span>
+<span class="lineNum">    1002 </span>            :         { /* EOF -&gt; switch to next resource */
+<span class="lineNum">    1003 </span><span class="lineCov">          3 :           hd-&gt;current++;</span>
+<span class="lineNum">    1004 </span>            :         }
+<span class="lineNum">    1005 </span><span class="lineNoCov">          0 :       else if (!rc)</span>
+<span class="lineNum">    1006 </span><span class="lineNoCov">          0 :         hd-&gt;found = hd-&gt;current;</span>
+<span class="lineNum">    1007 </span>            :     }
+<span class="lineNum">    1008 </span>            : 
+<span class="lineNum">    1009 </span><span class="lineCov">          3 :   return rc;</span>
+<span class="lineNum">    1010 </span>            : }
+<span class="lineNum">    1011 </span>            : 
+<a name="1012"><span class="lineNum">    1012 </span>            : </a>
+<span class="lineNum">    1013 </span>            : int
+<span class="lineNum">    1014 </span><span class="lineNoCov">          0 : keydb_search_first (ctrl_t ctrl, KEYDB_HANDLE hd)</span>
+<span class="lineNum">    1015 </span>            : {
+<span class="lineNum">    1016 </span>            :   KEYDB_SEARCH_DESC desc;
+<span class="lineNum">    1017 </span>            : 
+<span class="lineNum">    1018 </span><span class="lineNoCov">          0 :   memset (&amp;desc, 0, sizeof desc);</span>
+<span class="lineNum">    1019 </span><span class="lineNoCov">          0 :   desc.mode = KEYDB_SEARCH_MODE_FIRST;</span>
+<span class="lineNum">    1020 </span><span class="lineNoCov">          0 :   return keydb_search (ctrl, hd, &amp;desc, 1);</span>
+<span class="lineNum">    1021 </span>            : }
+<a name="1022"><span class="lineNum">    1022 </span>            : </a>
+<span class="lineNum">    1023 </span>            : int
+<span class="lineNum">    1024 </span><span class="lineNoCov">          0 : keydb_search_next (ctrl_t ctrl, KEYDB_HANDLE hd)</span>
+<span class="lineNum">    1025 </span>            : {
+<span class="lineNum">    1026 </span>            :   KEYDB_SEARCH_DESC desc;
+<span class="lineNum">    1027 </span>            : 
+<span class="lineNum">    1028 </span><span class="lineNoCov">          0 :   memset (&amp;desc, 0, sizeof desc);</span>
+<span class="lineNum">    1029 </span><span class="lineNoCov">          0 :   desc.mode = KEYDB_SEARCH_MODE_NEXT;</span>
+<span class="lineNum">    1030 </span><span class="lineNoCov">          0 :   return keydb_search (ctrl, hd, &amp;desc, 1);</span>
+<span class="lineNum">    1031 </span>            : }
+<a name="1032"><span class="lineNum">    1032 </span>            : </a>
+<span class="lineNum">    1033 </span>            : int
+<span class="lineNum">    1034 </span><span class="lineNoCov">          0 : keydb_search_kid (ctrl_t ctrl, KEYDB_HANDLE hd, u32 *kid)</span>
+<span class="lineNum">    1035 </span>            : {
+<span class="lineNum">    1036 </span>            :   KEYDB_SEARCH_DESC desc;
+<span class="lineNum">    1037 </span>            : 
+<span class="lineNum">    1038 </span>            :   (void)kid;
+<span class="lineNum">    1039 </span>            : 
+<span class="lineNum">    1040 </span><span class="lineNoCov">          0 :   memset (&amp;desc, 0, sizeof desc);</span>
+<span class="lineNum">    1041 </span><span class="lineNoCov">          0 :   desc.mode = KEYDB_SEARCH_MODE_LONG_KID;</span>
+<span class="lineNum">    1042 </span><span class="lineNoCov">          0 :   desc.u.kid[0] = kid[0];</span>
+<span class="lineNum">    1043 </span><span class="lineNoCov">          0 :   desc.u.kid[1] = kid[1];</span>
+<span class="lineNum">    1044 </span><span class="lineNoCov">          0 :   return keydb_search (ctrl, hd, &amp;desc, 1);</span>
+<span class="lineNum">    1045 </span>            : }
+<a name="1046"><span class="lineNum">    1046 </span>            : </a>
+<span class="lineNum">    1047 </span>            : int
+<span class="lineNum">    1048 </span><span class="lineCov">          3 : keydb_search_fpr (ctrl_t ctrl, KEYDB_HANDLE hd, const byte *fpr)</span>
+<span class="lineNum">    1049 </span>            : {
+<span class="lineNum">    1050 </span>            :   KEYDB_SEARCH_DESC desc;
+<span class="lineNum">    1051 </span>            : 
+<span class="lineNum">    1052 </span><span class="lineCov">          3 :   memset (&amp;desc, 0, sizeof desc);</span>
+<span class="lineNum">    1053 </span><span class="lineCov">          3 :   desc.mode = KEYDB_SEARCH_MODE_FPR;</span>
+<span class="lineNum">    1054 </span><span class="lineCov">          3 :   memcpy (desc.u.fpr, fpr, 20);</span>
+<span class="lineNum">    1055 </span><span class="lineCov">          3 :   return keydb_search (ctrl, hd, &amp;desc, 1);</span>
+<span class="lineNum">    1056 </span>            : }
+<a name="1057"><span class="lineNum">    1057 </span>            : </a>
+<span class="lineNum">    1058 </span>            : int
+<span class="lineNum">    1059 </span><span class="lineNoCov">          0 : keydb_search_issuer (ctrl_t ctrl, KEYDB_HANDLE hd, const char *issuer)</span>
+<span class="lineNum">    1060 </span>            : {
+<span class="lineNum">    1061 </span>            :   KEYDB_SEARCH_DESC desc;
+<span class="lineNum">    1062 </span>            :   int rc;
+<span class="lineNum">    1063 </span>            : 
+<span class="lineNum">    1064 </span><span class="lineNoCov">          0 :   memset (&amp;desc, 0, sizeof desc);</span>
+<span class="lineNum">    1065 </span><span class="lineNoCov">          0 :   desc.mode = KEYDB_SEARCH_MODE_ISSUER;</span>
+<span class="lineNum">    1066 </span><span class="lineNoCov">          0 :   desc.u.name = issuer;</span>
+<span class="lineNum">    1067 </span><span class="lineNoCov">          0 :   rc = keydb_search (ctrl, hd, &amp;desc, 1);</span>
+<span class="lineNum">    1068 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">    1069 </span>            : }
+<a name="1070"><span class="lineNum">    1070 </span>            : </a>
+<span class="lineNum">    1071 </span>            : int
+<span class="lineNum">    1072 </span><span class="lineNoCov">          0 : keydb_search_issuer_sn (ctrl_t ctrl, KEYDB_HANDLE hd,</span>
+<span class="lineNum">    1073 </span>            :                         const char *issuer, ksba_const_sexp_t serial)
+<span class="lineNum">    1074 </span>            : {
+<span class="lineNum">    1075 </span>            :   KEYDB_SEARCH_DESC desc;
+<span class="lineNum">    1076 </span>            :   int rc;
+<span class="lineNum">    1077 </span>            :   const unsigned char *s;
+<span class="lineNum">    1078 </span>            : 
+<span class="lineNum">    1079 </span><span class="lineNoCov">          0 :   memset (&amp;desc, 0, sizeof desc);</span>
+<span class="lineNum">    1080 </span><span class="lineNoCov">          0 :   desc.mode = KEYDB_SEARCH_MODE_ISSUER_SN;</span>
+<span class="lineNum">    1081 </span><span class="lineNoCov">          0 :   s = serial;</span>
+<span class="lineNum">    1082 </span><span class="lineNoCov">          0 :   if (*s !='(')</span>
+<span class="lineNum">    1083 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_INV_VALUE);</span>
+<span class="lineNum">    1084 </span><span class="lineNoCov">          0 :   s++;</span>
+<span class="lineNum">    1085 </span><span class="lineNoCov">          0 :   for (desc.snlen = 0; digitp (s); s++)</span>
+<span class="lineNum">    1086 </span><span class="lineNoCov">          0 :     desc.snlen = 10*desc.snlen + atoi_1 (s);</span>
+<span class="lineNum">    1087 </span><span class="lineNoCov">          0 :   if (*s !=':')</span>
+<span class="lineNum">    1088 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_INV_VALUE);</span>
+<span class="lineNum">    1089 </span><span class="lineNoCov">          0 :   desc.sn = s+1;</span>
+<span class="lineNum">    1090 </span><span class="lineNoCov">          0 :   desc.u.name = issuer;</span>
+<span class="lineNum">    1091 </span><span class="lineNoCov">          0 :   rc = keydb_search (ctrl, hd, &amp;desc, 1);</span>
+<span class="lineNum">    1092 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">    1093 </span>            : }
+<a name="1094"><span class="lineNum">    1094 </span>            : </a>
+<span class="lineNum">    1095 </span>            : int
+<span class="lineNum">    1096 </span><span class="lineNoCov">          0 : keydb_search_subject (ctrl_t ctrl, KEYDB_HANDLE hd, const char *name)</span>
+<span class="lineNum">    1097 </span>            : {
+<span class="lineNum">    1098 </span>            :   KEYDB_SEARCH_DESC desc;
+<span class="lineNum">    1099 </span>            :   int rc;
+<span class="lineNum">    1100 </span>            : 
+<span class="lineNum">    1101 </span><span class="lineNoCov">          0 :   memset (&amp;desc, 0, sizeof desc);</span>
+<span class="lineNum">    1102 </span><span class="lineNoCov">          0 :   desc.mode = KEYDB_SEARCH_MODE_SUBJECT;</span>
+<span class="lineNum">    1103 </span><span class="lineNoCov">          0 :   desc.u.name = name;</span>
+<span class="lineNum">    1104 </span><span class="lineNoCov">          0 :   rc = keydb_search (ctrl, hd, &amp;desc, 1);</span>
+<span class="lineNum">    1105 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">    1106 </span>            : }
+<span class="lineNum">    1107 </span>            : 
+<span class="lineNum">    1108 </span>            : 
+<span class="lineNum">    1109 </span>            : 
+<span class="lineNum">    1110 </span>            : /* Store the certificate in the key DB but make sure that it does not
+<span class="lineNum">    1111 </span>            :    already exists.  We do this simply by comparing the fingerprint.
+<span class="lineNum">    1112 </span>            :    If EXISTED is not NULL it will be set to true if the certificate
+<a name="1113"><span class="lineNum">    1113 </span>            :    was already in the DB. */</a>
+<span class="lineNum">    1114 </span>            : int
+<span class="lineNum">    1115 </span><span class="lineCov">          3 : keydb_store_cert (ctrl_t ctrl, ksba_cert_t cert, int ephemeral, int *existed)</span>
+<span class="lineNum">    1116 </span>            : {
+<span class="lineNum">    1117 </span>            :   KEYDB_HANDLE kh;
+<span class="lineNum">    1118 </span>            :   int rc;
+<span class="lineNum">    1119 </span>            :   unsigned char fpr[20];
+<span class="lineNum">    1120 </span>            : 
+<span class="lineNum">    1121 </span><span class="lineCov">          3 :   if (existed)</span>
+<span class="lineNum">    1122 </span><span class="lineCov">          3 :     *existed = 0;</span>
+<span class="lineNum">    1123 </span>            : 
+<span class="lineNum">    1124 </span><span class="lineCov">          3 :   if (!gpgsm_get_fingerprint (cert, 0, fpr, NULL))</span>
+<span class="lineNum">    1125 </span>            :     {
+<span class="lineNum">    1126 </span><span class="lineNoCov">          0 :       log_error (_(&quot;failed to get the fingerprint\n&quot;));</span>
+<span class="lineNum">    1127 </span><span class="lineNoCov">          0 :       return gpg_error (GPG_ERR_GENERAL);</span>
+<span class="lineNum">    1128 </span>            :     }
+<span class="lineNum">    1129 </span>            : 
+<span class="lineNum">    1130 </span><span class="lineCov">          3 :   kh = keydb_new ();</span>
+<span class="lineNum">    1131 </span><span class="lineCov">          3 :   if (!kh)</span>
+<span class="lineNum">    1132 </span>            :     {
+<span class="lineNum">    1133 </span><span class="lineNoCov">          0 :       log_error (_(&quot;failed to allocate keyDB handle\n&quot;));</span>
+<span class="lineNum">    1134 </span><span class="lineNoCov">          0 :       return gpg_error (GPG_ERR_ENOMEM);;</span>
+<span class="lineNum">    1135 </span>            :     }
+<span class="lineNum">    1136 </span>            : 
+<span class="lineNum">    1137 </span>            :   /* Set the ephemeral flag so that the search looks at all
+<span class="lineNum">    1138 </span>            :      records.  */
+<span class="lineNum">    1139 </span><span class="lineCov">          3 :   keydb_set_ephemeral (kh, 1);</span>
+<span class="lineNum">    1140 </span>            : 
+<span class="lineNum">    1141 </span><span class="lineCov">          3 :   rc = lock_all (kh);</span>
+<span class="lineNum">    1142 </span><span class="lineCov">          3 :   if (rc)</span>
+<span class="lineNum">    1143 </span><span class="lineNoCov">          0 :     return rc;</span>
+<span class="lineNum">    1144 </span>            : 
+<span class="lineNum">    1145 </span><span class="lineCov">          3 :   rc = keydb_search_fpr (ctrl, kh, fpr);</span>
+<span class="lineNum">    1146 </span><span class="lineCov">          3 :   if (rc != -1)</span>
+<span class="lineNum">    1147 </span>            :     {
+<span class="lineNum">    1148 </span><span class="lineNoCov">          0 :       keydb_release (kh);</span>
+<span class="lineNum">    1149 </span><span class="lineNoCov">          0 :       if (!rc)</span>
+<span class="lineNum">    1150 </span>            :         {
+<span class="lineNum">    1151 </span><span class="lineNoCov">          0 :           if (existed)</span>
+<span class="lineNum">    1152 </span><span class="lineNoCov">          0 :             *existed = 1;</span>
+<span class="lineNum">    1153 </span><span class="lineNoCov">          0 :           if (!ephemeral)</span>
+<span class="lineNum">    1154 </span>            :             {
+<span class="lineNum">    1155 </span>            :               /* Remove ephemeral flags from existing certificate to &quot;store&quot;
+<span class="lineNum">    1156 </span>            :                  it permanently. */
+<span class="lineNum">    1157 </span><span class="lineNoCov">          0 :               rc = keydb_set_cert_flags (ctrl, cert, 1, KEYBOX_FLAG_BLOB, 0,</span>
+<span class="lineNum">    1158 </span>            :                                          KEYBOX_FLAG_BLOB_EPHEMERAL, 0);
+<span class="lineNum">    1159 </span><span class="lineNoCov">          0 :               if (rc)</span>
+<span class="lineNum">    1160 </span>            :                 {
+<span class="lineNum">    1161 </span><span class="lineNoCov">          0 :                   log_error (&quot;clearing ephemeral flag failed: %s\n&quot;,</span>
+<span class="lineNum">    1162 </span>            :                              gpg_strerror (rc));
+<span class="lineNum">    1163 </span><span class="lineNoCov">          0 :                   return rc;</span>
+<span class="lineNum">    1164 </span>            :                 }
+<span class="lineNum">    1165 </span>            :             }
+<span class="lineNum">    1166 </span><span class="lineNoCov">          0 :           return 0; /* okay */</span>
+<span class="lineNum">    1167 </span>            :         }
+<span class="lineNum">    1168 </span><span class="lineNoCov">          0 :       log_error (_(&quot;problem looking for existing certificate: %s\n&quot;),</span>
+<span class="lineNum">    1169 </span>            :                  gpg_strerror (rc));
+<span class="lineNum">    1170 </span><span class="lineNoCov">          0 :       return rc;</span>
+<span class="lineNum">    1171 </span>            :     }
+<span class="lineNum">    1172 </span>            : 
+<span class="lineNum">    1173 </span>            :   /* Reset the ephemeral flag if not requested.  */
+<span class="lineNum">    1174 </span><span class="lineCov">          3 :   if (!ephemeral)</span>
+<span class="lineNum">    1175 </span><span class="lineCov">          3 :     keydb_set_ephemeral (kh, 0);</span>
+<span class="lineNum">    1176 </span>            : 
+<span class="lineNum">    1177 </span><span class="lineCov">          3 :   rc = keydb_locate_writable (kh, 0);</span>
+<span class="lineNum">    1178 </span><span class="lineCov">          3 :   if (rc)</span>
+<span class="lineNum">    1179 </span>            :     {
+<span class="lineNum">    1180 </span><span class="lineNoCov">          0 :       log_error (_(&quot;error finding writable keyDB: %s\n&quot;), gpg_strerror (rc));</span>
+<span class="lineNum">    1181 </span><span class="lineNoCov">          0 :       keydb_release (kh);</span>
+<span class="lineNum">    1182 </span><span class="lineNoCov">          0 :       return rc;</span>
+<span class="lineNum">    1183 </span>            :     }
+<span class="lineNum">    1184 </span>            : 
+<span class="lineNum">    1185 </span><span class="lineCov">          3 :   rc = keydb_insert_cert (kh, cert);</span>
+<span class="lineNum">    1186 </span><span class="lineCov">          3 :   if (rc)</span>
+<span class="lineNum">    1187 </span>            :     {
+<span class="lineNum">    1188 </span><span class="lineNoCov">          0 :       log_error (_(&quot;error storing certificate: %s\n&quot;), gpg_strerror (rc));</span>
+<span class="lineNum">    1189 </span><span class="lineNoCov">          0 :       keydb_release (kh);</span>
+<span class="lineNum">    1190 </span><span class="lineNoCov">          0 :       return rc;</span>
+<span class="lineNum">    1191 </span>            :     }
+<span class="lineNum">    1192 </span><span class="lineCov">          3 :   keydb_release (kh);</span>
+<span class="lineNum">    1193 </span><span class="lineCov">          3 :   return 0;</span>
+<span class="lineNum">    1194 </span>            : }
+<span class="lineNum">    1195 </span>            : 
+<span class="lineNum">    1196 </span>            : 
+<span class="lineNum">    1197 </span>            : /* This is basically keydb_set_flags but it implements a complete
+<span class="lineNum">    1198 </span>            :    transaction by locating the certificate in the DB and updating the
+<a name="1199"><span class="lineNum">    1199 </span>            :    flags. */</a>
+<span class="lineNum">    1200 </span>            : gpg_error_t
+<span class="lineNum">    1201 </span><span class="lineNoCov">          0 : keydb_set_cert_flags (ctrl_t ctrl, ksba_cert_t cert, int ephemeral,</span>
+<span class="lineNum">    1202 </span>            :                       int which, int idx,
+<span class="lineNum">    1203 </span>            :                       unsigned int mask, unsigned int value)
+<span class="lineNum">    1204 </span>            : {
+<span class="lineNum">    1205 </span>            :   KEYDB_HANDLE kh;
+<span class="lineNum">    1206 </span>            :   gpg_error_t err;
+<span class="lineNum">    1207 </span>            :   unsigned char fpr[20];
+<span class="lineNum">    1208 </span>            :   unsigned int old_value;
+<span class="lineNum">    1209 </span>            : 
+<span class="lineNum">    1210 </span><span class="lineNoCov">          0 :   if (!gpgsm_get_fingerprint (cert, 0, fpr, NULL))</span>
+<span class="lineNum">    1211 </span>            :     {
+<span class="lineNum">    1212 </span><span class="lineNoCov">          0 :       log_error (_(&quot;failed to get the fingerprint\n&quot;));</span>
+<span class="lineNum">    1213 </span><span class="lineNoCov">          0 :       return gpg_error (GPG_ERR_GENERAL);</span>
+<span class="lineNum">    1214 </span>            :     }
+<span class="lineNum">    1215 </span>            : 
+<span class="lineNum">    1216 </span><span class="lineNoCov">          0 :   kh = keydb_new ();</span>
+<span class="lineNum">    1217 </span><span class="lineNoCov">          0 :   if (!kh)</span>
+<span class="lineNum">    1218 </span>            :     {
+<span class="lineNum">    1219 </span><span class="lineNoCov">          0 :       log_error (_(&quot;failed to allocate keyDB handle\n&quot;));</span>
+<span class="lineNum">    1220 </span><span class="lineNoCov">          0 :       return gpg_error (GPG_ERR_ENOMEM);;</span>
+<span class="lineNum">    1221 </span>            :     }
+<span class="lineNum">    1222 </span>            : 
+<span class="lineNum">    1223 </span><span class="lineNoCov">          0 :   if (ephemeral)</span>
+<span class="lineNum">    1224 </span><span class="lineNoCov">          0 :     keydb_set_ephemeral (kh, 1);</span>
+<span class="lineNum">    1225 </span>            : 
+<span class="lineNum">    1226 </span><span class="lineNoCov">          0 :   err = keydb_lock (kh);</span>
+<span class="lineNum">    1227 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">    1228 </span>            :     {
+<span class="lineNum">    1229 </span><span class="lineNoCov">          0 :       log_error (_(&quot;error locking keybox: %s\n&quot;), gpg_strerror (err));</span>
+<span class="lineNum">    1230 </span><span class="lineNoCov">          0 :       keydb_release (kh);</span>
+<span class="lineNum">    1231 </span><span class="lineNoCov">          0 :       return err;</span>
+<span class="lineNum">    1232 </span>            :     }
+<span class="lineNum">    1233 </span>            : 
+<span class="lineNum">    1234 </span><span class="lineNoCov">          0 :   err = keydb_search_fpr (ctrl, kh, fpr);</span>
+<span class="lineNum">    1235 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">    1236 </span>            :     {
+<span class="lineNum">    1237 </span><span class="lineNoCov">          0 :       if (err == -1)</span>
+<span class="lineNum">    1238 </span><span class="lineNoCov">          0 :         err = gpg_error (GPG_ERR_NOT_FOUND);</span>
+<span class="lineNum">    1239 </span>            :       else
+<span class="lineNum">    1240 </span><span class="lineNoCov">          0 :         log_error (_(&quot;problem re-searching certificate: %s\n&quot;),</span>
+<span class="lineNum">    1241 </span>            :                    gpg_strerror (err));
+<span class="lineNum">    1242 </span><span class="lineNoCov">          0 :       keydb_release (kh);</span>
+<span class="lineNum">    1243 </span><span class="lineNoCov">          0 :       return err;</span>
+<span class="lineNum">    1244 </span>            :     }
+<span class="lineNum">    1245 </span>            : 
+<span class="lineNum">    1246 </span><span class="lineNoCov">          0 :   err = keydb_get_flags (kh, which, idx, &amp;old_value);</span>
+<span class="lineNum">    1247 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">    1248 </span>            :     {
+<span class="lineNum">    1249 </span><span class="lineNoCov">          0 :       log_error (_(&quot;error getting stored flags: %s\n&quot;), gpg_strerror (err));</span>
+<span class="lineNum">    1250 </span><span class="lineNoCov">          0 :       keydb_release (kh);</span>
+<span class="lineNum">    1251 </span><span class="lineNoCov">          0 :       return err;</span>
+<span class="lineNum">    1252 </span>            :     }
+<span class="lineNum">    1253 </span>            : 
+<span class="lineNum">    1254 </span><span class="lineNoCov">          0 :   value = ((old_value &amp; ~mask) | (value &amp; mask));</span>
+<span class="lineNum">    1255 </span>            : 
+<span class="lineNum">    1256 </span><span class="lineNoCov">          0 :   if (value != old_value)</span>
+<span class="lineNum">    1257 </span>            :     {
+<span class="lineNum">    1258 </span><span class="lineNoCov">          0 :       err = keydb_set_flags (kh, which, idx, value);</span>
+<span class="lineNum">    1259 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">    1260 </span>            :         {
+<span class="lineNum">    1261 </span><span class="lineNoCov">          0 :           log_error (_(&quot;error storing flags: %s\n&quot;), gpg_strerror (err));</span>
+<span class="lineNum">    1262 </span><span class="lineNoCov">          0 :           keydb_release (kh);</span>
+<span class="lineNum">    1263 </span><span class="lineNoCov">          0 :           return err;</span>
+<span class="lineNum">    1264 </span>            :         }
+<span class="lineNum">    1265 </span>            :     }
+<span class="lineNum">    1266 </span>            : 
+<span class="lineNum">    1267 </span><span class="lineNoCov">          0 :   keydb_release (kh);</span>
+<span class="lineNum">    1268 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">    1269 </span>            : }
+<span class="lineNum">    1270 </span>            : 
+<span class="lineNum">    1271 </span>            : 
+<span class="lineNum">    1272 </span>            : /* Reset all the certificate flags we have stored with the certificates
+<a name="1273"><span class="lineNum">    1273 </span>            :    for performance reasons. */</a>
+<span class="lineNum">    1274 </span>            : void
+<span class="lineNum">    1275 </span><span class="lineNoCov">          0 : keydb_clear_some_cert_flags (ctrl_t ctrl, strlist_t names)</span>
+<span class="lineNum">    1276 </span>            : {
+<span class="lineNum">    1277 </span>            :   gpg_error_t err;
+<span class="lineNum">    1278 </span><span class="lineNoCov">          0 :   KEYDB_HANDLE hd = NULL;</span>
+<span class="lineNum">    1279 </span><span class="lineNoCov">          0 :   KEYDB_SEARCH_DESC *desc = NULL;</span>
+<span class="lineNum">    1280 </span>            :   int ndesc;
+<span class="lineNum">    1281 </span>            :   strlist_t sl;
+<span class="lineNum">    1282 </span><span class="lineNoCov">          0 :   int rc=0;</span>
+<span class="lineNum">    1283 </span>            :   unsigned int old_value, value;
+<span class="lineNum">    1284 </span>            : 
+<span class="lineNum">    1285 </span>            :   (void)ctrl;
+<span class="lineNum">    1286 </span>            : 
+<span class="lineNum">    1287 </span><span class="lineNoCov">          0 :   hd = keydb_new ();</span>
+<span class="lineNum">    1288 </span><span class="lineNoCov">          0 :   if (!hd)</span>
+<span class="lineNum">    1289 </span>            :     {
+<span class="lineNum">    1290 </span><span class="lineNoCov">          0 :       log_error (&quot;keydb_new failed\n&quot;);</span>
+<span class="lineNum">    1291 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">    1292 </span>            :     }
+<span class="lineNum">    1293 </span>            : 
+<span class="lineNum">    1294 </span><span class="lineNoCov">          0 :   if (!names)</span>
+<span class="lineNum">    1295 </span><span class="lineNoCov">          0 :     ndesc = 1;</span>
+<span class="lineNum">    1296 </span>            :   else
+<span class="lineNum">    1297 </span>            :     {
+<span class="lineNum">    1298 </span><span class="lineNoCov">          0 :       for (sl=names, ndesc=0; sl; sl = sl-&gt;next, ndesc++)</span>
+<span class="lineNum">    1299 </span>            :         ;
+<span class="lineNum">    1300 </span>            :     }
+<span class="lineNum">    1301 </span>            : 
+<span class="lineNum">    1302 </span><span class="lineNoCov">          0 :   desc = xtrycalloc (ndesc, sizeof *desc);</span>
+<span class="lineNum">    1303 </span><span class="lineNoCov">          0 :   if (!ndesc)</span>
+<span class="lineNum">    1304 </span>            :     {
+<span class="lineNum">    1305 </span><span class="lineNoCov">          0 :       log_error (&quot;allocating memory failed: %s\n&quot;,</span>
+<span class="lineNum">    1306 </span>            :                  gpg_strerror (out_of_core ()));
+<span class="lineNum">    1307 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">    1308 </span>            :     }
+<span class="lineNum">    1309 </span>            : 
+<span class="lineNum">    1310 </span><span class="lineNoCov">          0 :   if (!names)</span>
+<span class="lineNum">    1311 </span><span class="lineNoCov">          0 :     desc[0].mode = KEYDB_SEARCH_MODE_FIRST;</span>
+<span class="lineNum">    1312 </span>            :   else
+<span class="lineNum">    1313 </span>            :     {
+<span class="lineNum">    1314 </span><span class="lineNoCov">          0 :       for (ndesc=0, sl=names; sl; sl = sl-&gt;next)</span>
+<span class="lineNum">    1315 </span>            :         {
+<span class="lineNum">    1316 </span><span class="lineNoCov">          0 :           rc = classify_user_id (sl-&gt;d, desc+ndesc, 0);</span>
+<span class="lineNum">    1317 </span><span class="lineNoCov">          0 :           if (rc)</span>
+<span class="lineNum">    1318 </span><span class="lineNoCov">          0 :             log_error (&quot;key '%s' not found: %s\n&quot;, sl-&gt;d, gpg_strerror (rc));</span>
+<span class="lineNum">    1319 </span>            :           else
+<span class="lineNum">    1320 </span><span class="lineNoCov">          0 :             ndesc++;</span>
+<span class="lineNum">    1321 </span>            :         }
+<span class="lineNum">    1322 </span>            :     }
+<span class="lineNum">    1323 </span>            : 
+<span class="lineNum">    1324 </span><span class="lineNoCov">          0 :   err = keydb_lock (hd);</span>
+<span class="lineNum">    1325 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">    1326 </span>            :     {
+<span class="lineNum">    1327 </span><span class="lineNoCov">          0 :       log_error (_(&quot;error locking keybox: %s\n&quot;), gpg_strerror (err));</span>
+<span class="lineNum">    1328 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">    1329 </span>            :     }
+<span class="lineNum">    1330 </span>            : 
+<span class="lineNum">    1331 </span><span class="lineNoCov">          0 :   while (!(rc = keydb_search (ctrl, hd, desc, ndesc)))</span>
+<span class="lineNum">    1332 </span>            :     {
+<span class="lineNum">    1333 </span><span class="lineNoCov">          0 :       if (!names)</span>
+<span class="lineNum">    1334 </span><span class="lineNoCov">          0 :         desc[0].mode = KEYDB_SEARCH_MODE_NEXT;</span>
+<span class="lineNum">    1335 </span>            : 
+<span class="lineNum">    1336 </span><span class="lineNoCov">          0 :       err = keydb_get_flags (hd, KEYBOX_FLAG_VALIDITY, 0, &amp;old_value);</span>
+<span class="lineNum">    1337 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">    1338 </span>            :         {
+<span class="lineNum">    1339 </span><span class="lineNoCov">          0 :           log_error (_(&quot;error getting stored flags: %s\n&quot;),</span>
+<span class="lineNum">    1340 </span>            :                      gpg_strerror (err));
+<span class="lineNum">    1341 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">    1342 </span>            :         }
+<span class="lineNum">    1343 </span>            : 
+<span class="lineNum">    1344 </span><span class="lineNoCov">          0 :       value = (old_value &amp; ~VALIDITY_REVOKED);</span>
+<span class="lineNum">    1345 </span><span class="lineNoCov">          0 :       if (value != old_value)</span>
+<span class="lineNum">    1346 </span>            :         {
+<span class="lineNum">    1347 </span><span class="lineNoCov">          0 :           err = keydb_set_flags (hd, KEYBOX_FLAG_VALIDITY, 0, value);</span>
+<span class="lineNum">    1348 </span><span class="lineNoCov">          0 :           if (err)</span>
+<span class="lineNum">    1349 </span>            :             {
+<span class="lineNum">    1350 </span><span class="lineNoCov">          0 :               log_error (_(&quot;error storing flags: %s\n&quot;), gpg_strerror (err));</span>
+<span class="lineNum">    1351 </span><span class="lineNoCov">          0 :               goto leave;</span>
+<span class="lineNum">    1352 </span>            :             }
+<span class="lineNum">    1353 </span>            :         }
+<span class="lineNum">    1354 </span>            :     }
+<span class="lineNum">    1355 </span><span class="lineNoCov">          0 :   if (rc &amp;&amp; rc != -1)</span>
+<span class="lineNum">    1356 </span><span class="lineNoCov">          0 :     log_error (&quot;keydb_search failed: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">    1357 </span>            : 
+<span class="lineNum">    1358 </span>            :  leave:
+<span class="lineNum">    1359 </span><span class="lineNoCov">          0 :   xfree (desc);</span>
+<span class="lineNum">    1360 </span><span class="lineNoCov">          0 :   keydb_release (hd);</span>
+<span class="lineNum">    1361 </span><span class="lineNoCov">          0 : }</span>
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

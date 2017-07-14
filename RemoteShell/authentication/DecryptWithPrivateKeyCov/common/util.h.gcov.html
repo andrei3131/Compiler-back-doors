@@ -1,0 +1,454 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - common/util.h</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">common</a> - util.h<span style="font-size: 80%;"> (source / <a href="util.h.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">2</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 15:14:00</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* util.h - Utility functions for GnuPG</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 2001, 2002, 2003, 2004, 2009 Free Software Foundation, Inc.
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * GnuPG is free software; you can redistribute and/or modify this
+<span class="lineNum">       7 </span>            :  * part of GnuPG under the terms of either
+<span class="lineNum">       8 </span>            :  *
+<span class="lineNum">       9 </span>            :  *   - the GNU Lesser General Public License as published by the Free
+<span class="lineNum">      10 </span>            :  *     Software Foundation; either version 3 of the License, or (at
+<span class="lineNum">      11 </span>            :  *     your option) any later version.
+<span class="lineNum">      12 </span>            :  *
+<span class="lineNum">      13 </span>            :  * or
+<span class="lineNum">      14 </span>            :  *
+<span class="lineNum">      15 </span>            :  *   - the GNU General Public License as published by the Free
+<span class="lineNum">      16 </span>            :  *     Software Foundation; either version 2 of the License, or (at
+<span class="lineNum">      17 </span>            :  *     your option) any later version.
+<span class="lineNum">      18 </span>            :  *
+<span class="lineNum">      19 </span>            :  * or both in parallel, as here.
+<span class="lineNum">      20 </span>            :  *
+<span class="lineNum">      21 </span>            :  * GnuPG is distributed in the hope that it will be useful, but
+<span class="lineNum">      22 </span>            :  * WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      23 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+<span class="lineNum">      24 </span>            :  * General Public License for more details.
+<span class="lineNum">      25 </span>            :  *
+<span class="lineNum">      26 </span>            :  * You should have received a copies of the GNU General Public License
+<span class="lineNum">      27 </span>            :  * and the GNU Lesser General Public License along with this program;
+<span class="lineNum">      28 </span>            :  * if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      29 </span>            :  */
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span>            : #ifndef GNUPG_COMMON_UTIL_H
+<span class="lineNum">      32 </span>            : #define GNUPG_COMMON_UTIL_H
+<span class="lineNum">      33 </span>            : 
+<span class="lineNum">      34 </span>            : #include &lt;gcrypt.h&gt; /* We need this for the memory function protos. */
+<span class="lineNum">      35 </span>            : #include &lt;errno.h&gt;  /* We need errno.  */
+<span class="lineNum">      36 </span>            : #include &lt;gpg-error.h&gt; /* We need gpg_error_t and estream. */
+<span class="lineNum">      37 </span>            : 
+<span class="lineNum">      38 </span>            : /* These error codes are used but not defined in the required
+<span class="lineNum">      39 </span>            :  * libgpg-error version.  Define them here.
+<span class="lineNum">      40 </span>            :  * Example: (#if GPG_ERROR_VERSION_NUMBER &lt; 0x011500 // 1.21)
+<span class="lineNum">      41 </span>            :  */
+<span class="lineNum">      42 </span>            : #if GPG_ERROR_VERSION_NUMBER &lt; 0x011a00 /* 1.26 */
+<span class="lineNum">      43 </span>            : # define GPG_ERR_UNKNOWN_FLAG     309
+<span class="lineNum">      44 </span>            : # define GPG_ERR_INV_ORDER        310
+<span class="lineNum">      45 </span>            : # define GPG_ERR_ALREADY_FETCHED  311
+<span class="lineNum">      46 </span>            : # define GPG_ERR_TRY_LATER        312
+<span class="lineNum">      47 </span>            : # define GPG_ERR_SYSTEM_BUG       666
+<span class="lineNum">      48 </span>            : # define GPG_ERR_DNS_UNKNOWN      711
+<span class="lineNum">      49 </span>            : # define GPG_ERR_DNS_SECTION      712
+<span class="lineNum">      50 </span>            : # define GPG_ERR_DNS_ADDRESS      713
+<span class="lineNum">      51 </span>            : # define GPG_ERR_DNS_NO_QUERY     714
+<span class="lineNum">      52 </span>            : # define GPG_ERR_DNS_NO_ANSWER    715
+<span class="lineNum">      53 </span>            : # define GPG_ERR_DNS_CLOSED       716
+<span class="lineNum">      54 </span>            : # define GPG_ERR_DNS_VERIFY       717
+<span class="lineNum">      55 </span>            : # define GPG_ERR_DNS_TIMEOUT      718
+<span class="lineNum">      56 </span>            : #endif
+<span class="lineNum">      57 </span>            : 
+<span class="lineNum">      58 </span>            : 
+<span class="lineNum">      59 </span>            : /* Hash function used with libksba. */
+<span class="lineNum">      60 </span>            : #define HASH_FNC ((void (*)(void *, const void*,size_t))gcry_md_write)
+<span class="lineNum">      61 </span>            : 
+<span class="lineNum">      62 </span>            : /* Get all the stuff from jnlib. */
+<span class="lineNum">      63 </span>            : #include &quot;../common/logging.h&quot;
+<span class="lineNum">      64 </span>            : #include &quot;../common/argparse.h&quot;
+<span class="lineNum">      65 </span>            : #include &quot;../common/stringhelp.h&quot;
+<span class="lineNum">      66 </span>            : #include &quot;../common/mischelp.h&quot;
+<span class="lineNum">      67 </span>            : #include &quot;../common/strlist.h&quot;
+<span class="lineNum">      68 </span>            : #include &quot;../common/dotlock.h&quot;
+<span class="lineNum">      69 </span>            : #include &quot;../common/utf8conv.h&quot;
+<span class="lineNum">      70 </span>            : #include &quot;../common/dynload.h&quot;
+<span class="lineNum">      71 </span>            : #include &quot;../common/fwddecl.h&quot;
+<span class="lineNum">      72 </span>            : #include &quot;../common/utilproto.h&quot;
+<span class="lineNum">      73 </span>            : 
+<span class="lineNum">      74 </span>            : #include &quot;gettime.h&quot;
+<span class="lineNum">      75 </span>            : 
+<span class="lineNum">      76 </span>            : /* Redefine asprintf by our estream version which uses our own memory
+<span class="lineNum">      77 </span>            :    allocator..  */
+<span class="lineNum">      78 </span>            : #define asprintf gpgrt_asprintf
+<span class="lineNum">      79 </span>            : #define vasprintf gpgrt_vasprintf
+<span class="lineNum">      80 </span>            : 
+<span class="lineNum">      81 </span>            : /* Due to a bug in mingw32's snprintf related to the 'l' modifier and
+<span class="lineNum">      82 </span>            :    for increased portability we use our snprintf on all systems. */
+<span class="lineNum">      83 </span>            : #undef snprintf
+<span class="lineNum">      84 </span>            : #define snprintf gpgrt_snprintf
+<span class="lineNum">      85 </span>            : 
+<span class="lineNum">      86 </span>            : 
+<span class="lineNum">      87 </span>            : /* Replacements for macros not available with libgpg-error &lt; 1.20.  */
+<span class="lineNum">      88 </span>            : 
+<span class="lineNum">      89 </span>            : /* We need this type even if we are not using libreadline and or we
+<span class="lineNum">      90 </span>            :    did not include libreadline in the current file. */
+<span class="lineNum">      91 </span>            : #ifndef GNUPG_LIBREADLINE_H_INCLUDED
+<span class="lineNum">      92 </span>            : typedef char **rl_completion_func_t (const char *, int, int);
+<span class="lineNum">      93 </span>            : #endif /*!GNUPG_LIBREADLINE_H_INCLUDED*/
+<span class="lineNum">      94 </span>            : 
+<span class="lineNum">      95 </span>            : 
+<span class="lineNum">      96 </span>            : /* Handy malloc macros - please use only them. */
+<span class="lineNum">      97 </span>            : #define xtrymalloc(a)    gcry_malloc ((a))
+<span class="lineNum">      98 </span>            : #define xtrymalloc_secure(a)  gcry_malloc_secure ((a))
+<span class="lineNum">      99 </span>            : #define xtrycalloc(a,b)  gcry_calloc ((a),(b))
+<span class="lineNum">     100 </span>            : #define xtrycalloc_secure(a,b)  gcry_calloc_secure ((a),(b))
+<span class="lineNum">     101 </span>            : #define xtryrealloc(a,b) gcry_realloc ((a),(b))
+<span class="lineNum">     102 </span>            : #define xtrystrdup(a)    gcry_strdup ((a))
+<span class="lineNum">     103 </span>            : #define xfree(a)         gcry_free ((a))
+<span class="lineNum">     104 </span>            : #define xfree_fnc        gcry_free
+<span class="lineNum">     105 </span>            : 
+<span class="lineNum">     106 </span>            : #define xmalloc(a)       gcry_xmalloc ((a))
+<span class="lineNum">     107 </span>            : #define xmalloc_secure(a)  gcry_xmalloc_secure ((a))
+<span class="lineNum">     108 </span>            : #define xcalloc(a,b)     gcry_xcalloc ((a),(b))
+<span class="lineNum">     109 </span>            : #define xcalloc_secure(a,b) gcry_xcalloc_secure ((a),(b))
+<span class="lineNum">     110 </span>            : #define xrealloc(a,b)    gcry_xrealloc ((a),(b))
+<span class="lineNum">     111 </span>            : #define xstrdup(a)       gcry_xstrdup ((a))
+<span class="lineNum">     112 </span>            : 
+<span class="lineNum">     113 </span>            : /* For compatibility with gpg 1.4 we also define these: */
+<span class="lineNum">     114 </span>            : #define xmalloc_clear(a) gcry_xcalloc (1, (a))
+<span class="lineNum">     115 </span>            : #define xmalloc_secure_clear(a) gcry_xcalloc_secure (1, (a))
+<span class="lineNum">     116 </span>            : 
+<span class="lineNum">     117 </span>            : /* The default error source of the application.  This is different
+<span class="lineNum">     118 </span>            :    from GPG_ERR_SOURCE_DEFAULT in that it does not depend on the
+<span class="lineNum">     119 </span>            :    source file and thus is usable in code shared by applications.
+<span class="lineNum">     120 </span>            :    Defined by init.c.  */
+<span class="lineNum">     121 </span>            : extern gpg_err_source_t default_errsource;
+<span class="lineNum">     122 </span>            : 
+<span class="lineNum">     123 </span>            : /* Convenience function to return a gpg-error code for memory
+<span class="lineNum">     124 </span>            :    allocation failures.  This function makes sure that an error will
+<a name="125"><span class="lineNum">     125 </span>            :    be returned even if accidentally ERRNO is not set.  */</a>
+<span class="lineNum">     126 </span>            : static inline gpg_error_t
+<span class="lineNum">     127 </span><span class="lineNoCov">          0 : out_of_core (void)</span>
+<span class="lineNum">     128 </span>            : {
+<span class="lineNum">     129 </span><span class="lineNoCov">          0 :   return gpg_error_from_syserror ();</span>
+<span class="lineNum">     130 </span>            : }
+<span class="lineNum">     131 </span>            : 
+<span class="lineNum">     132 </span>            : 
+<span class="lineNum">     133 </span>            : /*-- yesno.c --*/
+<span class="lineNum">     134 </span>            : int answer_is_yes (const char *s);
+<span class="lineNum">     135 </span>            : int answer_is_yes_no_default (const char *s, int def_answer);
+<span class="lineNum">     136 </span>            : int answer_is_yes_no_quit (const char *s);
+<span class="lineNum">     137 </span>            : int answer_is_okay_cancel (const char *s, int def_answer);
+<span class="lineNum">     138 </span>            : 
+<span class="lineNum">     139 </span>            : /*-- xreadline.c --*/
+<span class="lineNum">     140 </span>            : ssize_t read_line (FILE *fp,
+<span class="lineNum">     141 </span>            :                    char **addr_of_buffer, size_t *length_of_buffer,
+<span class="lineNum">     142 </span>            :                    size_t *max_length);
+<span class="lineNum">     143 </span>            : 
+<span class="lineNum">     144 </span>            : 
+<span class="lineNum">     145 </span>            : /*-- b64enc.c and b64dec.c --*/
+<span class="lineNum">     146 </span>            : struct b64state
+<span class="lineNum">     147 </span>            : {
+<span class="lineNum">     148 </span>            :   unsigned int flags;
+<span class="lineNum">     149 </span>            :   int idx;
+<span class="lineNum">     150 </span>            :   int quad_count;
+<span class="lineNum">     151 </span>            :   FILE *fp;
+<span class="lineNum">     152 </span>            :   estream_t stream;
+<span class="lineNum">     153 </span>            :   char *title;
+<span class="lineNum">     154 </span>            :   unsigned char radbuf[4];
+<span class="lineNum">     155 </span>            :   u32 crc;
+<span class="lineNum">     156 </span>            :   int stop_seen:1;
+<span class="lineNum">     157 </span>            :   int invalid_encoding:1;
+<span class="lineNum">     158 </span>            :   gpg_error_t lasterr;
+<span class="lineNum">     159 </span>            : };
+<span class="lineNum">     160 </span>            : 
+<span class="lineNum">     161 </span>            : gpg_error_t b64enc_start (struct b64state *state, FILE *fp, const char *title);
+<span class="lineNum">     162 </span>            : gpg_error_t b64enc_start_es (struct b64state *state, estream_t fp,
+<span class="lineNum">     163 </span>            :                              const char *title);
+<span class="lineNum">     164 </span>            : gpg_error_t b64enc_write (struct b64state *state,
+<span class="lineNum">     165 </span>            :                           const void *buffer, size_t nbytes);
+<span class="lineNum">     166 </span>            : gpg_error_t b64enc_finish (struct b64state *state);
+<span class="lineNum">     167 </span>            : 
+<span class="lineNum">     168 </span>            : gpg_error_t b64dec_start (struct b64state *state, const char *title);
+<span class="lineNum">     169 </span>            : gpg_error_t b64dec_proc (struct b64state *state, void *buffer, size_t length,
+<span class="lineNum">     170 </span>            :                          size_t *r_nbytes);
+<span class="lineNum">     171 </span>            : gpg_error_t b64dec_finish (struct b64state *state);
+<span class="lineNum">     172 </span>            : 
+<span class="lineNum">     173 </span>            : /*-- sexputil.c */
+<span class="lineNum">     174 </span>            : char *canon_sexp_to_string (const unsigned char *canon, size_t canonlen);
+<span class="lineNum">     175 </span>            : void log_printcanon (const char *text,
+<span class="lineNum">     176 </span>            :                      const unsigned char *sexp, size_t sexplen);
+<span class="lineNum">     177 </span>            : void log_printsexp (const char *text, gcry_sexp_t sexp);
+<span class="lineNum">     178 </span>            : 
+<span class="lineNum">     179 </span>            : gpg_error_t make_canon_sexp (gcry_sexp_t sexp,
+<span class="lineNum">     180 </span>            :                              unsigned char **r_buffer, size_t *r_buflen);
+<span class="lineNum">     181 </span>            : gpg_error_t make_canon_sexp_pad (gcry_sexp_t sexp, int secure,
+<span class="lineNum">     182 </span>            :                                  unsigned char **r_buffer, size_t *r_buflen);
+<span class="lineNum">     183 </span>            : gpg_error_t keygrip_from_canon_sexp (const unsigned char *key, size_t keylen,
+<span class="lineNum">     184 </span>            :                                      unsigned char *grip);
+<span class="lineNum">     185 </span>            : int cmp_simple_canon_sexp (const unsigned char *a, const unsigned char *b);
+<span class="lineNum">     186 </span>            : unsigned char *make_simple_sexp_from_hexstr (const char *line,
+<span class="lineNum">     187 </span>            :                                              size_t *nscanned);
+<span class="lineNum">     188 </span>            : int hash_algo_from_sigval (const unsigned char *sigval);
+<span class="lineNum">     189 </span>            : unsigned char *make_canon_sexp_from_rsa_pk (const void *m, size_t mlen,
+<span class="lineNum">     190 </span>            :                                             const void *e, size_t elen,
+<span class="lineNum">     191 </span>            :                                             size_t *r_len);
+<span class="lineNum">     192 </span>            : gpg_error_t get_rsa_pk_from_canon_sexp (const unsigned char *keydata,
+<span class="lineNum">     193 </span>            :                                         size_t keydatalen,
+<span class="lineNum">     194 </span>            :                                         unsigned char const **r_n,
+<span class="lineNum">     195 </span>            :                                         size_t *r_nlen,
+<span class="lineNum">     196 </span>            :                                         unsigned char const **r_e,
+<span class="lineNum">     197 </span>            :                                         size_t *r_elen);
+<span class="lineNum">     198 </span>            : 
+<span class="lineNum">     199 </span>            : int get_pk_algo_from_key (gcry_sexp_t key);
+<span class="lineNum">     200 </span>            : int get_pk_algo_from_canon_sexp (const unsigned char *keydata,
+<span class="lineNum">     201 </span>            :                                  size_t keydatalen);
+<span class="lineNum">     202 </span>            : 
+<span class="lineNum">     203 </span>            : /*-- convert.c --*/
+<span class="lineNum">     204 </span>            : int hex2bin (const char *string, void *buffer, size_t length);
+<span class="lineNum">     205 </span>            : int hexcolon2bin (const char *string, void *buffer, size_t length);
+<span class="lineNum">     206 </span>            : char *bin2hex (const void *buffer, size_t length, char *stringbuf);
+<span class="lineNum">     207 </span>            : char *bin2hexcolon (const void *buffer, size_t length, char *stringbuf);
+<span class="lineNum">     208 </span>            : const char *hex2str (const char *hexstring,
+<span class="lineNum">     209 </span>            :                      char *buffer, size_t bufsize, size_t *buflen);
+<span class="lineNum">     210 </span>            : char *hex2str_alloc (const char *hexstring, size_t *r_count);
+<span class="lineNum">     211 </span>            : 
+<span class="lineNum">     212 </span>            : /*-- percent.c --*/
+<span class="lineNum">     213 </span>            : char *percent_plus_escape (const char *string);
+<span class="lineNum">     214 </span>            : char *percent_plus_unescape (const char *string, int nulrepl);
+<span class="lineNum">     215 </span>            : char *percent_unescape (const char *string, int nulrepl);
+<span class="lineNum">     216 </span>            : 
+<span class="lineNum">     217 </span>            : size_t percent_plus_unescape_inplace (char *string, int nulrepl);
+<span class="lineNum">     218 </span>            : size_t percent_unescape_inplace (char *string, int nulrepl);
+<span class="lineNum">     219 </span>            : 
+<span class="lineNum">     220 </span>            : /*-- openpgp-oid.c --*/
+<span class="lineNum">     221 </span>            : gpg_error_t openpgp_oid_from_str (const char *string, gcry_mpi_t *r_mpi);
+<span class="lineNum">     222 </span>            : char *openpgp_oid_to_str (gcry_mpi_t a);
+<span class="lineNum">     223 </span>            : int openpgp_oid_is_ed25519 (gcry_mpi_t a);
+<span class="lineNum">     224 </span>            : int openpgp_oid_is_cv25519 (gcry_mpi_t a);
+<span class="lineNum">     225 </span>            : const char *openpgp_curve_to_oid (const char *name, unsigned int *r_nbits);
+<span class="lineNum">     226 </span>            : const char *openpgp_oid_to_curve (const char *oid, int canon);
+<span class="lineNum">     227 </span>            : const char *openpgp_enum_curves (int *idxp);
+<span class="lineNum">     228 </span>            : const char *openpgp_is_curve_supported (const char *name,
+<span class="lineNum">     229 </span>            :                                         int *r_algo, unsigned int *r_nbits);
+<span class="lineNum">     230 </span>            : 
+<span class="lineNum">     231 </span>            : 
+<span class="lineNum">     232 </span>            : /*-- homedir.c --*/
+<span class="lineNum">     233 </span>            : const char *standard_homedir (void);
+<span class="lineNum">     234 </span>            : const char *default_homedir (void);
+<span class="lineNum">     235 </span>            : void gnupg_set_homedir (const char *newdir);
+<span class="lineNum">     236 </span>            : const char *gnupg_homedir (void);
+<span class="lineNum">     237 </span>            : int gnupg_default_homedir_p (void);
+<span class="lineNum">     238 </span>            : const char *gnupg_socketdir (void);
+<span class="lineNum">     239 </span>            : const char *gnupg_sysconfdir (void);
+<span class="lineNum">     240 </span>            : const char *gnupg_bindir (void);
+<span class="lineNum">     241 </span>            : const char *gnupg_libexecdir (void);
+<span class="lineNum">     242 </span>            : const char *gnupg_libdir (void);
+<span class="lineNum">     243 </span>            : const char *gnupg_datadir (void);
+<span class="lineNum">     244 </span>            : const char *gnupg_localedir (void);
+<span class="lineNum">     245 </span>            : const char *gnupg_cachedir (void);
+<span class="lineNum">     246 </span>            : const char *dirmngr_socket_name (void);
+<span class="lineNum">     247 </span>            : 
+<span class="lineNum">     248 </span>            : char *_gnupg_socketdir_internal (int skip_checks, unsigned *r_info);
+<span class="lineNum">     249 </span>            : 
+<span class="lineNum">     250 </span>            : /* All module names.  We also include gpg and gpgsm for the sake for
+<span class="lineNum">     251 </span>            :    gpgconf. */
+<span class="lineNum">     252 </span>            : #define GNUPG_MODULE_NAME_AGENT        1
+<span class="lineNum">     253 </span>            : #define GNUPG_MODULE_NAME_PINENTRY     2
+<span class="lineNum">     254 </span>            : #define GNUPG_MODULE_NAME_SCDAEMON     3
+<span class="lineNum">     255 </span>            : #define GNUPG_MODULE_NAME_DIRMNGR      4
+<span class="lineNum">     256 </span>            : #define GNUPG_MODULE_NAME_PROTECT_TOOL 5
+<span class="lineNum">     257 </span>            : #define GNUPG_MODULE_NAME_CHECK_PATTERN 6
+<span class="lineNum">     258 </span>            : #define GNUPG_MODULE_NAME_GPGSM         7
+<span class="lineNum">     259 </span>            : #define GNUPG_MODULE_NAME_GPG           8
+<span class="lineNum">     260 </span>            : #define GNUPG_MODULE_NAME_CONNECT_AGENT 9
+<span class="lineNum">     261 </span>            : #define GNUPG_MODULE_NAME_GPGCONF       10
+<span class="lineNum">     262 </span>            : #define GNUPG_MODULE_NAME_DIRMNGR_LDAP  11
+<span class="lineNum">     263 </span>            : #define GNUPG_MODULE_NAME_GPGV          12
+<span class="lineNum">     264 </span>            : const char *gnupg_module_name (int which);
+<span class="lineNum">     265 </span>            : void gnupg_module_name_flush_some (void);
+<span class="lineNum">     266 </span>            : void gnupg_set_builddir (const char *newdir);
+<span class="lineNum">     267 </span>            : 
+<span class="lineNum">     268 </span>            : 
+<span class="lineNum">     269 </span>            : 
+<span class="lineNum">     270 </span>            : /*-- gpgrlhelp.c --*/
+<span class="lineNum">     271 </span>            : void gnupg_rl_initialize (void);
+<span class="lineNum">     272 </span>            : 
+<span class="lineNum">     273 </span>            : /*-- helpfile.c --*/
+<span class="lineNum">     274 </span>            : char *gnupg_get_help_string (const char *key, int only_current_locale);
+<span class="lineNum">     275 </span>            : 
+<span class="lineNum">     276 </span>            : /*-- localename.c --*/
+<span class="lineNum">     277 </span>            : const char *gnupg_messages_locale_name (void);
+<span class="lineNum">     278 </span>            : 
+<span class="lineNum">     279 </span>            : /*-- miscellaneous.c --*/
+<span class="lineNum">     280 </span>            : 
+<span class="lineNum">     281 </span>            : /* This function is called at startup to tell libgcrypt to use our own
+<span class="lineNum">     282 </span>            :    logging subsystem. */
+<span class="lineNum">     283 </span>            : void setup_libgcrypt_logging (void);
+<span class="lineNum">     284 </span>            : 
+<span class="lineNum">     285 </span>            : /* Print an out of core message and die.  */
+<span class="lineNum">     286 </span>            : void xoutofcore (void);
+<span class="lineNum">     287 </span>            : 
+<span class="lineNum">     288 </span>            : /* Same as estream_asprintf but die on memory failure.  */
+<span class="lineNum">     289 </span>            : char *xasprintf (const char *fmt, ...) GPGRT_ATTR_PRINTF(1,2);
+<span class="lineNum">     290 </span>            : /* This is now an alias to estream_asprintf.  */
+<span class="lineNum">     291 </span>            : char *xtryasprintf (const char *fmt, ...) GPGRT_ATTR_PRINTF(1,2);
+<span class="lineNum">     292 </span>            : 
+<span class="lineNum">     293 </span>            : /* Replacement for gcry_cipher_algo_name.  */
+<span class="lineNum">     294 </span>            : const char *gnupg_cipher_algo_name (int algo);
+<span class="lineNum">     295 </span>            : 
+<span class="lineNum">     296 </span>            : void obsolete_option (const char *configname, unsigned int configlineno,
+<span class="lineNum">     297 </span>            :                       const char *name);
+<span class="lineNum">     298 </span>            : 
+<span class="lineNum">     299 </span>            : const char *print_fname_stdout (const char *s);
+<span class="lineNum">     300 </span>            : const char *print_fname_stdin (const char *s);
+<span class="lineNum">     301 </span>            : void print_utf8_buffer3 (estream_t fp, const void *p, size_t n,
+<span class="lineNum">     302 </span>            :                          const char *delim);
+<span class="lineNum">     303 </span>            : void print_utf8_buffer2 (estream_t fp, const void *p, size_t n, int delim);
+<span class="lineNum">     304 </span>            : void print_utf8_buffer (estream_t fp, const void *p, size_t n);
+<span class="lineNum">     305 </span>            : void print_hexstring (FILE *fp, const void *buffer, size_t length,
+<span class="lineNum">     306 </span>            :                       int reserved);
+<span class="lineNum">     307 </span>            : char *try_make_printable_string (const void *p, size_t n, int delim);
+<span class="lineNum">     308 </span>            : char *make_printable_string (const void *p, size_t n, int delim);
+<span class="lineNum">     309 </span>            : 
+<span class="lineNum">     310 </span>            : int is_file_compressed (const char *s, int *ret_rc);
+<span class="lineNum">     311 </span>            : 
+<span class="lineNum">     312 </span>            : int match_multistr (const char *multistr,const char *match);
+<span class="lineNum">     313 </span>            : 
+<span class="lineNum">     314 </span>            : int gnupg_compare_version (const char *a, const char *b);
+<span class="lineNum">     315 </span>            : 
+<span class="lineNum">     316 </span>            : struct debug_flags_s
+<span class="lineNum">     317 </span>            : {
+<span class="lineNum">     318 </span>            :   unsigned int flag;
+<span class="lineNum">     319 </span>            :   const char *name;
+<span class="lineNum">     320 </span>            : };
+<span class="lineNum">     321 </span>            : int parse_debug_flag (const char *string, unsigned int *debugvar,
+<span class="lineNum">     322 </span>            :                       const struct debug_flags_s *flags);
+<span class="lineNum">     323 </span>            : 
+<span class="lineNum">     324 </span>            : 
+<span class="lineNum">     325 </span>            : /*-- Simple replacement functions. */
+<span class="lineNum">     326 </span>            : 
+<span class="lineNum">     327 </span>            : /* We use the gnupg_ttyname macro to be safe not to run into conflicts
+<span class="lineNum">     328 </span>            :    which an extisting but broken ttyname.  */
+<span class="lineNum">     329 </span>            : #if !defined(HAVE_TTYNAME) || defined(HAVE_BROKEN_TTYNAME)
+<span class="lineNum">     330 </span>            : # define gnupg_ttyname(n) _gnupg_ttyname ((n))
+<span class="lineNum">     331 </span>            : /* Systems without ttyname (W32) will merely return NULL. */
+<span class="lineNum">     332 </span>            : static inline char *
+<span class="lineNum">     333 </span>            : _gnupg_ttyname (int fd)
+<span class="lineNum">     334 </span>            : {
+<span class="lineNum">     335 </span>            :   (void)fd;
+<span class="lineNum">     336 </span>            :   return NULL;
+<span class="lineNum">     337 </span>            : }
+<span class="lineNum">     338 </span>            : #else /*HAVE_TTYNAME*/
+<span class="lineNum">     339 </span>            : # define gnupg_ttyname(n) ttyname ((n))
+<span class="lineNum">     340 </span>            : #endif /*HAVE_TTYNAME */
+<span class="lineNum">     341 </span>            : 
+<span class="lineNum">     342 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">     343 </span>            : #define getpid() GetCurrentProcessId ()
+<span class="lineNum">     344 </span>            : char *_gnupg_getenv (const char *name); /* See sysutils.c */
+<span class="lineNum">     345 </span>            : #define getenv(a)  _gnupg_getenv ((a))
+<span class="lineNum">     346 </span>            : char *_gnupg_setenv (const char *name); /* See sysutils.c */
+<span class="lineNum">     347 </span>            : #define setenv(a,b,c)  _gnupg_setenv ((a),(b),(c))
+<span class="lineNum">     348 </span>            : int _gnupg_isatty (int fd);
+<span class="lineNum">     349 </span>            : #define gnupg_isatty(a)  _gnupg_isatty ((a))
+<span class="lineNum">     350 </span>            : #else
+<span class="lineNum">     351 </span>            : #define gnupg_isatty(a)  isatty ((a))
+<span class="lineNum">     352 </span>            : #endif
+<span class="lineNum">     353 </span>            : 
+<span class="lineNum">     354 </span>            : 
+<span class="lineNum">     355 </span>            : 
+<span class="lineNum">     356 </span>            : /*-- Macros to replace ctype ones to avoid locale problems. --*/
+<span class="lineNum">     357 </span>            : #define spacep(p)   (*(p) == ' ' || *(p) == '\t')
+<span class="lineNum">     358 </span>            : #define digitp(p)   (*(p) &gt;= '0' &amp;&amp; *(p) &lt;= '9')
+<span class="lineNum">     359 </span>            : #define alphap(p)   ((*(p) &gt;= 'A' &amp;&amp; *(p) &lt;= 'Z')       \
+<span class="lineNum">     360 </span>            :                      || (*(p) &gt;= 'a' &amp;&amp; *(p) &lt;= 'z'))
+<span class="lineNum">     361 </span>            : #define alnump(p)   (alphap (p) || digitp (p))
+<span class="lineNum">     362 </span>            : #define hexdigitp(a) (digitp (a)                     \
+<span class="lineNum">     363 </span>            :                       || (*(a) &gt;= 'A' &amp;&amp; *(a) &lt;= 'F')  \
+<span class="lineNum">     364 </span>            :                       || (*(a) &gt;= 'a' &amp;&amp; *(a) &lt;= 'f'))
+<span class="lineNum">     365 </span>            :   /* Note this isn't identical to a C locale isspace() without \f and
+<span class="lineNum">     366 </span>            :      \v, but works for the purposes used here. */
+<span class="lineNum">     367 </span>            : #define ascii_isspace(a) ((a)==' ' || (a)=='\n' || (a)=='\r' || (a)=='\t')
+<span class="lineNum">     368 </span>            : 
+<span class="lineNum">     369 </span>            : /* The atoi macros assume that the buffer has only valid digits. */
+<span class="lineNum">     370 </span>            : #define atoi_1(p)   (*(p) - '0' )
+<span class="lineNum">     371 </span>            : #define atoi_2(p)   ((atoi_1(p) * 10) + atoi_1((p)+1))
+<span class="lineNum">     372 </span>            : #define atoi_4(p)   ((atoi_2(p) * 100) + atoi_2((p)+2))
+<span class="lineNum">     373 </span>            : #define xtoi_1(p)   (*(p) &lt;= '9'? (*(p)- '0'): \
+<span class="lineNum">     374 </span>            :                      *(p) &lt;= 'F'? (*(p)-'A'+10):(*(p)-'a'+10))
+<span class="lineNum">     375 </span>            : #define xtoi_2(p)   ((xtoi_1(p) * 16) + xtoi_1((p)+1))
+<span class="lineNum">     376 </span>            : #define xtoi_4(p)   ((xtoi_2(p) * 256) + xtoi_2((p)+2))
+<span class="lineNum">     377 </span>            : 
+<span class="lineNum">     378 </span>            : #endif /*GNUPG_COMMON_UTIL_H*/
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

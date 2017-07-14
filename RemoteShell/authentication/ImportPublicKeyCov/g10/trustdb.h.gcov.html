@@ -1,0 +1,252 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - g10/trustdb.h</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">g10</a> - trustdb.h<span style="font-size: 80%;"> (source / <a href="trustdb.h.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 14:46:13</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* trustdb.h - Trust database</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+<span class="lineNum">       3 </span>            :  *               2005, 2012 Free Software Foundation, Inc.
+<span class="lineNum">       4 </span>            :  *
+<span class="lineNum">       5 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       6 </span>            :  *
+<span class="lineNum">       7 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       8 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">       9 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">      10 </span>            :  * (at your option) any later version.
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      13 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      14 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      15 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      16 </span>            :  *
+<span class="lineNum">      17 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      18 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      19 </span>            :  */
+<span class="lineNum">      20 </span>            : 
+<span class="lineNum">      21 </span>            : #ifndef G10_TRUSTDB_H
+<span class="lineNum">      22 </span>            : #define G10_TRUSTDB_H
+<span class="lineNum">      23 </span>            : 
+<span class="lineNum">      24 </span>            : /* Trust values must be sorted in ascending order! */
+<span class="lineNum">      25 </span>            : #define TRUST_MASK       15
+<span class="lineNum">      26 </span>            : #define TRUST_UNKNOWN     0  /* o: not yet calculated/assigned */
+<span class="lineNum">      27 </span>            : #define TRUST_EXPIRED     1  /* e: calculation may be invalid */
+<span class="lineNum">      28 </span>            : #define TRUST_UNDEFINED   2  /* q: not enough information for calculation */
+<span class="lineNum">      29 </span>            : #define TRUST_NEVER       3  /* n: never trust this pubkey */
+<span class="lineNum">      30 </span>            : #define TRUST_MARGINAL    4  /* m: marginally trusted */
+<span class="lineNum">      31 </span>            : #define TRUST_FULLY       5  /* f: fully trusted      */
+<span class="lineNum">      32 </span>            : #define TRUST_ULTIMATE    6  /* u: ultimately trusted */
+<span class="lineNum">      33 </span>            : /* Trust values not covered by the mask. */
+<span class="lineNum">      34 </span>            : #define TRUST_FLAG_REVOKED        32 /* r: revoked */
+<span class="lineNum">      35 </span>            : #define TRUST_FLAG_SUB_REVOKED    64 /* r: revoked but for subkeys */
+<span class="lineNum">      36 </span>            : #define TRUST_FLAG_DISABLED      128 /* d: key/uid disabled */
+<span class="lineNum">      37 </span>            : #define TRUST_FLAG_PENDING_CHECK 256 /* a check-trustdb is pending */
+<span class="lineNum">      38 </span>            : #define TRUST_FLAG_TOFU_BASED    512 /* The trust value is based on
+<span class="lineNum">      39 </span>            :                                       * the TOFU information.  */
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span>            : /* Private value used in tofu.c - must be different from the trust
+<span class="lineNum">      42 </span>            :    values.  */
+<span class="lineNum">      43 </span>            : #define _tofu_GET_TRUST_ERROR 100
+<span class="lineNum">      44 </span>            : 
+<span class="lineNum">      45 </span>            : /* Length of the hash used to select UIDs in keyedit.c.  */
+<span class="lineNum">      46 </span>            : #define NAMEHASH_LEN  20
+<span class="lineNum">      47 </span>            : 
+<span class="lineNum">      48 </span>            : 
+<span class="lineNum">      49 </span>            : /*
+<span class="lineNum">      50 </span>            :  * A structure to store key identification as well as some stuff needed
+<span class="lineNum">      51 </span>            :  * for validation
+<span class="lineNum">      52 </span>            :  */
+<span class="lineNum">      53 </span>            : struct key_item {
+<span class="lineNum">      54 </span>            :   struct key_item *next;
+<span class="lineNum">      55 </span>            :   unsigned int ownertrust,min_ownertrust;
+<span class="lineNum">      56 </span>            :   byte trust_depth;
+<span class="lineNum">      57 </span>            :   byte trust_value;
+<span class="lineNum">      58 </span>            :   char *trust_regexp;
+<span class="lineNum">      59 </span>            :   u32 kid[2];
+<span class="lineNum">      60 </span>            : };
+<span class="lineNum">      61 </span>            : 
+<span class="lineNum">      62 </span>            : 
+<span class="lineNum">      63 </span>            : /*
+<span class="lineNum">      64 </span>            :  * Check whether the signature SIG is in the klist K.
+<a name="65"><span class="lineNum">      65 </span>            :  */</a>
+<span class="lineNum">      66 </span>            : static inline struct key_item *
+<span class="lineNum">      67 </span><span class="lineNoCov">          0 : is_in_klist (struct key_item *k, PKT_signature *sig)</span>
+<span class="lineNum">      68 </span>            : {
+<span class="lineNum">      69 </span><span class="lineNoCov">          0 :   for (; k; k = k-&gt;next)</span>
+<span class="lineNum">      70 </span>            :     {
+<span class="lineNum">      71 </span><span class="lineNoCov">          0 :       if (k-&gt;kid[0] == sig-&gt;keyid[0] &amp;&amp; k-&gt;kid[1] == sig-&gt;keyid[1])</span>
+<span class="lineNum">      72 </span><span class="lineNoCov">          0 :         return k;</span>
+<span class="lineNum">      73 </span>            :     }
+<span class="lineNum">      74 </span><span class="lineNoCov">          0 :   return NULL;</span>
+<span class="lineNum">      75 </span>            : }
+<span class="lineNum">      76 </span>            : 
+<span class="lineNum">      77 </span>            : 
+<span class="lineNum">      78 </span>            : 
+<span class="lineNum">      79 </span>            : /*-- trust.c --*/
+<span class="lineNum">      80 </span>            : int cache_disabled_value (ctrl_t ctrl, PKT_public_key *pk);
+<span class="lineNum">      81 </span>            : void register_trusted_keyid (u32 *keyid);
+<span class="lineNum">      82 </span>            : void register_trusted_key (const char *string);
+<span class="lineNum">      83 </span>            : 
+<span class="lineNum">      84 </span>            : const char *trust_value_to_string (unsigned int value);
+<span class="lineNum">      85 </span>            : int string_to_trust_value (const char *str);
+<span class="lineNum">      86 </span>            : const char *uid_trust_string_fixed (ctrl_t ctrl,
+<span class="lineNum">      87 </span>            :                                     PKT_public_key *key, PKT_user_id *uid);
+<span class="lineNum">      88 </span>            : 
+<span class="lineNum">      89 </span>            : unsigned int get_ownertrust (ctrl_t ctrl, PKT_public_key *pk);
+<span class="lineNum">      90 </span>            : void update_ownertrust (ctrl_t ctrl,
+<span class="lineNum">      91 </span>            :                         PKT_public_key *pk, unsigned int new_trust);
+<span class="lineNum">      92 </span>            : int clear_ownertrusts (ctrl_t ctrl, PKT_public_key *pk);
+<span class="lineNum">      93 </span>            : 
+<span class="lineNum">      94 </span>            : void revalidation_mark (ctrl_t ctrl);
+<span class="lineNum">      95 </span>            : void check_trustdb_stale (ctrl_t ctrl);
+<span class="lineNum">      96 </span>            : void check_or_update_trustdb (ctrl_t ctrl);
+<span class="lineNum">      97 </span>            : 
+<span class="lineNum">      98 </span>            : unsigned int get_validity (ctrl_t ctrl, kbnode_t kb, PKT_public_key *pk,
+<span class="lineNum">      99 </span>            :                            PKT_user_id *uid,
+<span class="lineNum">     100 </span>            :                            PKT_signature *sig, int may_ask);
+<span class="lineNum">     101 </span>            : int get_validity_info (ctrl_t ctrl, kbnode_t kb, PKT_public_key *pk,
+<span class="lineNum">     102 </span>            :                        PKT_user_id *uid);
+<span class="lineNum">     103 </span>            : const char *get_validity_string (ctrl_t ctrl,
+<span class="lineNum">     104 </span>            :                                  PKT_public_key *pk, PKT_user_id *uid);
+<span class="lineNum">     105 </span>            : 
+<span class="lineNum">     106 </span>            : void mark_usable_uid_certs (ctrl_t ctrl, kbnode_t keyblock, kbnode_t uidnode,
+<span class="lineNum">     107 </span>            :                             u32 *main_kid, struct key_item *klist,
+<span class="lineNum">     108 </span>            :                             u32 curtime, u32 *next_expire);
+<span class="lineNum">     109 </span>            : 
+<span class="lineNum">     110 </span>            : void clean_one_uid (ctrl_t ctrl, kbnode_t keyblock, kbnode_t uidnode,
+<span class="lineNum">     111 </span>            :                     int noisy, int self_only,
+<span class="lineNum">     112 </span>            :                     int *uids_cleaned, int *sigs_cleaned);
+<span class="lineNum">     113 </span>            : void clean_key (ctrl_t ctrl, kbnode_t keyblock, int noisy, int self_only,
+<span class="lineNum">     114 </span>            :                 int *uids_cleaned,int *sigs_cleaned);
+<span class="lineNum">     115 </span>            : 
+<span class="lineNum">     116 </span>            : 
+<span class="lineNum">     117 </span>            : 
+<span class="lineNum">     118 </span>            : /*-- trustdb.c --*/
+<span class="lineNum">     119 </span>            : void tdb_register_trusted_keyid (u32 *keyid);
+<span class="lineNum">     120 </span>            : void tdb_register_trusted_key (const char *string);
+<span class="lineNum">     121 </span>            : /* Returns whether KID is on the list of ultimately trusted keys.  */
+<span class="lineNum">     122 </span>            : int tdb_keyid_is_utk (u32 *kid);
+<span class="lineNum">     123 </span>            : /* Return the list of ultimately trusted keys.  The caller must not
+<span class="lineNum">     124 </span>            :  * modify this list nor must it free the list.  */
+<span class="lineNum">     125 </span>            : struct key_item *tdb_utks (void);
+<span class="lineNum">     126 </span>            : void check_trustdb (ctrl_t ctrl);
+<span class="lineNum">     127 </span>            : void update_trustdb (ctrl_t ctrl);
+<span class="lineNum">     128 </span>            : int setup_trustdb( int level, const char *dbname );
+<span class="lineNum">     129 </span>            : void how_to_fix_the_trustdb (void);
+<span class="lineNum">     130 </span>            : const char *trust_model_string (int model);
+<span class="lineNum">     131 </span>            : gpg_error_t init_trustdb (ctrl_t ctrl, int no_create);
+<span class="lineNum">     132 </span>            : int have_trustdb (ctrl_t ctrl);
+<span class="lineNum">     133 </span>            : void tdb_check_trustdb_stale (ctrl_t ctrl);
+<span class="lineNum">     134 </span>            : void tdb_revalidation_mark (ctrl_t ctrl);
+<span class="lineNum">     135 </span>            : int trustdb_pending_check(void);
+<span class="lineNum">     136 </span>            : void tdb_check_or_update (ctrl_t ctrl);
+<span class="lineNum">     137 </span>            : 
+<span class="lineNum">     138 </span>            : int tdb_cache_disabled_value (ctrl_t ctrl, PKT_public_key *pk);
+<span class="lineNum">     139 </span>            : 
+<span class="lineNum">     140 </span>            : unsigned int tdb_get_validity_core (ctrl_t ctrl, kbnode_t kb,
+<span class="lineNum">     141 </span>            :                                     PKT_public_key *pk, PKT_user_id *uid,
+<span class="lineNum">     142 </span>            :                                     PKT_public_key *main_pk,
+<span class="lineNum">     143 </span>            :                                     PKT_signature *sig, int may_ask);
+<span class="lineNum">     144 </span>            : 
+<span class="lineNum">     145 </span>            : void list_trust_path( const char *username );
+<span class="lineNum">     146 </span>            : int enum_cert_paths( void **context, ulong *lid,
+<span class="lineNum">     147 </span>            :                      unsigned *ownertrust, unsigned *validity );
+<span class="lineNum">     148 </span>            : void enum_cert_paths_print( void **context, FILE *fp,
+<span class="lineNum">     149 </span>            :                                            int refresh, ulong selected_lid );
+<span class="lineNum">     150 </span>            : 
+<span class="lineNum">     151 </span>            : void read_trust_options (ctrl_t ctrl, byte *trust_model,
+<span class="lineNum">     152 </span>            :                          ulong *created, ulong *nextcheck,
+<span class="lineNum">     153 </span>            :                          byte *marginals, byte *completes, byte *cert_depth,
+<span class="lineNum">     154 </span>            :                          byte *min_cert_level);
+<span class="lineNum">     155 </span>            : 
+<span class="lineNum">     156 </span>            : unsigned int tdb_get_ownertrust (ctrl_t ctrl, PKT_public_key *pk,
+<span class="lineNum">     157 </span>            :                                  int no_create);
+<span class="lineNum">     158 </span>            : unsigned int tdb_get_min_ownertrust (ctrl_t ctrl, PKT_public_key *pk,
+<span class="lineNum">     159 </span>            :                                      int no_create);
+<span class="lineNum">     160 </span>            : int get_ownertrust_info (ctrl_t ctrl, PKT_public_key *pk, int no_create);
+<span class="lineNum">     161 </span>            : const char *get_ownertrust_string (ctrl_t ctrl,
+<span class="lineNum">     162 </span>            :                                    PKT_public_key *pk, int no_create);
+<span class="lineNum">     163 </span>            : 
+<span class="lineNum">     164 </span>            : void tdb_update_ownertrust (ctrl_t ctrl, PKT_public_key *pk,
+<span class="lineNum">     165 </span>            :                             unsigned int new_trust);
+<span class="lineNum">     166 </span>            : int tdb_clear_ownertrusts (ctrl_t ctrl, PKT_public_key *pk);
+<span class="lineNum">     167 </span>            : 
+<span class="lineNum">     168 </span>            : /*-- tdbdump.c --*/
+<span class="lineNum">     169 </span>            : void list_trustdb (ctrl_t ctrl, estream_t fp, const char *username);
+<span class="lineNum">     170 </span>            : void export_ownertrust (ctrl_t ctrl);
+<span class="lineNum">     171 </span>            : void import_ownertrust (ctrl_t ctrl, const char *fname);
+<span class="lineNum">     172 </span>            : 
+<span class="lineNum">     173 </span>            : /*-- pkclist.c --*/
+<span class="lineNum">     174 </span>            : int edit_ownertrust (ctrl_t ctrl, PKT_public_key *pk, int mode);
+<span class="lineNum">     175 </span>            : 
+<span class="lineNum">     176 </span>            : #endif /*G10_TRUSTDB_H*/
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

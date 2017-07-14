@@ -1,0 +1,627 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - g10/passphrase.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">g10</a> - passphrase.c<span style="font-size: 80%;"> (source / <a href="passphrase.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">24</td>
+            <td class="headerCovTableEntry">212</td>
+            <td class="headerCovTableEntryLo">11.3 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 12:47:41</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">12</td>
+            <td class="headerCovTableEntryLo">8.3 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* passphrase.c -  Get a passphrase</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+<span class="lineNum">       3 </span>            :  *               2005, 2006, 2007, 2009, 2011 Free Software Foundation, Inc.
+<span class="lineNum">       4 </span>            :  *
+<span class="lineNum">       5 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       6 </span>            :  *
+<span class="lineNum">       7 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       8 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">       9 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">      10 </span>            :  * (at your option) any later version.
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      13 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      14 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      15 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      16 </span>            :  *
+<span class="lineNum">      17 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      18 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      19 </span>            :  */
+<span class="lineNum">      20 </span>            : 
+<span class="lineNum">      21 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      22 </span>            : #include &lt;stddef.h&gt;
+<span class="lineNum">      23 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      24 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      25 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      26 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      27 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      28 </span>            : #ifdef HAVE_LOCALE_H
+<span class="lineNum">      29 </span>            : #include &lt;locale.h&gt;
+<span class="lineNum">      30 </span>            : #endif
+<span class="lineNum">      31 </span>            : #ifdef HAVE_LANGINFO_CODESET
+<span class="lineNum">      32 </span>            : #include &lt;langinfo.h&gt;
+<span class="lineNum">      33 </span>            : #endif
+<span class="lineNum">      34 </span>            : 
+<span class="lineNum">      35 </span>            : #include &quot;gpg.h&quot;
+<span class="lineNum">      36 </span>            : #include &quot;../common/util.h&quot;
+<span class="lineNum">      37 </span>            : #include &quot;options.h&quot;
+<span class="lineNum">      38 </span>            : #include &quot;../common/ttyio.h&quot;
+<span class="lineNum">      39 </span>            : #include &quot;keydb.h&quot;
+<span class="lineNum">      40 </span>            : #include &quot;main.h&quot;
+<span class="lineNum">      41 </span>            : #include &quot;../common/i18n.h&quot;
+<span class="lineNum">      42 </span>            : #include &quot;../common/status.h&quot;
+<span class="lineNum">      43 </span>            : #include &quot;call-agent.h&quot;
+<span class="lineNum">      44 </span>            : #include &quot;../common/shareddefs.h&quot;
+<span class="lineNum">      45 </span>            : 
+<span class="lineNum">      46 </span>            : static char *fd_passwd = NULL;
+<span class="lineNum">      47 </span>            : static char *next_pw = NULL;
+<span class="lineNum">      48 </span>            : static char *last_pw = NULL;
+<span class="lineNum">      49 </span>            : 
+<span class="lineNum">      50 </span>            : 
+<span class="lineNum">      51 </span>            : 
+<span class="lineNum">      52 </span>            : /* Pack an s2k iteration count into the form specified in 2440.  If
+<span class="lineNum">      53 </span>            :    we're in between valid values, round up.  With value 0 return the
+<a name="54"><span class="lineNum">      54 </span>            :    old default.  */</a>
+<span class="lineNum">      55 </span>            : unsigned char
+<span class="lineNum">      56 </span><span class="lineNoCov">          0 : encode_s2k_iterations (int iterations)</span>
+<span class="lineNum">      57 </span>            : {
+<span class="lineNum">      58 </span>            :   gpg_error_t err;
+<span class="lineNum">      59 </span><span class="lineNoCov">          0 :   unsigned char c=0;</span>
+<span class="lineNum">      60 </span>            :   unsigned char result;
+<span class="lineNum">      61 </span>            :   unsigned int count;
+<span class="lineNum">      62 </span>            : 
+<span class="lineNum">      63 </span><span class="lineNoCov">          0 :   if (!iterations)</span>
+<span class="lineNum">      64 </span>            :     {
+<span class="lineNum">      65 </span>            :       unsigned long mycnt;
+<span class="lineNum">      66 </span>            : 
+<span class="lineNum">      67 </span>            :       /* Ask the gpg-agent for a useful iteration count.  */
+<span class="lineNum">      68 </span><span class="lineNoCov">          0 :       err = agent_get_s2k_count (&amp;mycnt);</span>
+<span class="lineNum">      69 </span><span class="lineNoCov">          0 :       if (err || mycnt &lt; 65536)</span>
+<span class="lineNum">      70 </span>            :         {
+<span class="lineNum">      71 </span>            :           /* Don't print an error if an older agent is used.  */
+<span class="lineNum">      72 </span><span class="lineNoCov">          0 :           if (err &amp;&amp; gpg_err_code (err) != GPG_ERR_ASS_PARAMETER)</span>
+<span class="lineNum">      73 </span><span class="lineNoCov">          0 :             log_error (_(&quot;problem with the agent: %s\n&quot;), gpg_strerror (err));</span>
+<span class="lineNum">      74 </span>            :           /* Default to 65536 which we used up to 2.0.13.  */
+<span class="lineNum">      75 </span><span class="lineNoCov">          0 :           return 96;</span>
+<span class="lineNum">      76 </span>            :         }
+<span class="lineNum">      77 </span><span class="lineNoCov">          0 :       else if (mycnt &gt;= 65011712)</span>
+<span class="lineNum">      78 </span><span class="lineNoCov">          0 :         return 255; /* Largest possible value.  */</span>
+<span class="lineNum">      79 </span>            :       else
+<span class="lineNum">      80 </span><span class="lineNoCov">          0 :         return encode_s2k_iterations ((int)mycnt);</span>
+<span class="lineNum">      81 </span>            :     }
+<span class="lineNum">      82 </span>            : 
+<span class="lineNum">      83 </span><span class="lineNoCov">          0 :   if (iterations &lt;= 1024)</span>
+<span class="lineNum">      84 </span><span class="lineNoCov">          0 :     return 0;  /* Command line arg compatibility.  */</span>
+<span class="lineNum">      85 </span>            : 
+<span class="lineNum">      86 </span><span class="lineNoCov">          0 :   if (iterations &gt;= 65011712)</span>
+<span class="lineNum">      87 </span><span class="lineNoCov">          0 :     return 255;</span>
+<span class="lineNum">      88 </span>            : 
+<span class="lineNum">      89 </span>            :   /* Need count to be in the range 16-31 */
+<span class="lineNum">      90 </span><span class="lineNoCov">          0 :   for (count=iterations&gt;&gt;6; count&gt;=32; count&gt;&gt;=1)</span>
+<span class="lineNum">      91 </span><span class="lineNoCov">          0 :     c++;</span>
+<span class="lineNum">      92 </span>            : 
+<span class="lineNum">      93 </span><span class="lineNoCov">          0 :   result = (c&lt;&lt;4)|(count-16);</span>
+<span class="lineNum">      94 </span>            : 
+<span class="lineNum">      95 </span><span class="lineNoCov">          0 :   if (S2K_DECODE_COUNT(result) &lt; iterations)</span>
+<span class="lineNum">      96 </span><span class="lineNoCov">          0 :     result++;</span>
+<span class="lineNum">      97 </span>            : 
+<span class="lineNum">      98 </span><span class="lineNoCov">          0 :   return result;</span>
+<span class="lineNum">      99 </span>            : }
+<span class="lineNum">     100 </span>            : 
+<a name="101"><span class="lineNum">     101 </span>            : </a>
+<span class="lineNum">     102 </span>            : int
+<span class="lineNum">     103 </span><span class="lineNoCov">          0 : have_static_passphrase()</span>
+<span class="lineNum">     104 </span>            : {
+<span class="lineNum">     105 </span><span class="lineNoCov">          0 :   return (!!fd_passwd</span>
+<span class="lineNum">     106 </span><span class="lineNoCov">          0 :           &amp;&amp; (opt.batch || opt.pinentry_mode == PINENTRY_MODE_LOOPBACK));</span>
+<span class="lineNum">     107 </span>            : }
+<span class="lineNum">     108 </span>            : 
+<span class="lineNum">     109 </span>            : /* Return a static passphrase.  The returned value is only valid as
+<span class="lineNum">     110 </span>            :    long as no other passphrase related function is called.  NULL may
+<span class="lineNum">     111 </span>            :    be returned if no passphrase has been set; better use
+<a name="112"><span class="lineNum">     112 </span>            :    have_static_passphrase first.  */</a>
+<span class="lineNum">     113 </span>            : const char *
+<span class="lineNum">     114 </span><span class="lineNoCov">          0 : get_static_passphrase (void)</span>
+<span class="lineNum">     115 </span>            : {
+<span class="lineNum">     116 </span><span class="lineNoCov">          0 :   return fd_passwd;</span>
+<span class="lineNum">     117 </span>            : }
+<span class="lineNum">     118 </span>            : 
+<span class="lineNum">     119 </span>            : 
+<span class="lineNum">     120 </span>            : /****************
+<span class="lineNum">     121 </span>            :  * Set the passphrase to be used for the next query and only for the next
+<span class="lineNum">     122 </span>            :  * one.
+<a name="123"><span class="lineNum">     123 </span>            :  */</a>
+<span class="lineNum">     124 </span>            : void
+<span class="lineNum">     125 </span><span class="lineNoCov">          0 : set_next_passphrase( const char *s )</span>
+<span class="lineNum">     126 </span>            : {
+<span class="lineNum">     127 </span><span class="lineNoCov">          0 :   xfree(next_pw);</span>
+<span class="lineNum">     128 </span><span class="lineNoCov">          0 :   next_pw = NULL;</span>
+<span class="lineNum">     129 </span><span class="lineNoCov">          0 :   if ( s )</span>
+<span class="lineNum">     130 </span>            :     {
+<span class="lineNum">     131 </span><span class="lineNoCov">          0 :       next_pw = xmalloc_secure( strlen(s)+1 );</span>
+<span class="lineNum">     132 </span><span class="lineNoCov">          0 :       strcpy (next_pw, s );</span>
+<span class="lineNum">     133 </span>            :     }
+<span class="lineNum">     134 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     135 </span>            : 
+<span class="lineNum">     136 </span>            : /****************
+<span class="lineNum">     137 </span>            :  * Get the last passphrase used in passphrase_to_dek.
+<span class="lineNum">     138 </span>            :  * Note: This removes the passphrase from this modules and
+<span class="lineNum">     139 </span>            :  * the caller must free the result.  May return NULL:
+<a name="140"><span class="lineNum">     140 </span>            :  */</a>
+<span class="lineNum">     141 </span>            : char *
+<span class="lineNum">     142 </span><span class="lineNoCov">          0 : get_last_passphrase()</span>
+<span class="lineNum">     143 </span>            : {
+<span class="lineNum">     144 </span><span class="lineNoCov">          0 :   char *p = last_pw;</span>
+<span class="lineNum">     145 </span><span class="lineNoCov">          0 :   last_pw = NULL;</span>
+<span class="lineNum">     146 </span><span class="lineNoCov">          0 :   return p;</span>
+<span class="lineNum">     147 </span>            : }
+<span class="lineNum">     148 </span>            : 
+<span class="lineNum">     149 </span>            : /* Here's an interesting question: since this passphrase was passed in
+<span class="lineNum">     150 </span>            :    on the command line, is there really any point in using secure
+<span class="lineNum">     151 </span>            :    memory for it?  I'm going with 'yes', since it doesn't hurt, and
+<span class="lineNum">     152 </span>            :    might help in some small way (swapping). */
+<a name="153"><span class="lineNum">     153 </span>            : </a>
+<span class="lineNum">     154 </span>            : void
+<span class="lineNum">     155 </span><span class="lineNoCov">          0 : set_passphrase_from_string(const char *pass)</span>
+<span class="lineNum">     156 </span>            : {
+<span class="lineNum">     157 </span><span class="lineNoCov">          0 :   xfree (fd_passwd);</span>
+<span class="lineNum">     158 </span><span class="lineNoCov">          0 :   fd_passwd = xmalloc_secure(strlen(pass)+1);</span>
+<span class="lineNum">     159 </span><span class="lineNoCov">          0 :   strcpy (fd_passwd, pass);</span>
+<span class="lineNum">     160 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     161 </span>            : 
+<a name="162"><span class="lineNum">     162 </span>            : </a>
+<span class="lineNum">     163 </span>            : void
+<span class="lineNum">     164 </span><span class="lineNoCov">          0 : read_passphrase_from_fd( int fd )</span>
+<span class="lineNum">     165 </span>            : {
+<span class="lineNum">     166 </span>            :   int i, len;
+<span class="lineNum">     167 </span>            :   char *pw;
+<span class="lineNum">     168 </span>            : 
+<span class="lineNum">     169 </span><span class="lineNoCov">          0 :   if (! gnupg_fd_valid (fd))</span>
+<span class="lineNum">     170 </span><span class="lineNoCov">          0 :     log_fatal (&quot;passphrase-fd is invalid: %s\n&quot;, strerror (errno));</span>
+<span class="lineNum">     171 </span>            : 
+<span class="lineNum">     172 </span><span class="lineNoCov">          0 :   if ( !opt.batch &amp;&amp; opt.pinentry_mode != PINENTRY_MODE_LOOPBACK)</span>
+<span class="lineNum">     173 </span>            :     { /* Not used but we have to do a dummy read, so that it won't end
+<span class="lineNum">     174 </span>            :          up at the begin of the message if the quite usual trick to
+<span class="lineNum">     175 </span>            :          prepend the passphtrase to the message is used. */
+<span class="lineNum">     176 </span>            :       char buf[1];
+<span class="lineNum">     177 </span>            : 
+<span class="lineNum">     178 </span><span class="lineNoCov">          0 :       while (!(read (fd, buf, 1) != 1 || *buf == '\n' ))</span>
+<span class="lineNum">     179 </span>            :         ;
+<span class="lineNum">     180 </span><span class="lineNoCov">          0 :       *buf = 0;</span>
+<span class="lineNum">     181 </span><span class="lineNoCov">          0 :       return;</span>
+<span class="lineNum">     182 </span>            :     }
+<span class="lineNum">     183 </span>            : 
+<span class="lineNum">     184 </span><span class="lineNoCov">          0 :   for (pw = NULL, i = len = 100; ; i++ )</span>
+<span class="lineNum">     185 </span>            :     {
+<span class="lineNum">     186 </span><span class="lineNoCov">          0 :       if (i &gt;= len-1 )</span>
+<span class="lineNum">     187 </span>            :         {
+<span class="lineNum">     188 </span><span class="lineNoCov">          0 :           char *pw2 = pw;</span>
+<span class="lineNum">     189 </span><span class="lineNoCov">          0 :           len += 100;</span>
+<span class="lineNum">     190 </span><span class="lineNoCov">          0 :           pw = xmalloc_secure( len );</span>
+<span class="lineNum">     191 </span><span class="lineNoCov">          0 :           if( pw2 )</span>
+<span class="lineNum">     192 </span>            :             {
+<span class="lineNum">     193 </span><span class="lineNoCov">          0 :               memcpy(pw, pw2, i );</span>
+<span class="lineNum">     194 </span><span class="lineNoCov">          0 :               xfree (pw2);</span>
+<span class="lineNum">     195 </span>            :             }
+<span class="lineNum">     196 </span>            :           else
+<span class="lineNum">     197 </span><span class="lineNoCov">          0 :             i=0;</span>
+<span class="lineNum">     198 </span>            :         }
+<span class="lineNum">     199 </span><span class="lineNoCov">          0 :       if (read( fd, pw+i, 1) != 1 || pw[i] == '\n' )</span>
+<span class="lineNum">     200 </span>            :         break;
+<span class="lineNum">     201 </span><span class="lineNoCov">          0 :     }</span>
+<span class="lineNum">     202 </span><span class="lineNoCov">          0 :   pw[i] = 0;</span>
+<span class="lineNum">     203 </span><span class="lineNoCov">          0 :   if (!opt.batch &amp;&amp; opt.pinentry_mode != PINENTRY_MODE_LOOPBACK)</span>
+<span class="lineNum">     204 </span><span class="lineNoCov">          0 :     tty_printf(&quot;\b\b\b   \n&quot; );</span>
+<span class="lineNum">     205 </span>            : 
+<span class="lineNum">     206 </span><span class="lineNoCov">          0 :   xfree ( fd_passwd );</span>
+<span class="lineNum">     207 </span><span class="lineNoCov">          0 :   fd_passwd = pw;</span>
+<span class="lineNum">     208 </span>            : }
+<span class="lineNum">     209 </span>            : 
+<span class="lineNum">     210 </span>            : 
+<span class="lineNum">     211 </span>            : /*
+<span class="lineNum">     212 </span>            :  * Ask the GPG Agent for the passphrase.
+<span class="lineNum">     213 </span>            :  * If NOCACHE is set the symmetric passpharse caching will not be used.
+<span class="lineNum">     214 </span>            :  *
+<span class="lineNum">     215 </span>            :  * Note that TRYAGAIN_TEXT must not be translated.  If CANCELED is not
+<span class="lineNum">     216 </span>            :  * NULL, the function does set it to 1 if the user canceled the
+<span class="lineNum">     217 </span>            :  * operation.  If CACHEID is not NULL, it will be used as the cacheID
+<span class="lineNum">     218 </span>            :  * for the gpg-agent; if is NULL and a key fingerprint can be
+<span class="lineNum">     219 </span>            :  * computed, this will be used as the cacheid.
+<a name="220"><span class="lineNum">     220 </span>            :  */</a>
+<span class="lineNum">     221 </span>            : static char *
+<span class="lineNum">     222 </span><span class="lineNoCov">          0 : passphrase_get (int nocache, const char *cacheid, int repeat,</span>
+<span class="lineNum">     223 </span>            :                 const char *tryagain_text, int *canceled)
+<span class="lineNum">     224 </span>            : {
+<span class="lineNum">     225 </span>            :   int rc;
+<span class="lineNum">     226 </span><span class="lineNoCov">          0 :   char *pw = NULL;</span>
+<span class="lineNum">     227 </span>            :   char *orig_codeset;
+<span class="lineNum">     228 </span>            :   const char *my_cacheid;
+<span class="lineNum">     229 </span>            : 
+<span class="lineNum">     230 </span><span class="lineNoCov">          0 :   if (canceled)</span>
+<span class="lineNum">     231 </span><span class="lineNoCov">          0 :     *canceled = 0;</span>
+<span class="lineNum">     232 </span>            : 
+<span class="lineNum">     233 </span><span class="lineNoCov">          0 :   orig_codeset = i18n_switchto_utf8 ();</span>
+<span class="lineNum">     234 </span>            : 
+<span class="lineNum">     235 </span><span class="lineNoCov">          0 :   if (!nocache &amp;&amp; cacheid)</span>
+<span class="lineNum">     236 </span><span class="lineNoCov">          0 :     my_cacheid = cacheid;</span>
+<span class="lineNum">     237 </span>            :   else
+<span class="lineNum">     238 </span><span class="lineNoCov">          0 :     my_cacheid = NULL;</span>
+<span class="lineNum">     239 </span>            : 
+<span class="lineNum">     240 </span><span class="lineNoCov">          0 :   if (tryagain_text)</span>
+<span class="lineNum">     241 </span><span class="lineNoCov">          0 :     tryagain_text = _(tryagain_text);</span>
+<span class="lineNum">     242 </span>            : 
+<span class="lineNum">     243 </span><span class="lineNoCov">          0 :   rc = agent_get_passphrase (my_cacheid, tryagain_text, NULL,</span>
+<span class="lineNum">     244 </span><span class="lineNoCov">          0 :                              _(&quot;Enter passphrase\n&quot;),</span>
+<span class="lineNum">     245 </span>            :                              repeat, nocache, &amp;pw);
+<span class="lineNum">     246 </span>            : 
+<span class="lineNum">     247 </span><span class="lineNoCov">          0 :   i18n_switchback (orig_codeset);</span>
+<span class="lineNum">     248 </span>            : 
+<span class="lineNum">     249 </span>            : 
+<span class="lineNum">     250 </span><span class="lineNoCov">          0 :   if (!rc)</span>
+<span class="lineNum">     251 </span>            :     ;
+<span class="lineNum">     252 </span><span class="lineNoCov">          0 :   else if (gpg_err_code (rc) == GPG_ERR_CANCELED</span>
+<span class="lineNum">     253 </span><span class="lineNoCov">          0 :             || gpg_err_code (rc) == GPG_ERR_FULLY_CANCELED)</span>
+<span class="lineNum">     254 </span>            :     {
+<span class="lineNum">     255 </span><span class="lineNoCov">          0 :       log_info (_(&quot;cancelled by user\n&quot;) );</span>
+<span class="lineNum">     256 </span><span class="lineNoCov">          0 :       if (canceled)</span>
+<span class="lineNum">     257 </span><span class="lineNoCov">          0 :         *canceled = 1;</span>
+<span class="lineNum">     258 </span>            :     }
+<span class="lineNum">     259 </span>            :   else
+<span class="lineNum">     260 </span>            :     {
+<span class="lineNum">     261 </span><span class="lineNoCov">          0 :       log_error (_(&quot;problem with the agent: %s\n&quot;), gpg_strerror (rc));</span>
+<span class="lineNum">     262 </span>            :       /* Due to limitations in the API of the upper layers they
+<span class="lineNum">     263 </span>            :          consider an error as no passphrase entered.  This works in
+<span class="lineNum">     264 </span>            :          most cases but not during key creation where this should
+<span class="lineNum">     265 </span>            :          definitely not happen and let it continue without requiring a
+<span class="lineNum">     266 </span>            :          passphrase.  Given that now all the upper layers handle a
+<span class="lineNum">     267 </span>            :          cancel correctly, we simply set the cancel flag now for all
+<span class="lineNum">     268 </span>            :          errors from the agent.  */
+<span class="lineNum">     269 </span><span class="lineNoCov">          0 :       if (canceled)</span>
+<span class="lineNum">     270 </span><span class="lineNoCov">          0 :         *canceled = 1;</span>
+<span class="lineNum">     271 </span>            : 
+<span class="lineNum">     272 </span><span class="lineNoCov">          0 :       write_status_errcode (&quot;get_passphrase&quot;, rc);</span>
+<span class="lineNum">     273 </span>            :     }
+<span class="lineNum">     274 </span>            : 
+<span class="lineNum">     275 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     276 </span>            :     {
+<span class="lineNum">     277 </span><span class="lineNoCov">          0 :       xfree (pw);</span>
+<span class="lineNum">     278 </span><span class="lineNoCov">          0 :       pw = NULL;</span>
+<span class="lineNum">     279 </span>            :     }
+<span class="lineNum">     280 </span><span class="lineNoCov">          0 :   return pw;</span>
+<span class="lineNum">     281 </span>            : }
+<span class="lineNum">     282 </span>            : 
+<span class="lineNum">     283 </span>            : 
+<span class="lineNum">     284 </span>            : /*
+<span class="lineNum">     285 </span>            :  * Clear the cached passphrase with CACHEID.
+<a name="286"><span class="lineNum">     286 </span>            :  */</a>
+<span class="lineNum">     287 </span>            : void
+<span class="lineNum">     288 </span><span class="lineNoCov">          0 : passphrase_clear_cache (const char *cacheid)</span>
+<span class="lineNum">     289 </span>            : {
+<span class="lineNum">     290 </span>            :   int rc;
+<span class="lineNum">     291 </span>            : 
+<span class="lineNum">     292 </span><span class="lineNoCov">          0 :   rc = agent_clear_passphrase (cacheid);</span>
+<span class="lineNum">     293 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     294 </span><span class="lineNoCov">          0 :     log_error (_(&quot;problem with the agent: %s\n&quot;), gpg_strerror (rc));</span>
+<span class="lineNum">     295 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     296 </span>            : 
+<span class="lineNum">     297 </span>            : 
+<span class="lineNum">     298 </span>            : /* Return a new DEK object using the string-to-key specifier S2K.
+<span class="lineNum">     299 </span>            :  * Returns NULL if the user canceled the passphrase entry and if
+<span class="lineNum">     300 </span>            :  * CANCELED is not NULL, sets it to true.
+<span class="lineNum">     301 </span>            :  *
+<span class="lineNum">     302 </span>            :  * If CREATE is true a new passphrase sll be created.  If NOCACHE is
+<a name="303"><span class="lineNum">     303 </span>            :  * true the symmetric key caching will not be used.  */</a>
+<span class="lineNum">     304 </span>            : DEK *
+<span class="lineNum">     305 </span><span class="lineNoCov">          0 : passphrase_to_dek (int cipher_algo, STRING2KEY *s2k,</span>
+<span class="lineNum">     306 </span>            :                    int create, int nocache,
+<span class="lineNum">     307 </span>            :                    const char *tryagain_text, int *canceled)
+<span class="lineNum">     308 </span>            : {
+<span class="lineNum">     309 </span><span class="lineNoCov">          0 :   char *pw = NULL;</span>
+<span class="lineNum">     310 </span>            :   DEK *dek;
+<span class="lineNum">     311 </span>            :   STRING2KEY help_s2k;
+<span class="lineNum">     312 </span>            :   int dummy_canceled;
+<span class="lineNum">     313 </span>            :   char s2k_cacheidbuf[1+16+1];
+<span class="lineNum">     314 </span><span class="lineNoCov">          0 :   char *s2k_cacheid = NULL;</span>
+<span class="lineNum">     315 </span>            : 
+<span class="lineNum">     316 </span><span class="lineNoCov">          0 :   if (!canceled)</span>
+<span class="lineNum">     317 </span><span class="lineNoCov">          0 :     canceled = &amp;dummy_canceled;</span>
+<span class="lineNum">     318 </span><span class="lineNoCov">          0 :   *canceled = 0;</span>
+<span class="lineNum">     319 </span>            : 
+<span class="lineNum">     320 </span><span class="lineNoCov">          0 :   if ( !s2k )</span>
+<span class="lineNum">     321 </span>            :     {
+<span class="lineNum">     322 </span><span class="lineNoCov">          0 :       log_assert (create &amp;&amp; !nocache);</span>
+<span class="lineNum">     323 </span>            :       /* This is used for the old rfc1991 mode
+<span class="lineNum">     324 </span>            :        * Note: This must match the code in encode.c with opt.rfc1991 set */
+<span class="lineNum">     325 </span><span class="lineNoCov">          0 :       memset (&amp;help_s2k, 0, sizeof (help_s2k));</span>
+<span class="lineNum">     326 </span><span class="lineNoCov">          0 :       s2k = &amp;help_s2k;</span>
+<span class="lineNum">     327 </span><span class="lineNoCov">          0 :       s2k-&gt;hash_algo = S2K_DIGEST_ALGO;</span>
+<span class="lineNum">     328 </span>            :     }
+<span class="lineNum">     329 </span>            : 
+<span class="lineNum">     330 </span>            :   /* Create a new salt or what else to be filled into the s2k for a
+<span class="lineNum">     331 </span>            :      new key.  */
+<span class="lineNum">     332 </span><span class="lineNoCov">          0 :   if (create &amp;&amp; (s2k-&gt;mode == 1 || s2k-&gt;mode == 3))</span>
+<span class="lineNum">     333 </span>            :     {
+<span class="lineNum">     334 </span><span class="lineNoCov">          0 :       gcry_randomize (s2k-&gt;salt, 8, GCRY_STRONG_RANDOM);</span>
+<span class="lineNum">     335 </span><span class="lineNoCov">          0 :       if ( s2k-&gt;mode == 3 )</span>
+<span class="lineNum">     336 </span>            :         {
+<span class="lineNum">     337 </span>            :           /* We delay the encoding until it is really needed.  This is
+<span class="lineNum">     338 </span>            :              if we are going to dynamically calibrate it, we need to
+<span class="lineNum">     339 </span>            :              call out to gpg-agent and that should not be done during
+<span class="lineNum">     340 </span>            :              option processing in main().  */
+<span class="lineNum">     341 </span><span class="lineNoCov">          0 :           if (!opt.s2k_count)</span>
+<span class="lineNum">     342 </span><span class="lineNoCov">          0 :             opt.s2k_count = encode_s2k_iterations (0);</span>
+<span class="lineNum">     343 </span><span class="lineNoCov">          0 :           s2k-&gt;count = opt.s2k_count;</span>
+<span class="lineNum">     344 </span>            :         }
+<span class="lineNum">     345 </span>            :     }
+<span class="lineNum">     346 </span>            : 
+<span class="lineNum">     347 </span>            :   /* If we do not have a passphrase available in NEXT_PW and status
+<span class="lineNum">     348 </span>            :      information are request, we print them now. */
+<span class="lineNum">     349 </span><span class="lineNoCov">          0 :   if ( !next_pw &amp;&amp; is_status_enabled() )</span>
+<span class="lineNum">     350 </span>            :     {
+<span class="lineNum">     351 </span>            :       char buf[50];
+<span class="lineNum">     352 </span>            : 
+<span class="lineNum">     353 </span><span class="lineNoCov">          0 :       snprintf (buf, sizeof buf, &quot;%d %d %d&quot;,</span>
+<span class="lineNum">     354 </span><span class="lineNoCov">          0 :                 cipher_algo, s2k-&gt;mode, s2k-&gt;hash_algo );</span>
+<span class="lineNum">     355 </span><span class="lineNoCov">          0 :       write_status_text ( STATUS_NEED_PASSPHRASE_SYM, buf );</span>
+<span class="lineNum">     356 </span>            :     }
+<span class="lineNum">     357 </span>            : 
+<span class="lineNum">     358 </span><span class="lineNoCov">          0 :   if ( next_pw )</span>
+<span class="lineNum">     359 </span>            :     {
+<span class="lineNum">     360 </span>            :       /* Simply return the passphrase we already have in NEXT_PW. */
+<span class="lineNum">     361 </span><span class="lineNoCov">          0 :       pw = next_pw;</span>
+<span class="lineNum">     362 </span><span class="lineNoCov">          0 :       next_pw = NULL;</span>
+<span class="lineNum">     363 </span>            :     }
+<span class="lineNum">     364 </span><span class="lineNoCov">          0 :   else if ( have_static_passphrase () )</span>
+<span class="lineNum">     365 </span>            :     {
+<span class="lineNum">     366 </span>            :       /* Return the passphrase we have stored in FD_PASSWD. */
+<span class="lineNum">     367 </span><span class="lineNoCov">          0 :       pw = xmalloc_secure ( strlen(fd_passwd)+1 );</span>
+<span class="lineNum">     368 </span><span class="lineNoCov">          0 :       strcpy ( pw, fd_passwd );</span>
+<span class="lineNum">     369 </span>            :     }
+<span class="lineNum">     370 </span>            :   else
+<span class="lineNum">     371 </span>            :     {
+<span class="lineNum">     372 </span><span class="lineNoCov">          0 :       if (!nocache &amp;&amp; (s2k-&gt;mode == 1 || s2k-&gt;mode == 3))</span>
+<span class="lineNum">     373 </span>            :         {
+<span class="lineNum">     374 </span><span class="lineNoCov">          0 :           memset (s2k_cacheidbuf, 0, sizeof s2k_cacheidbuf);</span>
+<span class="lineNum">     375 </span><span class="lineNoCov">          0 :           *s2k_cacheidbuf = 'S';</span>
+<span class="lineNum">     376 </span><span class="lineNoCov">          0 :           bin2hex (s2k-&gt;salt, 8, s2k_cacheidbuf + 1);</span>
+<span class="lineNum">     377 </span><span class="lineNoCov">          0 :           s2k_cacheid = s2k_cacheidbuf;</span>
+<span class="lineNum">     378 </span>            :         }
+<span class="lineNum">     379 </span>            : 
+<span class="lineNum">     380 </span><span class="lineNoCov">          0 :       if (opt.pinentry_mode == PINENTRY_MODE_LOOPBACK)</span>
+<span class="lineNum">     381 </span>            :         {
+<span class="lineNum">     382 </span>            :           char buf[32];
+<span class="lineNum">     383 </span>            : 
+<span class="lineNum">     384 </span><span class="lineNoCov">          0 :           snprintf (buf, sizeof (buf), &quot;%u&quot;, 100);</span>
+<span class="lineNum">     385 </span><span class="lineNoCov">          0 :           write_status_text (STATUS_INQUIRE_MAXLEN, buf);</span>
+<span class="lineNum">     386 </span>            :         }
+<span class="lineNum">     387 </span>            : 
+<span class="lineNum">     388 </span>            :       /* Divert to the gpg-agent. */
+<span class="lineNum">     389 </span><span class="lineNoCov">          0 :       pw = passphrase_get (create &amp;&amp; nocache, s2k_cacheid,</span>
+<span class="lineNum">     390 </span>            :                            create? opt.passphrase_repeat : 0,
+<span class="lineNum">     391 </span>            :                            tryagain_text, canceled);
+<span class="lineNum">     392 </span><span class="lineNoCov">          0 :       if (*canceled)</span>
+<span class="lineNum">     393 </span>            :         {
+<span class="lineNum">     394 </span><span class="lineNoCov">          0 :           xfree (pw);</span>
+<span class="lineNum">     395 </span><span class="lineNoCov">          0 :           write_status( STATUS_MISSING_PASSPHRASE );</span>
+<span class="lineNum">     396 </span><span class="lineNoCov">          0 :           return NULL;</span>
+<span class="lineNum">     397 </span>            :         }
+<span class="lineNum">     398 </span>            :     }
+<span class="lineNum">     399 </span>            : 
+<span class="lineNum">     400 </span><span class="lineNoCov">          0 :   if ( !pw || !*pw )</span>
+<span class="lineNum">     401 </span><span class="lineNoCov">          0 :     write_status( STATUS_MISSING_PASSPHRASE );</span>
+<span class="lineNum">     402 </span>            : 
+<span class="lineNum">     403 </span>            :   /* Hash the passphrase and store it in a newly allocated DEK object.
+<span class="lineNum">     404 </span>            :      Keep a copy of the passphrase in LAST_PW for use by
+<span class="lineNum">     405 </span>            :      get_last_passphrase(). */
+<span class="lineNum">     406 </span><span class="lineNoCov">          0 :   dek = xmalloc_secure_clear ( sizeof *dek );</span>
+<span class="lineNum">     407 </span><span class="lineNoCov">          0 :   dek-&gt;algo = cipher_algo;</span>
+<span class="lineNum">     408 </span><span class="lineNoCov">          0 :   if ( (!pw || !*pw) &amp;&amp; create)</span>
+<span class="lineNum">     409 </span><span class="lineNoCov">          0 :     dek-&gt;keylen = 0;</span>
+<span class="lineNum">     410 </span>            :   else
+<span class="lineNum">     411 </span>            :     {
+<span class="lineNum">     412 </span>            :       gpg_error_t err;
+<span class="lineNum">     413 </span>            : 
+<span class="lineNum">     414 </span><span class="lineNoCov">          0 :       dek-&gt;keylen = openpgp_cipher_get_algo_keylen (dek-&gt;algo);</span>
+<span class="lineNum">     415 </span><span class="lineNoCov">          0 :       if (!(dek-&gt;keylen &gt; 0 &amp;&amp; dek-&gt;keylen &lt;= DIM(dek-&gt;key)))</span>
+<span class="lineNum">     416 </span><span class="lineNoCov">          0 :         BUG ();</span>
+<span class="lineNum">     417 </span><span class="lineNoCov">          0 :       err = gcry_kdf_derive (pw, strlen (pw),</span>
+<span class="lineNum">     418 </span><span class="lineNoCov">          0 :                              s2k-&gt;mode == 3? GCRY_KDF_ITERSALTED_S2K :</span>
+<span class="lineNum">     419 </span><span class="lineNoCov">          0 :                              s2k-&gt;mode == 1? GCRY_KDF_SALTED_S2K :</span>
+<span class="lineNum">     420 </span>            :                              /* */           GCRY_KDF_SIMPLE_S2K,
+<span class="lineNum">     421 </span><span class="lineNoCov">          0 :                              s2k-&gt;hash_algo, s2k-&gt;salt, 8,</span>
+<span class="lineNum">     422 </span><span class="lineNoCov">          0 :                              S2K_DECODE_COUNT(s2k-&gt;count),</span>
+<span class="lineNum">     423 </span><span class="lineNoCov">          0 :                              dek-&gt;keylen, dek-&gt;key);</span>
+<span class="lineNum">     424 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     425 </span>            :         {
+<span class="lineNum">     426 </span><span class="lineNoCov">          0 :           log_error (&quot;gcry_kdf_derive failed: %s&quot;, gpg_strerror (err));</span>
+<span class="lineNum">     427 </span><span class="lineNoCov">          0 :           xfree (pw);</span>
+<span class="lineNum">     428 </span><span class="lineNoCov">          0 :           xfree (dek);</span>
+<span class="lineNum">     429 </span><span class="lineNoCov">          0 :           write_status( STATUS_MISSING_PASSPHRASE );</span>
+<span class="lineNum">     430 </span><span class="lineNoCov">          0 :           return NULL;</span>
+<span class="lineNum">     431 </span>            :         }
+<span class="lineNum">     432 </span>            :     }
+<span class="lineNum">     433 </span><span class="lineNoCov">          0 :   if (s2k_cacheid)</span>
+<span class="lineNum">     434 </span><span class="lineNoCov">          0 :     memcpy (dek-&gt;s2k_cacheid, s2k_cacheid, sizeof dek-&gt;s2k_cacheid);</span>
+<span class="lineNum">     435 </span><span class="lineNoCov">          0 :   xfree(last_pw);</span>
+<span class="lineNum">     436 </span><span class="lineNoCov">          0 :   last_pw = pw;</span>
+<span class="lineNum">     437 </span><span class="lineNoCov">          0 :   return dek;</span>
+<span class="lineNum">     438 </span>            : }
+<span class="lineNum">     439 </span>            : 
+<span class="lineNum">     440 </span>            : 
+<span class="lineNum">     441 </span>            : /* Emit the USERID_HINT and the NEED_PASSPHRASE status messages.
+<a name="442"><span class="lineNum">     442 </span>            :    MAINKEYID may be NULL. */</a>
+<span class="lineNum">     443 </span>            : void
+<span class="lineNum">     444 </span><span class="lineNoCov">          0 : emit_status_need_passphrase (ctrl_t ctrl,</span>
+<span class="lineNum">     445 </span>            :                              u32 *keyid, u32 *mainkeyid, int pubkey_algo)
+<span class="lineNum">     446 </span>            : {
+<span class="lineNum">     447 </span>            :   char buf[50];
+<span class="lineNum">     448 </span>            :   char *us;
+<span class="lineNum">     449 </span>            : 
+<span class="lineNum">     450 </span><span class="lineNoCov">          0 :   us = get_long_user_id_string (ctrl, keyid);</span>
+<span class="lineNum">     451 </span><span class="lineNoCov">          0 :   write_status_text (STATUS_USERID_HINT, us);</span>
+<span class="lineNum">     452 </span><span class="lineNoCov">          0 :   xfree (us);</span>
+<span class="lineNum">     453 </span>            : 
+<span class="lineNum">     454 </span><span class="lineNoCov">          0 :   snprintf (buf, sizeof buf, &quot;%08lX%08lX %08lX%08lX %d 0&quot;,</span>
+<span class="lineNum">     455 </span><span class="lineNoCov">          0 :             (ulong)keyid[0],</span>
+<span class="lineNum">     456 </span><span class="lineNoCov">          0 :             (ulong)keyid[1],</span>
+<span class="lineNum">     457 </span><span class="lineNoCov">          0 :             (ulong)(mainkeyid? mainkeyid[0]:keyid[0]),</span>
+<span class="lineNum">     458 </span><span class="lineNoCov">          0 :             (ulong)(mainkeyid? mainkeyid[1]:keyid[1]),</span>
+<span class="lineNum">     459 </span>            :             pubkey_algo);
+<span class="lineNum">     460 </span>            : 
+<span class="lineNum">     461 </span><span class="lineNoCov">          0 :   write_status_text (STATUS_NEED_PASSPHRASE, buf);</span>
+<span class="lineNum">     462 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     463 </span>            : 
+<span class="lineNum">     464 </span>            : 
+<span class="lineNum">     465 </span>            : /* Return an allocated utf-8 string describing the key PK.  If ESCAPED
+<span class="lineNum">     466 </span>            :    is true spaces and control characters are percent or plus escaped.
+<span class="lineNum">     467 </span>            :    MODE describes the use of the key description; use one of the
+<a name="468"><span class="lineNum">     468 </span>            :    FORMAT_KEYDESC_ macros. */</a>
+<span class="lineNum">     469 </span>            : char *
+<span class="lineNum">     470 </span><span class="lineCov">          3 : gpg_format_keydesc (ctrl_t ctrl, PKT_public_key *pk, int mode, int escaped)</span>
+<span class="lineNum">     471 </span>            : {
+<span class="lineNum">     472 </span>            :   char *uid;
+<span class="lineNum">     473 </span>            :   size_t uidlen;
+<span class="lineNum">     474 </span>            :   const char *algo_name;
+<span class="lineNum">     475 </span>            :   const char *timestr;
+<span class="lineNum">     476 </span>            :   char *orig_codeset;
+<span class="lineNum">     477 </span>            :   char *maink;
+<span class="lineNum">     478 </span>            :   char *desc;
+<span class="lineNum">     479 </span>            :   const char *prompt;
+<span class="lineNum">     480 </span><span class="lineCov">          3 :   const char *trailer = &quot;&quot;;</span>
+<span class="lineNum">     481 </span>            :   int is_subkey;
+<span class="lineNum">     482 </span>            : 
+<span class="lineNum">     483 </span><span class="lineCov">          9 :   is_subkey = (pk-&gt;main_keyid[0] &amp;&amp; pk-&gt;main_keyid[1]</span>
+<span class="lineNum">     484 </span><span class="lineCov">          3 :                &amp;&amp; pk-&gt;keyid[0] != pk-&gt;main_keyid[0]</span>
+<span class="lineNum">     485 </span><span class="lineCov">          3 :                &amp;&amp; pk-&gt;keyid[1] != pk-&gt;main_keyid[1]);</span>
+<span class="lineNum">     486 </span><span class="lineCov">          3 :   algo_name = openpgp_pk_algo_name (pk-&gt;pubkey_algo);</span>
+<span class="lineNum">     487 </span><span class="lineCov">          3 :   timestr = strtimestamp (pk-&gt;timestamp);</span>
+<span class="lineNum">     488 </span><span class="lineCov">          3 :   uid = get_user_id (ctrl, is_subkey? pk-&gt;main_keyid:pk-&gt;keyid, &amp;uidlen);</span>
+<span class="lineNum">     489 </span>            : 
+<span class="lineNum">     490 </span><span class="lineCov">          3 :   orig_codeset = i18n_switchto_utf8 ();</span>
+<span class="lineNum">     491 </span>            : 
+<span class="lineNum">     492 </span><span class="lineCov">          3 :   if (is_subkey)</span>
+<span class="lineNum">     493 </span><span class="lineNoCov">          0 :     maink = xtryasprintf (_(&quot; (main key ID %s)&quot;), keystr (pk-&gt;main_keyid));</span>
+<span class="lineNum">     494 </span>            :   else
+<span class="lineNum">     495 </span><span class="lineCov">          3 :     maink = NULL;</span>
+<span class="lineNum">     496 </span>            : 
+<span class="lineNum">     497 </span><span class="lineCov">          3 :   switch (mode)</span>
+<span class="lineNum">     498 </span>            :     {
+<span class="lineNum">     499 </span>            :     case FORMAT_KEYDESC_NORMAL:
+<span class="lineNum">     500 </span><span class="lineCov">          3 :       prompt = _(&quot;Please enter the passphrase to unlock the&quot;</span>
+<span class="lineNum">     501 </span>            :                  &quot; OpenPGP secret key:&quot;);
+<span class="lineNum">     502 </span><span class="lineCov">          3 :       break;</span>
+<span class="lineNum">     503 </span>            :     case FORMAT_KEYDESC_IMPORT:
+<span class="lineNum">     504 </span><span class="lineNoCov">          0 :       prompt = _(&quot;Please enter the passphrase to import the&quot;</span>
+<span class="lineNum">     505 </span>            :                  &quot; OpenPGP secret key:&quot;);
+<span class="lineNum">     506 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     507 </span>            :     case FORMAT_KEYDESC_EXPORT:
+<span class="lineNum">     508 </span><span class="lineNoCov">          0 :       if (is_subkey)</span>
+<span class="lineNum">     509 </span><span class="lineNoCov">          0 :         prompt = _(&quot;Please enter the passphrase to export the&quot;</span>
+<span class="lineNum">     510 </span>            :                    &quot; OpenPGP secret subkey:&quot;);
+<span class="lineNum">     511 </span>            :       else
+<span class="lineNum">     512 </span><span class="lineNoCov">          0 :         prompt = _(&quot;Please enter the passphrase to export the&quot;</span>
+<span class="lineNum">     513 </span>            :                    &quot; OpenPGP secret key:&quot;);
+<span class="lineNum">     514 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     515 </span>            :     case FORMAT_KEYDESC_DELKEY:
+<span class="lineNum">     516 </span><span class="lineNoCov">          0 :       if (is_subkey)</span>
+<span class="lineNum">     517 </span><span class="lineNoCov">          0 :         prompt = _(&quot;Do you really want to permanently delete the&quot;</span>
+<span class="lineNum">     518 </span>            :                    &quot; OpenPGP secret subkey key:&quot;);
+<span class="lineNum">     519 </span>            :       else
+<span class="lineNum">     520 </span><span class="lineNoCov">          0 :         prompt = _(&quot;Do you really want to permanently delete the&quot;</span>
+<span class="lineNum">     521 </span>            :                    &quot; OpenPGP secret key:&quot;);
+<span class="lineNum">     522 </span><span class="lineNoCov">          0 :       trailer = &quot;?&quot;;</span>
+<span class="lineNum">     523 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     524 </span>            :     default:
+<span class="lineNum">     525 </span><span class="lineNoCov">          0 :       prompt = &quot;?&quot;;</span>
+<span class="lineNum">     526 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     527 </span>            :     }
+<span class="lineNum">     528 </span>            : 
+<span class="lineNum">     529 </span><span class="lineCov">          6 :   desc = xtryasprintf (_(&quot;%s\n&quot;</span>
+<span class="lineNum">     530 </span>            :                          &quot;\&quot;%.*s\&quot;\n&quot;
+<span class="lineNum">     531 </span>            :                          &quot;%u-bit %s key, ID %s,\n&quot;
+<span class="lineNum">     532 </span>            :                          &quot;created %s%s.\n%s&quot;),
+<span class="lineNum">     533 </span>            :                        prompt,
+<span class="lineNum">     534 </span>            :                        (int)uidlen, uid,
+<span class="lineNum">     535 </span>            :                        nbits_from_pk (pk), algo_name,
+<span class="lineNum">     536 </span><span class="lineCov">          3 :                        keystr (pk-&gt;keyid), timestr,</span>
+<span class="lineNum">     537 </span>            :                        maink?maink:&quot;&quot;, trailer);
+<span class="lineNum">     538 </span><span class="lineCov">          3 :   xfree (maink);</span>
+<span class="lineNum">     539 </span><span class="lineCov">          3 :   xfree (uid);</span>
+<span class="lineNum">     540 </span>            : 
+<span class="lineNum">     541 </span><span class="lineCov">          3 :   i18n_switchback (orig_codeset);</span>
+<span class="lineNum">     542 </span>            : 
+<span class="lineNum">     543 </span><span class="lineCov">          3 :   if (escaped)</span>
+<span class="lineNum">     544 </span>            :     {
+<span class="lineNum">     545 </span><span class="lineCov">          3 :       char *tmp = percent_plus_escape (desc);</span>
+<span class="lineNum">     546 </span><span class="lineCov">          3 :       xfree (desc);</span>
+<span class="lineNum">     547 </span><span class="lineCov">          3 :       desc = tmp;</span>
+<span class="lineNum">     548 </span>            :     }
+<span class="lineNum">     549 </span>            : 
+<span class="lineNum">     550 </span><span class="lineCov">          3 :   return desc;</span>
+<span class="lineNum">     551 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

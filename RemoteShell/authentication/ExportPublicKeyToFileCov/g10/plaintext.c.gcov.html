@@ -1,0 +1,889 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - g10/plaintext.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">g10</a> - plaintext.c<span style="font-size: 80%;"> (source / <a href="plaintext.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">364</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 14:32:15</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">7</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* plaintext.c -  process plaintext packets</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+<span class="lineNum">       3 </span>            :  *               2006, 2009, 2010 Free Software Foundation, Inc.
+<span class="lineNum">       4 </span>            :  *
+<span class="lineNum">       5 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       6 </span>            :  *
+<span class="lineNum">       7 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       8 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">       9 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">      10 </span>            :  * (at your option) any later version.
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      13 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      14 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      15 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      16 </span>            :  *
+<span class="lineNum">      17 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      18 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      19 </span>            :  */
+<span class="lineNum">      20 </span>            : 
+<span class="lineNum">      21 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      22 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      23 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      24 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      25 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      26 </span>            : #include &lt;sys/types.h&gt;
+<span class="lineNum">      27 </span>            : #ifdef HAVE_DOSISH_SYSTEM
+<span class="lineNum">      28 </span>            : # include &lt;fcntl.h&gt; /* for setmode() */
+<span class="lineNum">      29 </span>            : #endif
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span>            : #include &quot;gpg.h&quot;
+<span class="lineNum">      32 </span>            : #include &quot;../common/util.h&quot;
+<span class="lineNum">      33 </span>            : #include &quot;options.h&quot;
+<span class="lineNum">      34 </span>            : #include &quot;packet.h&quot;
+<span class="lineNum">      35 </span>            : #include &quot;../common/ttyio.h&quot;
+<span class="lineNum">      36 </span>            : #include &quot;filter.h&quot;
+<span class="lineNum">      37 </span>            : #include &quot;main.h&quot;
+<span class="lineNum">      38 </span>            : #include &quot;../common/status.h&quot;
+<span class="lineNum">      39 </span>            : #include &quot;../common/i18n.h&quot;
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span>            : 
+<span class="lineNum">      42 </span>            : /* Get the output filename.  On success, the actual filename that is
+<span class="lineNum">      43 </span>            :    used is set in *FNAMEP and a filepointer is returned in *FP.
+<span class="lineNum">      44 </span>            : 
+<span class="lineNum">      45 </span>            :    EMBEDDED_NAME AND EMBEDDED_NAMELEN are normally stored in a
+<span class="lineNum">      46 </span>            :    plaintext packet.  EMBEDDED_NAMELEN should not include any NUL
+<span class="lineNum">      47 </span>            :    terminator (EMBEDDED_NAME does not need to be NUL terminated).
+<span class="lineNum">      48 </span>            : 
+<span class="lineNum">      49 </span>            :    DATA is the iobuf containing the input data.  We just use it to get
+<span class="lineNum">      50 </span>            :    the input file's filename.
+<span class="lineNum">      51 </span>            : 
+<span class="lineNum">      52 </span>            :    On success, the caller is responsible for calling xfree on *FNAMEP
+<a name="53"><span class="lineNum">      53 </span>            :    and calling es_close on *FPP.  */</a>
+<span class="lineNum">      54 </span>            : gpg_error_t
+<span class="lineNum">      55 </span><span class="lineNoCov">          0 : get_output_file (const byte *embedded_name, int embedded_namelen,</span>
+<span class="lineNum">      56 </span>            :                  iobuf_t data, char **fnamep, estream_t *fpp)
+<span class="lineNum">      57 </span>            : {
+<span class="lineNum">      58 </span><span class="lineNoCov">          0 :   gpg_error_t err = 0;</span>
+<span class="lineNum">      59 </span><span class="lineNoCov">          0 :   char *fname = NULL;</span>
+<span class="lineNum">      60 </span><span class="lineNoCov">          0 :   estream_t fp = NULL;</span>
+<span class="lineNum">      61 </span><span class="lineNoCov">          0 :   int nooutput = 0;</span>
+<span class="lineNum">      62 </span>            : 
+<span class="lineNum">      63 </span>            :   /* Create the filename as C string.  */
+<span class="lineNum">      64 </span><span class="lineNoCov">          0 :   if (opt.outfp)</span>
+<span class="lineNum">      65 </span>            :     {
+<span class="lineNum">      66 </span><span class="lineNoCov">          0 :       fname = xtrystrdup (&quot;[FP]&quot;);</span>
+<span class="lineNum">      67 </span><span class="lineNoCov">          0 :       if (!fname)</span>
+<span class="lineNum">      68 </span>            :         {
+<span class="lineNum">      69 </span><span class="lineNoCov">          0 :           err = gpg_error_from_syserror ();</span>
+<span class="lineNum">      70 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">      71 </span>            :         }
+<span class="lineNum">      72 </span>            :     }
+<span class="lineNum">      73 </span><span class="lineNoCov">          0 :   else if (opt.outfile)</span>
+<span class="lineNum">      74 </span>            :     {
+<span class="lineNum">      75 </span><span class="lineNoCov">          0 :       fname = xtrystrdup (opt.outfile);</span>
+<span class="lineNum">      76 </span><span class="lineNoCov">          0 :       if (!fname)</span>
+<span class="lineNum">      77 </span>            :         {
+<span class="lineNum">      78 </span><span class="lineNoCov">          0 :           err = gpg_error_from_syserror ();</span>
+<span class="lineNum">      79 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">      80 </span>            :         }
+<span class="lineNum">      81 </span>            :     }
+<span class="lineNum">      82 </span><span class="lineNoCov">          0 :   else if (embedded_namelen == 8 &amp;&amp; !memcmp (embedded_name, &quot;_CONSOLE&quot;, 8))</span>
+<span class="lineNum">      83 </span>            :     {
+<span class="lineNum">      84 </span><span class="lineNoCov">          0 :       log_info (_(&quot;data not saved; use option \&quot;--output\&quot; to save it\n&quot;));</span>
+<span class="lineNum">      85 </span><span class="lineNoCov">          0 :       nooutput = 1;</span>
+<span class="lineNum">      86 </span>            :     }
+<span class="lineNum">      87 </span><span class="lineNoCov">          0 :   else if (!opt.flags.use_embedded_filename)</span>
+<span class="lineNum">      88 </span>            :     {
+<span class="lineNum">      89 </span><span class="lineNoCov">          0 :       if (data)</span>
+<span class="lineNum">      90 </span><span class="lineNoCov">          0 :         fname = make_outfile_name (iobuf_get_real_fname (data));</span>
+<span class="lineNum">      91 </span><span class="lineNoCov">          0 :       if (!fname)</span>
+<span class="lineNum">      92 </span><span class="lineNoCov">          0 :         fname = ask_outfile_name (embedded_name, embedded_namelen);</span>
+<span class="lineNum">      93 </span><span class="lineNoCov">          0 :       if (!fname)</span>
+<span class="lineNum">      94 </span>            :         {
+<span class="lineNum">      95 </span><span class="lineNoCov">          0 :           err = gpg_error (GPG_ERR_GENERAL);    /* Can't create file. */</span>
+<span class="lineNum">      96 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">      97 </span>            :         }
+<span class="lineNum">      98 </span>            :     }
+<span class="lineNum">      99 </span>            :   else
+<span class="lineNum">     100 </span><span class="lineNoCov">          0 :     fname = utf8_to_native (embedded_name, embedded_namelen, 0);</span>
+<span class="lineNum">     101 </span>            : 
+<span class="lineNum">     102 </span><span class="lineNoCov">          0 :   if (nooutput)</span>
+<span class="lineNum">     103 </span>            :     ;
+<span class="lineNum">     104 </span><span class="lineNoCov">          0 :   else if (opt.outfp)</span>
+<span class="lineNum">     105 </span>            :     {
+<span class="lineNum">     106 </span><span class="lineNoCov">          0 :       fp = opt.outfp;</span>
+<span class="lineNum">     107 </span><span class="lineNoCov">          0 :       es_set_binary (fp);</span>
+<span class="lineNum">     108 </span>            :     }
+<span class="lineNum">     109 </span><span class="lineNoCov">          0 :   else if (iobuf_is_pipe_filename (fname) || !*fname)</span>
+<span class="lineNum">     110 </span><span class="lineNoCov">          0 :     {</span>
+<span class="lineNum">     111 </span>            :       /* Special file name, no filename, or &quot;-&quot; given; write to the
+<span class="lineNum">     112 </span>            :        * file descriptor or to stdout. */
+<span class="lineNum">     113 </span>            :       int fd;
+<span class="lineNum">     114 </span>            :       char xname[64];
+<span class="lineNum">     115 </span>            : 
+<span class="lineNum">     116 </span><span class="lineNoCov">          0 :       fd = check_special_filename (fname, 1, 0);</span>
+<span class="lineNum">     117 </span><span class="lineNoCov">          0 :       if (fd == -1)</span>
+<span class="lineNum">     118 </span>            :         {
+<span class="lineNum">     119 </span>            :           /* Not a special filename, thus we want stdout.  */
+<span class="lineNum">     120 </span><span class="lineNoCov">          0 :           fp = es_stdout;</span>
+<span class="lineNum">     121 </span><span class="lineNoCov">          0 :           es_set_binary (fp);</span>
+<span class="lineNum">     122 </span>            :         }
+<span class="lineNum">     123 </span><span class="lineNoCov">          0 :       else if (!(fp = es_fdopen_nc (fd, &quot;wb&quot;)))</span>
+<span class="lineNum">     124 </span>            :         {
+<span class="lineNum">     125 </span><span class="lineNoCov">          0 :           err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     126 </span><span class="lineNoCov">          0 :           snprintf (xname, sizeof xname, &quot;[fd %d]&quot;, fd);</span>
+<span class="lineNum">     127 </span><span class="lineNoCov">          0 :           log_error (_(&quot;can't open '%s': %s\n&quot;), xname, gpg_strerror (err));</span>
+<span class="lineNum">     128 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     129 </span>            :         }
+<span class="lineNum">     130 </span>            :     }
+<span class="lineNum">     131 </span>            :   else
+<span class="lineNum">     132 </span>            :     {
+<span class="lineNum">     133 </span><span class="lineNoCov">          0 :       while (!overwrite_filep (fname))</span>
+<span class="lineNum">     134 </span>            :         {
+<span class="lineNum">     135 </span><span class="lineNoCov">          0 :           char *tmp = ask_outfile_name (NULL, 0);</span>
+<span class="lineNum">     136 </span><span class="lineNoCov">          0 :           if (!tmp || !*tmp)</span>
+<span class="lineNum">     137 </span>            :             {
+<span class="lineNum">     138 </span><span class="lineNoCov">          0 :               xfree (tmp);</span>
+<span class="lineNum">     139 </span>            :               /* FIXME: Below used to be GPG_ERR_CREATE_FILE */
+<span class="lineNum">     140 </span><span class="lineNoCov">          0 :               err = gpg_error (GPG_ERR_GENERAL);</span>
+<span class="lineNum">     141 </span><span class="lineNoCov">          0 :               goto leave;</span>
+<span class="lineNum">     142 </span>            :             }
+<span class="lineNum">     143 </span><span class="lineNoCov">          0 :           xfree (fname);</span>
+<span class="lineNum">     144 </span><span class="lineNoCov">          0 :           fname = tmp;</span>
+<span class="lineNum">     145 </span>            :         }
+<span class="lineNum">     146 </span>            :     }
+<span class="lineNum">     147 </span>            : 
+<span class="lineNum">     148 </span>            : #ifndef __riscos__
+<span class="lineNum">     149 </span><span class="lineNoCov">          0 :   if (opt.outfp &amp;&amp; is_secured_file (es_fileno (opt.outfp)))</span>
+<span class="lineNum">     150 </span>            :     {
+<span class="lineNum">     151 </span><span class="lineNoCov">          0 :       err = gpg_error (GPG_ERR_EPERM);</span>
+<span class="lineNum">     152 </span><span class="lineNoCov">          0 :       log_error (_(&quot;error creating '%s': %s\n&quot;), fname, gpg_strerror (err));</span>
+<span class="lineNum">     153 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     154 </span>            :     }
+<span class="lineNum">     155 </span><span class="lineNoCov">          0 :   else if (fp || nooutput)</span>
+<span class="lineNum">     156 </span>            :     ;
+<span class="lineNum">     157 </span><span class="lineNoCov">          0 :   else if (is_secured_filename (fname))</span>
+<span class="lineNum">     158 </span>            :     {
+<span class="lineNum">     159 </span><span class="lineNoCov">          0 :       gpg_err_set_errno (EPERM);</span>
+<span class="lineNum">     160 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     161 </span><span class="lineNoCov">          0 :       log_error (_(&quot;error creating '%s': %s\n&quot;), fname, gpg_strerror (err));</span>
+<span class="lineNum">     162 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     163 </span>            :     }
+<span class="lineNum">     164 </span><span class="lineNoCov">          0 :   else if (!(fp = es_fopen (fname, &quot;wb&quot;)))</span>
+<span class="lineNum">     165 </span>            :     {
+<span class="lineNum">     166 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     167 </span><span class="lineNoCov">          0 :       log_error (_(&quot;error creating '%s': %s\n&quot;), fname, gpg_strerror (err));</span>
+<span class="lineNum">     168 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     169 </span>            :     }
+<span class="lineNum">     170 </span>            : #else /* __riscos__ */
+<span class="lineNum">     171 </span>            :   /* If no output filename was given, i.e. we constructed it, convert
+<span class="lineNum">     172 </span>            :      all '.' in fname to '/' but not vice versa as we don't create
+<span class="lineNum">     173 </span>            :      directories! */
+<span class="lineNum">     174 </span>            :   if (!opt.outfile)
+<span class="lineNum">     175 </span>            :     for (c = 0; fname[c]; ++c)
+<span class="lineNum">     176 </span>            :       if (fname[c] == '.')
+<span class="lineNum">     177 </span>            :         fname[c] = '/';
+<span class="lineNum">     178 </span>            : 
+<span class="lineNum">     179 </span>            :   if (fp || nooutput)
+<span class="lineNum">     180 </span>            :     ;
+<span class="lineNum">     181 </span>            :   else
+<span class="lineNum">     182 </span>            :     {
+<span class="lineNum">     183 </span>            :       /* Note: riscos stuff is not expected to work anymore.  If we
+<span class="lineNum">     184 </span>            :          want to port it again to riscos we should do most of the suff
+<span class="lineNum">     185 </span>            :          in estream.  FIXME: Consider to remove all riscos special
+<span class="lineNum">     186 </span>            :          cases.  */
+<span class="lineNum">     187 </span>            :       fp = fopen (fname, &quot;wb&quot;);
+<span class="lineNum">     188 </span>            :       if (!fp)
+<span class="lineNum">     189 </span>            :         {
+<span class="lineNum">     190 </span>            :           log_error (_(&quot;error creating '%s': %s\n&quot;), fname, gpg_strerror (err));
+<span class="lineNum">     191 </span>            :           err = GPG_ERR_CREATE_FILE;
+<span class="lineNum">     192 </span>            :           if (errno == 106)
+<span class="lineNum">     193 </span>            :             log_info (&quot;Do output file and input file have the same name?\n&quot;);
+<span class="lineNum">     194 </span>            :           goto leave;
+<span class="lineNum">     195 </span>            :         }
+<span class="lineNum">     196 </span>            : 
+<span class="lineNum">     197 </span>            :       /* If there's a ,xxx extension in the embedded filename,
+<span class="lineNum">     198 </span>            :          use that, else check whether the user input (in fname)
+<span class="lineNum">     199 </span>            :          has a ,xxx appended, then use that in preference */
+<span class="lineNum">     200 </span>            :       if ((c = riscos_get_filetype_from_string (embedded_name,
+<span class="lineNum">     201 </span>            :                                                 embedded_namelen)) != -1)
+<span class="lineNum">     202 </span>            :         filetype = c;
+<span class="lineNum">     203 </span>            :       if ((c = riscos_get_filetype_from_string (fname, strlen (fname))) != -1)
+<span class="lineNum">     204 </span>            :         filetype = c;
+<span class="lineNum">     205 </span>            :       riscos_set_filetype_by_number (fname, filetype);
+<span class="lineNum">     206 </span>            :     }
+<span class="lineNum">     207 </span>            : #endif /* __riscos__ */
+<span class="lineNum">     208 </span>            : 
+<span class="lineNum">     209 </span>            :  leave:
+<span class="lineNum">     210 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     211 </span>            :     {
+<span class="lineNum">     212 </span><span class="lineNoCov">          0 :       if (fp &amp;&amp; fp != es_stdout &amp;&amp; fp != opt.outfp)</span>
+<span class="lineNum">     213 </span><span class="lineNoCov">          0 :         es_fclose (fp);</span>
+<span class="lineNum">     214 </span><span class="lineNoCov">          0 :       xfree (fname);</span>
+<span class="lineNum">     215 </span><span class="lineNoCov">          0 :       return err;</span>
+<span class="lineNum">     216 </span>            :     }
+<span class="lineNum">     217 </span>            : 
+<span class="lineNum">     218 </span><span class="lineNoCov">          0 :   *fnamep = fname;</span>
+<span class="lineNum">     219 </span><span class="lineNoCov">          0 :   *fpp = fp;</span>
+<span class="lineNum">     220 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     221 </span>            : }
+<span class="lineNum">     222 </span>            : 
+<span class="lineNum">     223 </span>            : /* Handle a plaintext packet.  If MFX is not NULL, update the MDs
+<span class="lineNum">     224 </span>            :  * Note: We should have used the filter stuff here, but we have to add
+<span class="lineNum">     225 </span>            :  * some easy mimic to set a read limit, so we calculate only the bytes
+<a name="226"><span class="lineNum">     226 </span>            :  * from the plaintext.  */</a>
+<span class="lineNum">     227 </span>            : int
+<span class="lineNum">     228 </span><span class="lineNoCov">          0 : handle_plaintext (PKT_plaintext * pt, md_filter_context_t * mfx,</span>
+<span class="lineNum">     229 </span>            :                   int nooutput, int clearsig)
+<span class="lineNum">     230 </span>            : {
+<span class="lineNum">     231 </span><span class="lineNoCov">          0 :   char *fname = NULL;</span>
+<span class="lineNum">     232 </span><span class="lineNoCov">          0 :   estream_t fp = NULL;</span>
+<span class="lineNum">     233 </span>            :   static off_t count = 0;
+<span class="lineNum">     234 </span><span class="lineNoCov">          0 :   int err = 0;</span>
+<span class="lineNum">     235 </span>            :   int c;
+<span class="lineNum">     236 </span>            :   int convert;
+<span class="lineNum">     237 </span>            : #ifdef __riscos__
+<span class="lineNum">     238 </span>            :   int filetype = 0xfff;
+<span class="lineNum">     239 </span>            : #endif
+<span class="lineNum">     240 </span>            : 
+<span class="lineNum">     241 </span><span class="lineNoCov">          0 :   if (pt-&gt;mode == 't' || pt-&gt;mode == 'u' || pt-&gt;mode == 'm')</span>
+<span class="lineNum">     242 </span><span class="lineNoCov">          0 :     convert = pt-&gt;mode;</span>
+<span class="lineNum">     243 </span>            :   else
+<span class="lineNum">     244 </span><span class="lineNoCov">          0 :     convert = 0;</span>
+<span class="lineNum">     245 </span>            : 
+<span class="lineNum">     246 </span>            :   /* Let people know what the plaintext info is. This allows the
+<span class="lineNum">     247 </span>            :      receiving program to try and do something different based on the
+<span class="lineNum">     248 </span>            :      format code (say, recode UTF-8 to local). */
+<span class="lineNum">     249 </span><span class="lineNoCov">          0 :   if (!nooutput &amp;&amp; is_status_enabled ())</span>
+<span class="lineNum">     250 </span>            :     {
+<span class="lineNum">     251 </span>            :       char status[50];
+<span class="lineNum">     252 </span>            : 
+<span class="lineNum">     253 </span>            :       /* Better make sure that stdout has been flushed in case the
+<span class="lineNum">     254 </span>            :          output will be written to it.  This is to make sure that no
+<span class="lineNum">     255 </span>            :          not-yet-flushed stuff will be written after the plaintext
+<span class="lineNum">     256 </span>            :          status message.  */
+<span class="lineNum">     257 </span><span class="lineNoCov">          0 :       es_fflush (es_stdout);</span>
+<span class="lineNum">     258 </span>            : 
+<span class="lineNum">     259 </span><span class="lineNoCov">          0 :       snprintf (status, sizeof status,</span>
+<span class="lineNum">     260 </span><span class="lineNoCov">          0 :                 &quot;%X %lu &quot;, (byte) pt-&gt;mode, (ulong) pt-&gt;timestamp);</span>
+<span class="lineNum">     261 </span><span class="lineNoCov">          0 :       write_status_text_and_buffer (STATUS_PLAINTEXT,</span>
+<span class="lineNum">     262 </span><span class="lineNoCov">          0 :                                     status, pt-&gt;name, pt-&gt;namelen, 0);</span>
+<span class="lineNum">     263 </span>            : 
+<span class="lineNum">     264 </span><span class="lineNoCov">          0 :       if (!pt-&gt;is_partial)</span>
+<span class="lineNum">     265 </span>            :         {
+<span class="lineNum">     266 </span><span class="lineNoCov">          0 :           snprintf (status, sizeof status, &quot;%lu&quot;, (ulong) pt-&gt;len);</span>
+<span class="lineNum">     267 </span><span class="lineNoCov">          0 :           write_status_text (STATUS_PLAINTEXT_LENGTH, status);</span>
+<span class="lineNum">     268 </span>            :         }
+<span class="lineNum">     269 </span>            :     }
+<span class="lineNum">     270 </span>            : 
+<span class="lineNum">     271 </span><span class="lineNoCov">          0 :   if (! nooutput)</span>
+<span class="lineNum">     272 </span>            :     {
+<span class="lineNum">     273 </span><span class="lineNoCov">          0 :       err = get_output_file (pt-&gt;name, pt-&gt;namelen, pt-&gt;buf, &amp;fname, &amp;fp);</span>
+<span class="lineNum">     274 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     275 </span><span class="lineNoCov">          0 :         goto leave;</span>
+<span class="lineNum">     276 </span>            :     }
+<span class="lineNum">     277 </span>            : 
+<span class="lineNum">     278 </span><span class="lineNoCov">          0 :   if (!pt-&gt;is_partial)</span>
+<span class="lineNum">     279 </span>            :     {
+<span class="lineNum">     280 </span>            :       /* We have an actual length (which might be zero). */
+<span class="lineNum">     281 </span>            : 
+<span class="lineNum">     282 </span><span class="lineNoCov">          0 :       if (clearsig)</span>
+<span class="lineNum">     283 </span>            :         {
+<span class="lineNum">     284 </span><span class="lineNoCov">          0 :           log_error (&quot;clearsig encountered while not expected\n&quot;);</span>
+<span class="lineNum">     285 </span><span class="lineNoCov">          0 :           err = gpg_error (GPG_ERR_UNEXPECTED);</span>
+<span class="lineNum">     286 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     287 </span>            :         }
+<span class="lineNum">     288 </span>            : 
+<span class="lineNum">     289 </span><span class="lineNoCov">          0 :       if (convert) /* Text mode.  */</span>
+<span class="lineNum">     290 </span>            :         {
+<span class="lineNum">     291 </span><span class="lineNoCov">          0 :           for (; pt-&gt;len; pt-&gt;len--)</span>
+<span class="lineNum">     292 </span>            :             {
+<span class="lineNum">     293 </span><span class="lineNoCov">          0 :               if ((c = iobuf_get (pt-&gt;buf)) == -1)</span>
+<span class="lineNum">     294 </span>            :                 {
+<span class="lineNum">     295 </span><span class="lineNoCov">          0 :                   err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     296 </span><span class="lineNoCov">          0 :                   log_error (&quot;problem reading source (%u bytes remaining)\n&quot;,</span>
+<span class="lineNum">     297 </span><span class="lineNoCov">          0 :                              (unsigned) pt-&gt;len);</span>
+<span class="lineNum">     298 </span><span class="lineNoCov">          0 :                   goto leave;</span>
+<span class="lineNum">     299 </span>            :                 }
+<span class="lineNum">     300 </span><span class="lineNoCov">          0 :               if (mfx-&gt;md)</span>
+<span class="lineNum">     301 </span><span class="lineNoCov">          0 :                 gcry_md_putc (mfx-&gt;md, c);</span>
+<span class="lineNum">     302 </span>            : #ifndef HAVE_DOSISH_SYSTEM
+<span class="lineNum">     303 </span>            :               /* Convert to native line ending. */
+<span class="lineNum">     304 </span>            :               /* fixme: this hack might be too simple */
+<span class="lineNum">     305 </span><span class="lineNoCov">          0 :               if (c == '\r' &amp;&amp; convert != 'm')</span>
+<span class="lineNum">     306 </span><span class="lineNoCov">          0 :                 continue;</span>
+<span class="lineNum">     307 </span>            : #endif
+<span class="lineNum">     308 </span><span class="lineNoCov">          0 :               if (fp)</span>
+<span class="lineNum">     309 </span>            :                 {
+<span class="lineNum">     310 </span><span class="lineNoCov">          0 :                   if (opt.max_output &amp;&amp; (++count) &gt; opt.max_output)</span>
+<span class="lineNum">     311 </span>            :                     {
+<span class="lineNum">     312 </span><span class="lineNoCov">          0 :                       log_error (&quot;error writing to '%s': %s\n&quot;,</span>
+<span class="lineNum">     313 </span>            :                                  fname, &quot;exceeded --max-output limit\n&quot;);
+<span class="lineNum">     314 </span><span class="lineNoCov">          0 :                       err = gpg_error (GPG_ERR_TOO_LARGE);</span>
+<span class="lineNum">     315 </span><span class="lineNoCov">          0 :                       goto leave;</span>
+<span class="lineNum">     316 </span>            :                     }
+<span class="lineNum">     317 </span><span class="lineNoCov">          0 :                   else if (es_putc (c, fp) == EOF)</span>
+<span class="lineNum">     318 </span>            :                     {
+<span class="lineNum">     319 </span><span class="lineNoCov">          0 :                       if (es_ferror (fp))</span>
+<span class="lineNum">     320 </span><span class="lineNoCov">          0 :                         err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     321 </span>            :                       else
+<span class="lineNum">     322 </span><span class="lineNoCov">          0 :                         err = gpg_error (GPG_ERR_EOF);</span>
+<span class="lineNum">     323 </span><span class="lineNoCov">          0 :                       log_error (&quot;error writing to '%s': %s\n&quot;,</span>
+<span class="lineNum">     324 </span>            :                                  fname, gpg_strerror (err));
+<span class="lineNum">     325 </span><span class="lineNoCov">          0 :                       goto leave;</span>
+<span class="lineNum">     326 </span>            :                     }
+<span class="lineNum">     327 </span>            :                 }
+<span class="lineNum">     328 </span>            :             }
+<span class="lineNum">     329 </span>            :         }
+<span class="lineNum">     330 </span>            :       else  /* Binary mode.  */
+<span class="lineNum">     331 </span>            :         {
+<span class="lineNum">     332 </span><span class="lineNoCov">          0 :           byte *buffer = xmalloc (32768);</span>
+<span class="lineNum">     333 </span><span class="lineNoCov">          0 :           while (pt-&gt;len)</span>
+<span class="lineNum">     334 </span>            :             {
+<span class="lineNum">     335 </span><span class="lineNoCov">          0 :               int len = pt-&gt;len &gt; 32768 ? 32768 : pt-&gt;len;</span>
+<span class="lineNum">     336 </span><span class="lineNoCov">          0 :               len = iobuf_read (pt-&gt;buf, buffer, len);</span>
+<span class="lineNum">     337 </span><span class="lineNoCov">          0 :               if (len == -1)</span>
+<span class="lineNum">     338 </span>            :                 {
+<span class="lineNum">     339 </span><span class="lineNoCov">          0 :                   err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     340 </span><span class="lineNoCov">          0 :                   log_error (&quot;problem reading source (%u bytes remaining)\n&quot;,</span>
+<span class="lineNum">     341 </span><span class="lineNoCov">          0 :                              (unsigned) pt-&gt;len);</span>
+<span class="lineNum">     342 </span><span class="lineNoCov">          0 :                   xfree (buffer);</span>
+<span class="lineNum">     343 </span><span class="lineNoCov">          0 :                   goto leave;</span>
+<span class="lineNum">     344 </span>            :                 }
+<span class="lineNum">     345 </span><span class="lineNoCov">          0 :               if (mfx-&gt;md)</span>
+<span class="lineNum">     346 </span><span class="lineNoCov">          0 :                 gcry_md_write (mfx-&gt;md, buffer, len);</span>
+<span class="lineNum">     347 </span><span class="lineNoCov">          0 :               if (fp)</span>
+<span class="lineNum">     348 </span>            :                 {
+<span class="lineNum">     349 </span><span class="lineNoCov">          0 :                   if (opt.max_output &amp;&amp; (count += len) &gt; opt.max_output)</span>
+<span class="lineNum">     350 </span>            :                     {
+<span class="lineNum">     351 </span><span class="lineNoCov">          0 :                       log_error (&quot;error writing to '%s': %s\n&quot;,</span>
+<span class="lineNum">     352 </span>            :                                  fname, &quot;exceeded --max-output limit\n&quot;);
+<span class="lineNum">     353 </span><span class="lineNoCov">          0 :                       err = gpg_error (GPG_ERR_TOO_LARGE);</span>
+<span class="lineNum">     354 </span><span class="lineNoCov">          0 :                       xfree (buffer);</span>
+<span class="lineNum">     355 </span><span class="lineNoCov">          0 :                       goto leave;</span>
+<span class="lineNum">     356 </span>            :                     }
+<span class="lineNum">     357 </span><span class="lineNoCov">          0 :                   else if (es_fwrite (buffer, 1, len, fp) != len)</span>
+<span class="lineNum">     358 </span>            :                     {
+<span class="lineNum">     359 </span><span class="lineNoCov">          0 :                       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     360 </span><span class="lineNoCov">          0 :                       log_error (&quot;error writing to '%s': %s\n&quot;,</span>
+<span class="lineNum">     361 </span>            :                                  fname, gpg_strerror (err));
+<span class="lineNum">     362 </span><span class="lineNoCov">          0 :                       xfree (buffer);</span>
+<span class="lineNum">     363 </span><span class="lineNoCov">          0 :                       goto leave;</span>
+<span class="lineNum">     364 </span>            :                     }
+<span class="lineNum">     365 </span>            :                 }
+<span class="lineNum">     366 </span><span class="lineNoCov">          0 :               pt-&gt;len -= len;</span>
+<span class="lineNum">     367 </span>            :             }
+<span class="lineNum">     368 </span><span class="lineNoCov">          0 :           xfree (buffer);</span>
+<span class="lineNum">     369 </span>            :         }
+<span class="lineNum">     370 </span>            :     }
+<span class="lineNum">     371 </span><span class="lineNoCov">          0 :   else if (!clearsig)</span>
+<span class="lineNum">     372 </span>            :     {
+<span class="lineNum">     373 </span><span class="lineNoCov">          0 :       if (convert)</span>
+<span class="lineNum">     374 </span>            :         {                       /* text mode */
+<span class="lineNum">     375 </span><span class="lineNoCov">          0 :           while ((c = iobuf_get (pt-&gt;buf)) != -1)</span>
+<span class="lineNum">     376 </span>            :             {
+<span class="lineNum">     377 </span><span class="lineNoCov">          0 :               if (mfx-&gt;md)</span>
+<span class="lineNum">     378 </span><span class="lineNoCov">          0 :                 gcry_md_putc (mfx-&gt;md, c);</span>
+<span class="lineNum">     379 </span>            : #ifndef HAVE_DOSISH_SYSTEM
+<span class="lineNum">     380 </span><span class="lineNoCov">          0 :               if (c == '\r' &amp;&amp; convert != 'm')</span>
+<span class="lineNum">     381 </span><span class="lineNoCov">          0 :                 continue;       /* fixme: this hack might be too simple */</span>
+<span class="lineNum">     382 </span>            : #endif
+<span class="lineNum">     383 </span><span class="lineNoCov">          0 :               if (fp)</span>
+<span class="lineNum">     384 </span>            :                 {
+<span class="lineNum">     385 </span><span class="lineNoCov">          0 :                   if (opt.max_output &amp;&amp; (++count) &gt; opt.max_output)</span>
+<span class="lineNum">     386 </span>            :                     {
+<span class="lineNum">     387 </span><span class="lineNoCov">          0 :                       log_error (&quot;Error writing to '%s': %s\n&quot;,</span>
+<span class="lineNum">     388 </span>            :                                  fname, &quot;exceeded --max-output limit\n&quot;);
+<span class="lineNum">     389 </span><span class="lineNoCov">          0 :                       err = gpg_error (GPG_ERR_TOO_LARGE);</span>
+<span class="lineNum">     390 </span><span class="lineNoCov">          0 :                       goto leave;</span>
+<span class="lineNum">     391 </span>            :                     }
+<span class="lineNum">     392 </span><span class="lineNoCov">          0 :                   else if (es_putc (c, fp) == EOF)</span>
+<span class="lineNum">     393 </span>            :                     {
+<span class="lineNum">     394 </span><span class="lineNoCov">          0 :                       if (es_ferror (fp))</span>
+<span class="lineNum">     395 </span><span class="lineNoCov">          0 :                         err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     396 </span>            :                       else
+<span class="lineNum">     397 </span><span class="lineNoCov">          0 :                         err = gpg_error (GPG_ERR_EOF);</span>
+<span class="lineNum">     398 </span><span class="lineNoCov">          0 :                       log_error (&quot;error writing to '%s': %s\n&quot;,</span>
+<span class="lineNum">     399 </span>            :                                  fname, gpg_strerror (err));
+<span class="lineNum">     400 </span><span class="lineNoCov">          0 :                       goto leave;</span>
+<span class="lineNum">     401 </span>            :                     }
+<span class="lineNum">     402 </span>            :                 }
+<span class="lineNum">     403 </span>            :             }
+<span class="lineNum">     404 </span>            :         }
+<span class="lineNum">     405 </span>            :       else
+<span class="lineNum">     406 </span>            :         {                       /* binary mode */
+<span class="lineNum">     407 </span>            :           byte *buffer;
+<span class="lineNum">     408 </span><span class="lineNoCov">          0 :           int eof_seen = 0;</span>
+<span class="lineNum">     409 </span>            : 
+<span class="lineNum">     410 </span><span class="lineNoCov">          0 :           buffer = xtrymalloc (32768);</span>
+<span class="lineNum">     411 </span><span class="lineNoCov">          0 :           if (!buffer)</span>
+<span class="lineNum">     412 </span>            :             {
+<span class="lineNum">     413 </span><span class="lineNoCov">          0 :               err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     414 </span><span class="lineNoCov">          0 :               goto leave;</span>
+<span class="lineNum">     415 </span>            :             }
+<span class="lineNum">     416 </span>            : 
+<span class="lineNum">     417 </span><span class="lineNoCov">          0 :           while (!eof_seen)</span>
+<span class="lineNum">     418 </span>            :             {
+<span class="lineNum">     419 </span>            :               /* Why do we check for len &lt; 32768:
+<span class="lineNum">     420 </span>            :                * If we won't, we would practically read 2 EOFs but
+<span class="lineNum">     421 </span>            :                * the first one has already popped the block_filter
+<span class="lineNum">     422 </span>            :                * off and therefore we don't catch the boundary.
+<span class="lineNum">     423 </span>            :                * So, always assume EOF if iobuf_read returns less bytes
+<span class="lineNum">     424 </span>            :                * then requested */
+<span class="lineNum">     425 </span><span class="lineNoCov">          0 :               int len = iobuf_read (pt-&gt;buf, buffer, 32768);</span>
+<span class="lineNum">     426 </span><span class="lineNoCov">          0 :               if (len == -1)</span>
+<span class="lineNum">     427 </span><span class="lineNoCov">          0 :                 break;</span>
+<span class="lineNum">     428 </span><span class="lineNoCov">          0 :               if (len &lt; 32768)</span>
+<span class="lineNum">     429 </span><span class="lineNoCov">          0 :                 eof_seen = 1;</span>
+<span class="lineNum">     430 </span><span class="lineNoCov">          0 :               if (mfx-&gt;md)</span>
+<span class="lineNum">     431 </span><span class="lineNoCov">          0 :                 gcry_md_write (mfx-&gt;md, buffer, len);</span>
+<span class="lineNum">     432 </span><span class="lineNoCov">          0 :               if (fp)</span>
+<span class="lineNum">     433 </span>            :                 {
+<span class="lineNum">     434 </span><span class="lineNoCov">          0 :                   if (opt.max_output &amp;&amp; (count += len) &gt; opt.max_output)</span>
+<span class="lineNum">     435 </span>            :                     {
+<span class="lineNum">     436 </span><span class="lineNoCov">          0 :                       log_error (&quot;error writing to '%s': %s\n&quot;,</span>
+<span class="lineNum">     437 </span>            :                                  fname, &quot;exceeded --max-output limit\n&quot;);
+<span class="lineNum">     438 </span><span class="lineNoCov">          0 :                       err = gpg_error (GPG_ERR_TOO_LARGE);</span>
+<span class="lineNum">     439 </span><span class="lineNoCov">          0 :                       xfree (buffer);</span>
+<span class="lineNum">     440 </span><span class="lineNoCov">          0 :                       goto leave;</span>
+<span class="lineNum">     441 </span>            :                     }
+<span class="lineNum">     442 </span><span class="lineNoCov">          0 :                   else if (es_fwrite (buffer, 1, len, fp) != len)</span>
+<span class="lineNum">     443 </span>            :                     {
+<span class="lineNum">     444 </span><span class="lineNoCov">          0 :                       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     445 </span><span class="lineNoCov">          0 :                       log_error (&quot;error writing to '%s': %s\n&quot;,</span>
+<span class="lineNum">     446 </span>            :                                  fname, gpg_strerror (err));
+<span class="lineNum">     447 </span><span class="lineNoCov">          0 :                       xfree (buffer);</span>
+<span class="lineNum">     448 </span><span class="lineNoCov">          0 :                       goto leave;</span>
+<span class="lineNum">     449 </span>            :                     }
+<span class="lineNum">     450 </span>            :                 }
+<span class="lineNum">     451 </span>            :             }
+<span class="lineNum">     452 </span><span class="lineNoCov">          0 :           xfree (buffer);</span>
+<span class="lineNum">     453 </span>            :         }
+<span class="lineNum">     454 </span><span class="lineNoCov">          0 :       pt-&gt;buf = NULL;</span>
+<span class="lineNum">     455 </span>            :     }
+<span class="lineNum">     456 </span>            :   else /* Clear text signature - don't hash the last CR,LF.   */
+<span class="lineNum">     457 </span>            :     {
+<span class="lineNum">     458 </span><span class="lineNoCov">          0 :       int state = 0;</span>
+<span class="lineNum">     459 </span>            : 
+<span class="lineNum">     460 </span><span class="lineNoCov">          0 :       while ((c = iobuf_get (pt-&gt;buf)) != -1)</span>
+<span class="lineNum">     461 </span>            :         {
+<span class="lineNum">     462 </span><span class="lineNoCov">          0 :           if (fp)</span>
+<span class="lineNum">     463 </span>            :             {
+<span class="lineNum">     464 </span><span class="lineNoCov">          0 :               if (opt.max_output &amp;&amp; (++count) &gt; opt.max_output)</span>
+<span class="lineNum">     465 </span>            :                 {
+<span class="lineNum">     466 </span><span class="lineNoCov">          0 :                   log_error (&quot;error writing to '%s': %s\n&quot;,</span>
+<span class="lineNum">     467 </span>            :                              fname, &quot;exceeded --max-output limit\n&quot;);
+<span class="lineNum">     468 </span><span class="lineNoCov">          0 :                   err = gpg_error (GPG_ERR_TOO_LARGE);</span>
+<span class="lineNum">     469 </span><span class="lineNoCov">          0 :                   goto leave;</span>
+<span class="lineNum">     470 </span>            :                 }
+<span class="lineNum">     471 </span><span class="lineNoCov">          0 :               else if (es_putc (c, fp) == EOF)</span>
+<span class="lineNum">     472 </span>            :                 {
+<span class="lineNum">     473 </span><span class="lineNoCov">          0 :                   err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     474 </span><span class="lineNoCov">          0 :                   log_error (&quot;error writing to '%s': %s\n&quot;,</span>
+<span class="lineNum">     475 </span>            :                              fname, gpg_strerror (err));
+<span class="lineNum">     476 </span><span class="lineNoCov">          0 :                   goto leave;</span>
+<span class="lineNum">     477 </span>            :                 }
+<span class="lineNum">     478 </span>            :             }
+<span class="lineNum">     479 </span><span class="lineNoCov">          0 :           if (!mfx-&gt;md)</span>
+<span class="lineNum">     480 </span><span class="lineNoCov">          0 :             continue;</span>
+<span class="lineNum">     481 </span><span class="lineNoCov">          0 :           if (state == 2)</span>
+<span class="lineNum">     482 </span>            :             {
+<span class="lineNum">     483 </span><span class="lineNoCov">          0 :               gcry_md_putc (mfx-&gt;md, '\r');</span>
+<span class="lineNum">     484 </span><span class="lineNoCov">          0 :               gcry_md_putc (mfx-&gt;md, '\n');</span>
+<span class="lineNum">     485 </span><span class="lineNoCov">          0 :               state = 0;</span>
+<span class="lineNum">     486 </span>            :             }
+<span class="lineNum">     487 </span><span class="lineNoCov">          0 :           if (!state)</span>
+<span class="lineNum">     488 </span>            :             {
+<span class="lineNum">     489 </span><span class="lineNoCov">          0 :               if (c == '\r')</span>
+<span class="lineNum">     490 </span><span class="lineNoCov">          0 :                 state = 1;</span>
+<span class="lineNum">     491 </span><span class="lineNoCov">          0 :               else if (c == '\n')</span>
+<span class="lineNum">     492 </span><span class="lineNoCov">          0 :                 state = 2;</span>
+<span class="lineNum">     493 </span>            :               else
+<span class="lineNum">     494 </span><span class="lineNoCov">          0 :                 gcry_md_putc (mfx-&gt;md, c);</span>
+<span class="lineNum">     495 </span>            :             }
+<span class="lineNum">     496 </span><span class="lineNoCov">          0 :           else if (state == 1)</span>
+<span class="lineNum">     497 </span>            :             {
+<span class="lineNum">     498 </span><span class="lineNoCov">          0 :               if (c == '\n')</span>
+<span class="lineNum">     499 </span><span class="lineNoCov">          0 :                 state = 2;</span>
+<span class="lineNum">     500 </span>            :               else
+<span class="lineNum">     501 </span>            :                 {
+<span class="lineNum">     502 </span><span class="lineNoCov">          0 :                   gcry_md_putc (mfx-&gt;md, '\r');</span>
+<span class="lineNum">     503 </span><span class="lineNoCov">          0 :                   if (c == '\r')</span>
+<span class="lineNum">     504 </span><span class="lineNoCov">          0 :                     state = 1;</span>
+<span class="lineNum">     505 </span>            :                   else
+<span class="lineNum">     506 </span>            :                     {
+<span class="lineNum">     507 </span><span class="lineNoCov">          0 :                       state = 0;</span>
+<span class="lineNum">     508 </span><span class="lineNoCov">          0 :                       gcry_md_putc (mfx-&gt;md, c);</span>
+<span class="lineNum">     509 </span>            :                     }
+<span class="lineNum">     510 </span>            :                 }
+<span class="lineNum">     511 </span>            :             }
+<span class="lineNum">     512 </span>            :         }
+<span class="lineNum">     513 </span><span class="lineNoCov">          0 :       pt-&gt;buf = NULL;</span>
+<span class="lineNum">     514 </span>            :     }
+<span class="lineNum">     515 </span>            : 
+<span class="lineNum">     516 </span><span class="lineNoCov">          0 :   if (fp &amp;&amp; fp != es_stdout &amp;&amp; fp != opt.outfp &amp;&amp; es_fclose (fp))</span>
+<span class="lineNum">     517 </span>            :     {
+<span class="lineNum">     518 </span><span class="lineNoCov">          0 :       err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     519 </span><span class="lineNoCov">          0 :       log_error (&quot;error closing '%s': %s\n&quot;, fname, gpg_strerror (err));</span>
+<span class="lineNum">     520 </span><span class="lineNoCov">          0 :       fp = NULL;</span>
+<span class="lineNum">     521 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     522 </span>            :     }
+<span class="lineNum">     523 </span><span class="lineNoCov">          0 :   fp = NULL;</span>
+<span class="lineNum">     524 </span>            : 
+<span class="lineNum">     525 </span>            :  leave:
+<span class="lineNum">     526 </span>            :   /* Make sure that stdout gets flushed after the plaintext has been
+<span class="lineNum">     527 </span>            :      handled.  This is for extra security as we do a flush anyway
+<span class="lineNum">     528 </span>            :      before checking the signature.  */
+<span class="lineNum">     529 </span><span class="lineNoCov">          0 :   if (es_fflush (es_stdout))</span>
+<span class="lineNum">     530 </span>            :     {
+<span class="lineNum">     531 </span>            :       /* We need to check the return code to detect errors like disk
+<span class="lineNum">     532 </span>            :          full for short plaintexts.  See bug#1207.  Checking return
+<span class="lineNum">     533 </span>            :          values is a good idea in any case.  */
+<span class="lineNum">     534 </span><span class="lineNoCov">          0 :       if (!err)</span>
+<span class="lineNum">     535 </span><span class="lineNoCov">          0 :         err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     536 </span><span class="lineNoCov">          0 :       log_error (&quot;error flushing '%s': %s\n&quot;, &quot;[stdout]&quot;,</span>
+<span class="lineNum">     537 </span>            :                  gpg_strerror (err));
+<span class="lineNum">     538 </span>            :     }
+<span class="lineNum">     539 </span>            : 
+<span class="lineNum">     540 </span><span class="lineNoCov">          0 :   if (fp &amp;&amp; fp != es_stdout &amp;&amp; fp != opt.outfp)</span>
+<span class="lineNum">     541 </span><span class="lineNoCov">          0 :     es_fclose (fp);</span>
+<span class="lineNum">     542 </span><span class="lineNoCov">          0 :   xfree (fname);</span>
+<span class="lineNum">     543 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     544 </span>            : }
+<span class="lineNum">     545 </span>            : 
+<a name="546"><span class="lineNum">     546 </span>            : </a>
+<span class="lineNum">     547 </span>            : static void
+<span class="lineNum">     548 </span><span class="lineNoCov">          0 : do_hash (gcry_md_hd_t md, gcry_md_hd_t md2, IOBUF fp, int textmode)</span>
+<span class="lineNum">     549 </span>            : {
+<span class="lineNum">     550 </span>            :   text_filter_context_t tfx;
+<span class="lineNum">     551 </span>            :   int c;
+<span class="lineNum">     552 </span>            : 
+<span class="lineNum">     553 </span><span class="lineNoCov">          0 :   if (textmode)</span>
+<span class="lineNum">     554 </span>            :     {
+<span class="lineNum">     555 </span><span class="lineNoCov">          0 :       memset (&amp;tfx, 0, sizeof tfx);</span>
+<span class="lineNum">     556 </span><span class="lineNoCov">          0 :       iobuf_push_filter (fp, text_filter, &amp;tfx);</span>
+<span class="lineNum">     557 </span>            :     }
+<span class="lineNum">     558 </span><span class="lineNoCov">          0 :   if (md2)</span>
+<span class="lineNum">     559 </span>            :     {                           /* work around a strange behaviour in pgp2 */
+<span class="lineNum">     560 </span>            :       /* It seems that at least PGP5 converts a single CR to a CR,LF too */
+<span class="lineNum">     561 </span><span class="lineNoCov">          0 :       int lc = -1;</span>
+<span class="lineNum">     562 </span><span class="lineNoCov">          0 :       while ((c = iobuf_get (fp)) != -1)</span>
+<span class="lineNum">     563 </span>            :         {
+<span class="lineNum">     564 </span><span class="lineNoCov">          0 :           if (c == '\n' &amp;&amp; lc == '\r')</span>
+<span class="lineNum">     565 </span><span class="lineNoCov">          0 :             gcry_md_putc (md2, c);</span>
+<span class="lineNum">     566 </span><span class="lineNoCov">          0 :           else if (c == '\n')</span>
+<span class="lineNum">     567 </span>            :             {
+<span class="lineNum">     568 </span><span class="lineNoCov">          0 :               gcry_md_putc (md2, '\r');</span>
+<span class="lineNum">     569 </span><span class="lineNoCov">          0 :               gcry_md_putc (md2, c);</span>
+<span class="lineNum">     570 </span>            :             }
+<span class="lineNum">     571 </span><span class="lineNoCov">          0 :           else if (c != '\n' &amp;&amp; lc == '\r')</span>
+<span class="lineNum">     572 </span>            :             {
+<span class="lineNum">     573 </span><span class="lineNoCov">          0 :               gcry_md_putc (md2, '\n');</span>
+<span class="lineNum">     574 </span><span class="lineNoCov">          0 :               gcry_md_putc (md2, c);</span>
+<span class="lineNum">     575 </span>            :             }
+<span class="lineNum">     576 </span>            :           else
+<span class="lineNum">     577 </span><span class="lineNoCov">          0 :             gcry_md_putc (md2, c);</span>
+<span class="lineNum">     578 </span>            : 
+<span class="lineNum">     579 </span><span class="lineNoCov">          0 :           if (md)</span>
+<span class="lineNum">     580 </span><span class="lineNoCov">          0 :             gcry_md_putc (md, c);</span>
+<span class="lineNum">     581 </span><span class="lineNoCov">          0 :           lc = c;</span>
+<span class="lineNum">     582 </span>            :         }
+<span class="lineNum">     583 </span>            :     }
+<span class="lineNum">     584 </span>            :   else
+<span class="lineNum">     585 </span>            :     {
+<span class="lineNum">     586 </span><span class="lineNoCov">          0 :       while ((c = iobuf_get (fp)) != -1)</span>
+<span class="lineNum">     587 </span>            :         {
+<span class="lineNum">     588 </span><span class="lineNoCov">          0 :           if (md)</span>
+<span class="lineNum">     589 </span><span class="lineNoCov">          0 :             gcry_md_putc (md, c);</span>
+<span class="lineNum">     590 </span>            :         }
+<span class="lineNum">     591 </span>            :     }
+<span class="lineNum">     592 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     593 </span>            : 
+<span class="lineNum">     594 </span>            : 
+<span class="lineNum">     595 </span>            : /****************
+<span class="lineNum">     596 </span>            :  * Ask for the detached datafile and calculate the digest from it.
+<span class="lineNum">     597 </span>            :  * INFILE is the name of the input file.
+<a name="598"><span class="lineNum">     598 </span>            :  */</a>
+<span class="lineNum">     599 </span>            : int
+<span class="lineNum">     600 </span><span class="lineNoCov">          0 : ask_for_detached_datafile (gcry_md_hd_t md, gcry_md_hd_t md2,</span>
+<span class="lineNum">     601 </span>            :                            const char *inname, int textmode)
+<span class="lineNum">     602 </span>            : {
+<span class="lineNum">     603 </span>            :   progress_filter_context_t *pfx;
+<span class="lineNum">     604 </span><span class="lineNoCov">          0 :   char *answer = NULL;</span>
+<span class="lineNum">     605 </span>            :   IOBUF fp;
+<span class="lineNum">     606 </span><span class="lineNoCov">          0 :   int rc = 0;</span>
+<span class="lineNum">     607 </span>            : 
+<span class="lineNum">     608 </span><span class="lineNoCov">          0 :   pfx = new_progress_context ();</span>
+<span class="lineNum">     609 </span><span class="lineNoCov">          0 :   fp = open_sigfile (inname, pfx);      /* Open default file. */</span>
+<span class="lineNum">     610 </span>            : 
+<span class="lineNum">     611 </span><span class="lineNoCov">          0 :   if (!fp &amp;&amp; !opt.batch)</span>
+<span class="lineNum">     612 </span>            :     {
+<span class="lineNum">     613 </span><span class="lineNoCov">          0 :       int any = 0;</span>
+<span class="lineNum">     614 </span><span class="lineNoCov">          0 :       tty_printf (_(&quot;Detached signature.\n&quot;));</span>
+<span class="lineNum">     615 </span>            :       do
+<span class="lineNum">     616 </span>            :         {
+<span class="lineNum">     617 </span>            :           char *name;
+<span class="lineNum">     618 </span>            : 
+<span class="lineNum">     619 </span><span class="lineNoCov">          0 :           xfree (answer);</span>
+<span class="lineNum">     620 </span>            :           tty_enable_completion (NULL);
+<span class="lineNum">     621 </span><span class="lineNoCov">          0 :           name = cpr_get (&quot;detached_signature.filename&quot;,</span>
+<span class="lineNum">     622 </span><span class="lineNoCov">          0 :                           _(&quot;Please enter name of data file: &quot;));</span>
+<span class="lineNum">     623 </span>            :           tty_disable_completion ();
+<span class="lineNum">     624 </span><span class="lineNoCov">          0 :           cpr_kill_prompt ();</span>
+<span class="lineNum">     625 </span><span class="lineNoCov">          0 :           answer = make_filename (name, (void *) NULL);</span>
+<span class="lineNum">     626 </span><span class="lineNoCov">          0 :           xfree (name);</span>
+<span class="lineNum">     627 </span>            : 
+<span class="lineNum">     628 </span><span class="lineNoCov">          0 :           if (any &amp;&amp; !*answer)</span>
+<span class="lineNum">     629 </span>            :             {
+<span class="lineNum">     630 </span><span class="lineNoCov">          0 :               rc = gpg_error (GPG_ERR_GENERAL); /*G10ERR_READ_FILE */</span>
+<span class="lineNum">     631 </span><span class="lineNoCov">          0 :               goto leave;</span>
+<span class="lineNum">     632 </span>            :             }
+<span class="lineNum">     633 </span><span class="lineNoCov">          0 :           fp = iobuf_open (answer);</span>
+<span class="lineNum">     634 </span><span class="lineNoCov">          0 :           if (fp &amp;&amp; is_secured_file (iobuf_get_fd (fp)))</span>
+<span class="lineNum">     635 </span>            :             {
+<span class="lineNum">     636 </span><span class="lineNoCov">          0 :               iobuf_close (fp);</span>
+<span class="lineNum">     637 </span><span class="lineNoCov">          0 :               fp = NULL;</span>
+<span class="lineNum">     638 </span><span class="lineNoCov">          0 :               gpg_err_set_errno (EPERM);</span>
+<span class="lineNum">     639 </span>            :             }
+<span class="lineNum">     640 </span><span class="lineNoCov">          0 :           if (!fp &amp;&amp; errno == ENOENT)</span>
+<span class="lineNum">     641 </span>            :             {
+<span class="lineNum">     642 </span><span class="lineNoCov">          0 :               tty_printf (&quot;No such file, try again or hit enter to quit.\n&quot;);</span>
+<span class="lineNum">     643 </span><span class="lineNoCov">          0 :               any++;</span>
+<span class="lineNum">     644 </span>            :             }
+<span class="lineNum">     645 </span><span class="lineNoCov">          0 :           else if (!fp)</span>
+<span class="lineNum">     646 </span>            :             {
+<span class="lineNum">     647 </span><span class="lineNoCov">          0 :               rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">     648 </span><span class="lineNoCov">          0 :               log_error (_(&quot;can't open '%s': %s\n&quot;), answer,</span>
+<span class="lineNum">     649 </span><span class="lineNoCov">          0 :                          strerror (errno));</span>
+<span class="lineNum">     650 </span><span class="lineNoCov">          0 :               goto leave;</span>
+<span class="lineNum">     651 </span>            :             }
+<span class="lineNum">     652 </span>            :         }
+<span class="lineNum">     653 </span><span class="lineNoCov">          0 :       while (!fp);</span>
+<span class="lineNum">     654 </span>            :     }
+<span class="lineNum">     655 </span>            : 
+<span class="lineNum">     656 </span><span class="lineNoCov">          0 :   if (!fp)</span>
+<span class="lineNum">     657 </span>            :     {
+<span class="lineNum">     658 </span><span class="lineNoCov">          0 :       if (opt.verbose)</span>
+<span class="lineNum">     659 </span><span class="lineNoCov">          0 :         log_info (_(&quot;reading stdin ...\n&quot;));</span>
+<span class="lineNum">     660 </span><span class="lineNoCov">          0 :       fp = iobuf_open (NULL);</span>
+<span class="lineNum">     661 </span><span class="lineNoCov">          0 :       log_assert (fp);</span>
+<span class="lineNum">     662 </span>            :     }
+<span class="lineNum">     663 </span><span class="lineNoCov">          0 :   do_hash (md, md2, fp, textmode);</span>
+<span class="lineNum">     664 </span><span class="lineNoCov">          0 :   iobuf_close (fp);</span>
+<span class="lineNum">     665 </span>            : 
+<span class="lineNum">     666 </span>            : leave:
+<span class="lineNum">     667 </span><span class="lineNoCov">          0 :   xfree (answer);</span>
+<span class="lineNum">     668 </span><span class="lineNoCov">          0 :   release_progress_context (pfx);</span>
+<span class="lineNum">     669 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     670 </span>            : }
+<span class="lineNum">     671 </span>            : 
+<span class="lineNum">     672 </span>            : 
+<span class="lineNum">     673 </span>            : 
+<span class="lineNum">     674 </span>            : /* Hash the given files and append the hash to hash contexts MD and
+<a name="675"><span class="lineNum">     675 </span>            :  * MD2.  If FILES is NULL, stdin is hashed.  */</a>
+<span class="lineNum">     676 </span>            : int
+<span class="lineNum">     677 </span><span class="lineNoCov">          0 : hash_datafiles (gcry_md_hd_t md, gcry_md_hd_t md2, strlist_t files,</span>
+<span class="lineNum">     678 </span>            :                 const char *sigfilename, int textmode)
+<span class="lineNum">     679 </span>            : {
+<span class="lineNum">     680 </span>            :   progress_filter_context_t *pfx;
+<span class="lineNum">     681 </span>            :   IOBUF fp;
+<span class="lineNum">     682 </span>            :   strlist_t sl;
+<span class="lineNum">     683 </span>            : 
+<span class="lineNum">     684 </span><span class="lineNoCov">          0 :   pfx = new_progress_context ();</span>
+<span class="lineNum">     685 </span>            : 
+<span class="lineNum">     686 </span><span class="lineNoCov">          0 :   if (!files)</span>
+<span class="lineNum">     687 </span>            :     {
+<span class="lineNum">     688 </span>            :       /* Check whether we can open the signed material.  We avoid
+<span class="lineNum">     689 </span>            :          trying to open a file if run in batch mode.  This assumed
+<span class="lineNum">     690 </span>            :          data file for a sig file feature is just a convenience thing
+<span class="lineNum">     691 </span>            :          for the command line and the user needs to read possible
+<span class="lineNum">     692 </span>            :          warning messages. */
+<span class="lineNum">     693 </span><span class="lineNoCov">          0 :       if (!opt.batch)</span>
+<span class="lineNum">     694 </span>            :         {
+<span class="lineNum">     695 </span><span class="lineNoCov">          0 :           fp = open_sigfile (sigfilename, pfx);</span>
+<span class="lineNum">     696 </span><span class="lineNoCov">          0 :           if (fp)</span>
+<span class="lineNum">     697 </span>            :             {
+<span class="lineNum">     698 </span><span class="lineNoCov">          0 :               do_hash (md, md2, fp, textmode);</span>
+<span class="lineNum">     699 </span><span class="lineNoCov">          0 :               iobuf_close (fp);</span>
+<span class="lineNum">     700 </span><span class="lineNoCov">          0 :               release_progress_context (pfx);</span>
+<span class="lineNum">     701 </span><span class="lineNoCov">          0 :               return 0;</span>
+<span class="lineNum">     702 </span>            :             }
+<span class="lineNum">     703 </span>            :         }
+<span class="lineNum">     704 </span><span class="lineNoCov">          0 :       log_error (_(&quot;no signed data\n&quot;));</span>
+<span class="lineNum">     705 </span><span class="lineNoCov">          0 :       release_progress_context (pfx);</span>
+<span class="lineNum">     706 </span><span class="lineNoCov">          0 :       return gpg_error (GPG_ERR_NO_DATA);</span>
+<span class="lineNum">     707 </span>            :     }
+<span class="lineNum">     708 </span>            : 
+<span class="lineNum">     709 </span>            : 
+<span class="lineNum">     710 </span><span class="lineNoCov">          0 :   for (sl = files; sl; sl = sl-&gt;next)</span>
+<span class="lineNum">     711 </span>            :     {
+<span class="lineNum">     712 </span><span class="lineNoCov">          0 :       fp = iobuf_open (sl-&gt;d);</span>
+<span class="lineNum">     713 </span><span class="lineNoCov">          0 :       if (fp &amp;&amp; is_secured_file (iobuf_get_fd (fp)))</span>
+<span class="lineNum">     714 </span>            :         {
+<span class="lineNum">     715 </span><span class="lineNoCov">          0 :           iobuf_close (fp);</span>
+<span class="lineNum">     716 </span><span class="lineNoCov">          0 :           fp = NULL;</span>
+<span class="lineNum">     717 </span><span class="lineNoCov">          0 :           gpg_err_set_errno (EPERM);</span>
+<span class="lineNum">     718 </span>            :         }
+<span class="lineNum">     719 </span><span class="lineNoCov">          0 :       if (!fp)</span>
+<span class="lineNum">     720 </span>            :         {
+<span class="lineNum">     721 </span><span class="lineNoCov">          0 :           int rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">     722 </span><span class="lineNoCov">          0 :           log_error (_(&quot;can't open signed data '%s'\n&quot;),</span>
+<span class="lineNum">     723 </span><span class="lineNoCov">          0 :                      print_fname_stdin (sl-&gt;d));</span>
+<span class="lineNum">     724 </span><span class="lineNoCov">          0 :           release_progress_context (pfx);</span>
+<span class="lineNum">     725 </span><span class="lineNoCov">          0 :           return rc;</span>
+<span class="lineNum">     726 </span>            :         }
+<span class="lineNum">     727 </span><span class="lineNoCov">          0 :       handle_progress (pfx, fp, sl-&gt;d);</span>
+<span class="lineNum">     728 </span><span class="lineNoCov">          0 :       do_hash (md, md2, fp, textmode);</span>
+<span class="lineNum">     729 </span><span class="lineNoCov">          0 :       iobuf_close (fp);</span>
+<span class="lineNum">     730 </span>            :     }
+<span class="lineNum">     731 </span>            : 
+<span class="lineNum">     732 </span><span class="lineNoCov">          0 :   release_progress_context (pfx);</span>
+<span class="lineNum">     733 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     734 </span>            : }
+<span class="lineNum">     735 </span>            : 
+<span class="lineNum">     736 </span>            : 
+<span class="lineNum">     737 </span>            : /* Hash the data from file descriptor DATA_FD and append the hash to hash
+<a name="738"><span class="lineNum">     738 </span>            :    contexts MD and MD2.  */</a>
+<span class="lineNum">     739 </span>            : int
+<span class="lineNum">     740 </span><span class="lineNoCov">          0 : hash_datafile_by_fd (gcry_md_hd_t md, gcry_md_hd_t md2, int data_fd,</span>
+<span class="lineNum">     741 </span>            :                      int textmode)
+<span class="lineNum">     742 </span>            : {
+<span class="lineNum">     743 </span><span class="lineNoCov">          0 :   progress_filter_context_t *pfx = new_progress_context ();</span>
+<span class="lineNum">     744 </span>            :   iobuf_t fp;
+<span class="lineNum">     745 </span>            : 
+<span class="lineNum">     746 </span><span class="lineNoCov">          0 :   if (is_secured_file (data_fd))</span>
+<span class="lineNum">     747 </span>            :     {
+<span class="lineNum">     748 </span><span class="lineNoCov">          0 :       fp = NULL;</span>
+<span class="lineNum">     749 </span><span class="lineNoCov">          0 :       gpg_err_set_errno (EPERM);</span>
+<span class="lineNum">     750 </span>            :     }
+<span class="lineNum">     751 </span>            :   else
+<span class="lineNum">     752 </span><span class="lineNoCov">          0 :     fp = iobuf_fdopen_nc (data_fd, &quot;rb&quot;);</span>
+<span class="lineNum">     753 </span>            : 
+<span class="lineNum">     754 </span><span class="lineNoCov">          0 :   if (!fp)</span>
+<span class="lineNum">     755 </span>            :     {
+<span class="lineNum">     756 </span><span class="lineNoCov">          0 :       int rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">     757 </span><span class="lineNoCov">          0 :       log_error (_(&quot;can't open signed data fd=%d: %s\n&quot;),</span>
+<span class="lineNum">     758 </span><span class="lineNoCov">          0 :                  data_fd, strerror (errno));</span>
+<span class="lineNum">     759 </span><span class="lineNoCov">          0 :       release_progress_context (pfx);</span>
+<span class="lineNum">     760 </span><span class="lineNoCov">          0 :       return rc;</span>
+<span class="lineNum">     761 </span>            :     }
+<span class="lineNum">     762 </span>            : 
+<span class="lineNum">     763 </span><span class="lineNoCov">          0 :   handle_progress (pfx, fp, NULL);</span>
+<span class="lineNum">     764 </span>            : 
+<span class="lineNum">     765 </span><span class="lineNoCov">          0 :   do_hash (md, md2, fp, textmode);</span>
+<span class="lineNum">     766 </span>            : 
+<span class="lineNum">     767 </span><span class="lineNoCov">          0 :   iobuf_close (fp);</span>
+<span class="lineNum">     768 </span>            : 
+<span class="lineNum">     769 </span><span class="lineNoCov">          0 :   release_progress_context (pfx);</span>
+<span class="lineNum">     770 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     771 </span>            : }
+<span class="lineNum">     772 </span>            : 
+<span class="lineNum">     773 </span>            : 
+<span class="lineNum">     774 </span>            : /* Set up a plaintext packet with the appropriate filename.  If there
+<span class="lineNum">     775 </span>            :    is a --set-filename, use it (it's already UTF8).  If there is a
+<span class="lineNum">     776 </span>            :    regular filename, UTF8-ize it if necessary.  If there is no
+<span class="lineNum">     777 </span>            :    filenames at all, set the field empty. */
+<a name="778"><span class="lineNum">     778 </span>            : </a>
+<span class="lineNum">     779 </span>            : PKT_plaintext *
+<span class="lineNum">     780 </span><span class="lineNoCov">          0 : setup_plaintext_name (const char *filename, IOBUF iobuf)</span>
+<span class="lineNum">     781 </span>            : {
+<span class="lineNum">     782 </span>            :   PKT_plaintext *pt;
+<span class="lineNum">     783 </span>            : 
+<span class="lineNum">     784 </span><span class="lineNoCov">          0 :   if ((filename &amp;&amp; !iobuf_is_pipe_filename (filename))</span>
+<span class="lineNum">     785 </span><span class="lineNoCov">          0 :        || (opt.set_filename &amp;&amp; !iobuf_is_pipe_filename (opt.set_filename)))</span>
+<span class="lineNum">     786 </span><span class="lineNoCov">          0 :     {</span>
+<span class="lineNum">     787 </span>            :       char *s;
+<span class="lineNum">     788 </span>            : 
+<span class="lineNum">     789 </span><span class="lineNoCov">          0 :       if (opt.set_filename)</span>
+<span class="lineNum">     790 </span><span class="lineNoCov">          0 :         s = make_basename (opt.set_filename, iobuf_get_real_fname (iobuf));</span>
+<span class="lineNum">     791 </span><span class="lineNoCov">          0 :       else if (filename &amp;&amp; !opt.flags.utf8_filename)</span>
+<span class="lineNum">     792 </span><span class="lineNoCov">          0 :         {</span>
+<span class="lineNum">     793 </span><span class="lineNoCov">          0 :           char *tmp = native_to_utf8 (filename);</span>
+<span class="lineNum">     794 </span><span class="lineNoCov">          0 :           s = make_basename (tmp, iobuf_get_real_fname (iobuf));</span>
+<span class="lineNum">     795 </span><span class="lineNoCov">          0 :           xfree (tmp);</span>
+<span class="lineNum">     796 </span>            :         }
+<span class="lineNum">     797 </span>            :       else
+<span class="lineNum">     798 </span><span class="lineNoCov">          0 :         s = make_basename (filename, iobuf_get_real_fname (iobuf));</span>
+<span class="lineNum">     799 </span>            : 
+<span class="lineNum">     800 </span><span class="lineNoCov">          0 :       pt = xmalloc (sizeof *pt + strlen (s) - 1);</span>
+<span class="lineNum">     801 </span><span class="lineNoCov">          0 :       pt-&gt;namelen = strlen (s);</span>
+<span class="lineNum">     802 </span><span class="lineNoCov">          0 :       memcpy (pt-&gt;name, s, pt-&gt;namelen);</span>
+<span class="lineNum">     803 </span><span class="lineNoCov">          0 :       xfree (s);</span>
+<span class="lineNum">     804 </span>            :     }
+<span class="lineNum">     805 </span>            :   else
+<span class="lineNum">     806 </span>            :     {
+<span class="lineNum">     807 </span>            :       /* no filename */
+<span class="lineNum">     808 </span><span class="lineNoCov">          0 :       pt = xmalloc (sizeof *pt - 1);</span>
+<span class="lineNum">     809 </span><span class="lineNoCov">          0 :       pt-&gt;namelen = 0;</span>
+<span class="lineNum">     810 </span>            :     }
+<span class="lineNum">     811 </span>            : 
+<span class="lineNum">     812 </span><span class="lineNoCov">          0 :   return pt;</span>
+<span class="lineNum">     813 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

@@ -1,0 +1,599 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - sm/encrypt.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">sm</a> - encrypt.c<span style="font-size: 80%;"> (source / <a href="encrypt.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">248</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 12:47:41</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* encrypt.c - Encrypt a message</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 2001, 2003, 2004, 2007, 2008,
+<span class="lineNum">       3 </span>            :  *               2010 Free Software Foundation, Inc.
+<span class="lineNum">       4 </span>            :  *
+<span class="lineNum">       5 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       6 </span>            :  *
+<span class="lineNum">       7 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       8 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">       9 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">      10 </span>            :  * (at your option) any later version.
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      13 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      14 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      15 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      16 </span>            :  *
+<span class="lineNum">      17 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      18 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      19 </span>            :  */
+<span class="lineNum">      20 </span>            : 
+<span class="lineNum">      21 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      22 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      23 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      24 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      25 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      26 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      27 </span>            : #include &lt;time.h&gt;
+<span class="lineNum">      28 </span>            : #include &lt;assert.h&gt;
+<span class="lineNum">      29 </span>            : 
+<span class="lineNum">      30 </span>            : #include &quot;gpgsm.h&quot;
+<span class="lineNum">      31 </span>            : #include &lt;gcrypt.h&gt;
+<span class="lineNum">      32 </span>            : #include &lt;ksba.h&gt;
+<span class="lineNum">      33 </span>            : 
+<span class="lineNum">      34 </span>            : #include &quot;keydb.h&quot;
+<span class="lineNum">      35 </span>            : #include &quot;../common/i18n.h&quot;
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span>            : 
+<span class="lineNum">      38 </span>            : struct dek_s {
+<span class="lineNum">      39 </span>            :   const char *algoid;
+<span class="lineNum">      40 </span>            :   int algo;
+<span class="lineNum">      41 </span>            :   gcry_cipher_hd_t chd;
+<span class="lineNum">      42 </span>            :   char key[32];
+<span class="lineNum">      43 </span>            :   int keylen;
+<span class="lineNum">      44 </span>            :   char iv[32];
+<span class="lineNum">      45 </span>            :   int ivlen;
+<span class="lineNum">      46 </span>            : };
+<span class="lineNum">      47 </span>            : typedef struct dek_s *DEK;
+<span class="lineNum">      48 </span>            : 
+<span class="lineNum">      49 </span>            : 
+<span class="lineNum">      50 </span>            : /* Callback parameters for the encryption.  */
+<span class="lineNum">      51 </span>            : struct encrypt_cb_parm_s
+<span class="lineNum">      52 </span>            : {
+<span class="lineNum">      53 </span>            :   estream_t fp;
+<span class="lineNum">      54 </span>            :   DEK dek;
+<span class="lineNum">      55 </span>            :   int eof_seen;
+<span class="lineNum">      56 </span>            :   int ready;
+<span class="lineNum">      57 </span>            :   int readerror;
+<span class="lineNum">      58 </span>            :   int bufsize;
+<span class="lineNum">      59 </span>            :   unsigned char *buffer;
+<span class="lineNum">      60 </span>            :   int buflen;
+<span class="lineNum">      61 </span>            : };
+<span class="lineNum">      62 </span>            : 
+<span class="lineNum">      63 </span>            : 
+<span class="lineNum">      64 </span>            : 
+<span class="lineNum">      65 </span>            : 
+<span class="lineNum">      66 </span>            : 
+<a name="67"><span class="lineNum">      67 </span>            : /* Initialize the data encryption key (session key). */</a>
+<span class="lineNum">      68 </span>            : static int
+<span class="lineNum">      69 </span><span class="lineNoCov">          0 : init_dek (DEK dek)</span>
+<span class="lineNum">      70 </span>            : {
+<span class="lineNum">      71 </span><span class="lineNoCov">          0 :   int rc=0, mode, i;</span>
+<span class="lineNum">      72 </span>            : 
+<span class="lineNum">      73 </span><span class="lineNoCov">          0 :   dek-&gt;algo = gcry_cipher_map_name (dek-&gt;algoid);</span>
+<span class="lineNum">      74 </span><span class="lineNoCov">          0 :   mode = gcry_cipher_mode_from_oid (dek-&gt;algoid);</span>
+<span class="lineNum">      75 </span><span class="lineNoCov">          0 :   if (!dek-&gt;algo || !mode)</span>
+<span class="lineNum">      76 </span>            :     {
+<span class="lineNum">      77 </span><span class="lineNoCov">          0 :       log_error (&quot;unsupported algorithm '%s'\n&quot;, dek-&gt;algoid);</span>
+<span class="lineNum">      78 </span><span class="lineNoCov">          0 :       return gpg_error (GPG_ERR_UNSUPPORTED_ALGORITHM);</span>
+<span class="lineNum">      79 </span>            :     }
+<span class="lineNum">      80 </span>            : 
+<span class="lineNum">      81 </span>            :   /* Extra check for algorithms we consider to be too weak for
+<span class="lineNum">      82 </span>            :      encryption, although we support them for decryption.  Note that
+<span class="lineNum">      83 </span>            :      there is another check below discriminating on the key length. */
+<span class="lineNum">      84 </span><span class="lineNoCov">          0 :   switch (dek-&gt;algo)</span>
+<span class="lineNum">      85 </span>            :     {
+<span class="lineNum">      86 </span>            :     case GCRY_CIPHER_DES:
+<span class="lineNum">      87 </span>            :     case GCRY_CIPHER_RFC2268_40:
+<span class="lineNum">      88 </span><span class="lineNoCov">          0 :       log_error (&quot;cipher algorithm '%s' not allowed: too weak\n&quot;,</span>
+<span class="lineNum">      89 </span>            :                  gnupg_cipher_algo_name (dek-&gt;algo));
+<span class="lineNum">      90 </span><span class="lineNoCov">          0 :       return gpg_error (GPG_ERR_UNSUPPORTED_ALGORITHM);</span>
+<span class="lineNum">      91 </span>            :     default:
+<span class="lineNum">      92 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">      93 </span>            :     }
+<span class="lineNum">      94 </span>            : 
+<span class="lineNum">      95 </span><span class="lineNoCov">          0 :   dek-&gt;keylen = gcry_cipher_get_algo_keylen (dek-&gt;algo);</span>
+<span class="lineNum">      96 </span><span class="lineNoCov">          0 :   if (!dek-&gt;keylen || dek-&gt;keylen &gt; sizeof (dek-&gt;key))</span>
+<span class="lineNum">      97 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_BUG);</span>
+<span class="lineNum">      98 </span>            : 
+<span class="lineNum">      99 </span><span class="lineNoCov">          0 :   dek-&gt;ivlen = gcry_cipher_get_algo_blklen (dek-&gt;algo);</span>
+<span class="lineNum">     100 </span><span class="lineNoCov">          0 :   if (!dek-&gt;ivlen || dek-&gt;ivlen &gt; sizeof (dek-&gt;iv))</span>
+<span class="lineNum">     101 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_BUG);</span>
+<span class="lineNum">     102 </span>            : 
+<span class="lineNum">     103 </span>            :   /* Make sure we don't use weak keys. */
+<span class="lineNum">     104 </span><span class="lineNoCov">          0 :   if (dek-&gt;keylen &lt; 100/8)</span>
+<span class="lineNum">     105 </span>            :     {
+<span class="lineNum">     106 </span><span class="lineNoCov">          0 :       log_error (&quot;key length of '%s' too small\n&quot;, dek-&gt;algoid);</span>
+<span class="lineNum">     107 </span><span class="lineNoCov">          0 :       return gpg_error (GPG_ERR_UNSUPPORTED_ALGORITHM);</span>
+<span class="lineNum">     108 </span>            :     }
+<span class="lineNum">     109 </span>            : 
+<span class="lineNum">     110 </span><span class="lineNoCov">          0 :   rc = gcry_cipher_open (&amp;dek-&gt;chd, dek-&gt;algo, mode, GCRY_CIPHER_SECURE);</span>
+<span class="lineNum">     111 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     112 </span>            :     {
+<span class="lineNum">     113 </span><span class="lineNoCov">          0 :       log_error (&quot;failed to create cipher context: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">     114 </span><span class="lineNoCov">          0 :       return rc;</span>
+<span class="lineNum">     115 </span>            :     }
+<span class="lineNum">     116 </span>            : 
+<span class="lineNum">     117 </span><span class="lineNoCov">          0 :   for (i=0; i &lt; 8; i++)</span>
+<span class="lineNum">     118 </span>            :     {
+<span class="lineNum">     119 </span><span class="lineNoCov">          0 :       gcry_randomize (dek-&gt;key, dek-&gt;keylen, GCRY_STRONG_RANDOM );</span>
+<span class="lineNum">     120 </span><span class="lineNoCov">          0 :       rc = gcry_cipher_setkey (dek-&gt;chd, dek-&gt;key, dek-&gt;keylen);</span>
+<span class="lineNum">     121 </span><span class="lineNoCov">          0 :       if (gpg_err_code (rc) != GPG_ERR_WEAK_KEY)</span>
+<span class="lineNum">     122 </span><span class="lineNoCov">          0 :         break;</span>
+<span class="lineNum">     123 </span><span class="lineNoCov">          0 :       log_info(_(&quot;weak key created - retrying\n&quot;) );</span>
+<span class="lineNum">     124 </span>            :     }
+<span class="lineNum">     125 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     126 </span>            :     {
+<span class="lineNum">     127 </span><span class="lineNoCov">          0 :       log_error (&quot;failed to set the key: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">     128 </span><span class="lineNoCov">          0 :       gcry_cipher_close (dek-&gt;chd);</span>
+<span class="lineNum">     129 </span><span class="lineNoCov">          0 :       dek-&gt;chd = NULL;</span>
+<span class="lineNum">     130 </span><span class="lineNoCov">          0 :       return rc;</span>
+<span class="lineNum">     131 </span>            :     }
+<span class="lineNum">     132 </span>            : 
+<span class="lineNum">     133 </span><span class="lineNoCov">          0 :   gcry_create_nonce (dek-&gt;iv, dek-&gt;ivlen);</span>
+<span class="lineNum">     134 </span><span class="lineNoCov">          0 :   rc = gcry_cipher_setiv (dek-&gt;chd, dek-&gt;iv, dek-&gt;ivlen);</span>
+<span class="lineNum">     135 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     136 </span>            :     {
+<span class="lineNum">     137 </span><span class="lineNoCov">          0 :       log_error (&quot;failed to set the IV: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">     138 </span><span class="lineNoCov">          0 :       gcry_cipher_close (dek-&gt;chd);</span>
+<span class="lineNum">     139 </span><span class="lineNoCov">          0 :       dek-&gt;chd = NULL;</span>
+<span class="lineNum">     140 </span><span class="lineNoCov">          0 :       return rc;</span>
+<span class="lineNum">     141 </span>            :     }
+<span class="lineNum">     142 </span>            : 
+<span class="lineNum">     143 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     144 </span>            : }
+<span class="lineNum">     145 </span>            : 
+<a name="146"><span class="lineNum">     146 </span>            : </a>
+<span class="lineNum">     147 </span>            : static int
+<span class="lineNum">     148 </span><span class="lineNoCov">          0 : encode_session_key (DEK dek, gcry_sexp_t * r_data)</span>
+<span class="lineNum">     149 </span>            : {
+<span class="lineNum">     150 </span>            :   gcry_sexp_t data;
+<span class="lineNum">     151 </span>            :   char *p;
+<span class="lineNum">     152 </span>            :   int rc;
+<span class="lineNum">     153 </span>            : 
+<span class="lineNum">     154 </span><span class="lineNoCov">          0 :   p = xtrymalloc (64 + 2 * dek-&gt;keylen);</span>
+<span class="lineNum">     155 </span><span class="lineNoCov">          0 :   if (!p)</span>
+<span class="lineNum">     156 </span><span class="lineNoCov">          0 :     return gpg_error_from_syserror ();</span>
+<span class="lineNum">     157 </span><span class="lineNoCov">          0 :   strcpy (p, &quot;(data\n (flags pkcs1)\n (value #&quot;);</span>
+<span class="lineNum">     158 </span><span class="lineNoCov">          0 :   bin2hex (dek-&gt;key, dek-&gt;keylen, p + strlen (p));</span>
+<span class="lineNum">     159 </span><span class="lineNoCov">          0 :   strcat (p, &quot;#))\n&quot;);</span>
+<span class="lineNum">     160 </span><span class="lineNoCov">          0 :   rc = gcry_sexp_sscan (&amp;data, NULL, p, strlen (p));</span>
+<span class="lineNum">     161 </span><span class="lineNoCov">          0 :   xfree (p);</span>
+<span class="lineNum">     162 </span><span class="lineNoCov">          0 :   *r_data = data;</span>
+<span class="lineNum">     163 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     164 </span>            : }
+<span class="lineNum">     165 </span>            : 
+<span class="lineNum">     166 </span>            : 
+<span class="lineNum">     167 </span>            : /* Encrypt the DEK under the key contained in CERT and return it as a
+<a name="168"><span class="lineNum">     168 </span>            :    canonical S-Exp in encval. */</a>
+<span class="lineNum">     169 </span>            : static int
+<span class="lineNum">     170 </span><span class="lineNoCov">          0 : encrypt_dek (const DEK dek, ksba_cert_t cert, unsigned char **encval)</span>
+<span class="lineNum">     171 </span>            : {
+<span class="lineNum">     172 </span>            :   gcry_sexp_t s_ciph, s_data, s_pkey;
+<span class="lineNum">     173 </span>            :   int rc;
+<span class="lineNum">     174 </span>            :   ksba_sexp_t buf;
+<span class="lineNum">     175 </span>            :   size_t len;
+<span class="lineNum">     176 </span>            : 
+<span class="lineNum">     177 </span><span class="lineNoCov">          0 :   *encval = NULL;</span>
+<span class="lineNum">     178 </span>            : 
+<span class="lineNum">     179 </span>            :   /* get the key from the cert */
+<span class="lineNum">     180 </span><span class="lineNoCov">          0 :   buf = ksba_cert_get_public_key (cert);</span>
+<span class="lineNum">     181 </span><span class="lineNoCov">          0 :   if (!buf)</span>
+<span class="lineNum">     182 </span>            :     {
+<span class="lineNum">     183 </span><span class="lineNoCov">          0 :       log_error (&quot;no public key for recipient\n&quot;);</span>
+<span class="lineNum">     184 </span><span class="lineNoCov">          0 :       return gpg_error (GPG_ERR_NO_PUBKEY);</span>
+<span class="lineNum">     185 </span>            :     }
+<span class="lineNum">     186 </span><span class="lineNoCov">          0 :   len = gcry_sexp_canon_len (buf, 0, NULL, NULL);</span>
+<span class="lineNum">     187 </span><span class="lineNoCov">          0 :   if (!len)</span>
+<span class="lineNum">     188 </span>            :     {
+<span class="lineNum">     189 </span><span class="lineNoCov">          0 :       log_error (&quot;libksba did not return a proper S-Exp\n&quot;);</span>
+<span class="lineNum">     190 </span><span class="lineNoCov">          0 :       return gpg_error (GPG_ERR_BUG);</span>
+<span class="lineNum">     191 </span>            :     }
+<span class="lineNum">     192 </span><span class="lineNoCov">          0 :   rc = gcry_sexp_sscan (&amp;s_pkey, NULL, (char*)buf, len);</span>
+<span class="lineNum">     193 </span><span class="lineNoCov">          0 :   xfree (buf); buf = NULL;</span>
+<span class="lineNum">     194 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     195 </span>            :     {
+<span class="lineNum">     196 </span><span class="lineNoCov">          0 :       log_error (&quot;gcry_sexp_scan failed: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">     197 </span><span class="lineNoCov">          0 :       return rc;</span>
+<span class="lineNum">     198 </span>            :     }
+<span class="lineNum">     199 </span>            : 
+<span class="lineNum">     200 </span>            :   /* Put the encoded cleartext into a simple list. */
+<span class="lineNum">     201 </span><span class="lineNoCov">          0 :   s_data = NULL; /* (avoid compiler warning) */</span>
+<span class="lineNum">     202 </span><span class="lineNoCov">          0 :   rc = encode_session_key (dek, &amp;s_data);</span>
+<span class="lineNum">     203 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     204 </span>            :     {
+<span class="lineNum">     205 </span><span class="lineNoCov">          0 :       log_error (&quot;encode_session_key failed: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">     206 </span><span class="lineNoCov">          0 :       return rc;</span>
+<span class="lineNum">     207 </span>            :     }
+<span class="lineNum">     208 </span>            : 
+<span class="lineNum">     209 </span>            :   /* pass it to libgcrypt */
+<span class="lineNum">     210 </span><span class="lineNoCov">          0 :   rc = gcry_pk_encrypt (&amp;s_ciph, s_data, s_pkey);</span>
+<span class="lineNum">     211 </span><span class="lineNoCov">          0 :   gcry_sexp_release (s_data);</span>
+<span class="lineNum">     212 </span><span class="lineNoCov">          0 :   gcry_sexp_release (s_pkey);</span>
+<span class="lineNum">     213 </span>            : 
+<span class="lineNum">     214 </span>            :   /* Reformat it. */
+<span class="lineNum">     215 </span><span class="lineNoCov">          0 :   if (!rc)</span>
+<span class="lineNum">     216 </span>            :     {
+<span class="lineNum">     217 </span><span class="lineNoCov">          0 :       rc = make_canon_sexp (s_ciph, encval, NULL);</span>
+<span class="lineNum">     218 </span><span class="lineNoCov">          0 :       gcry_sexp_release (s_ciph);</span>
+<span class="lineNum">     219 </span>            :     }
+<span class="lineNum">     220 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     221 </span>            : }
+<span class="lineNum">     222 </span>            : 
+<span class="lineNum">     223 </span>            : 
+<span class="lineNum">     224 </span>            : 
+<a name="225"><span class="lineNum">     225 </span>            : /* do the actual encryption */</a>
+<span class="lineNum">     226 </span>            : static int
+<span class="lineNum">     227 </span><span class="lineNoCov">          0 : encrypt_cb (void *cb_value, char *buffer, size_t count, size_t *nread)</span>
+<span class="lineNum">     228 </span>            : {
+<span class="lineNum">     229 </span><span class="lineNoCov">          0 :   struct encrypt_cb_parm_s *parm = cb_value;</span>
+<span class="lineNum">     230 </span><span class="lineNoCov">          0 :   int blklen = parm-&gt;dek-&gt;ivlen;</span>
+<span class="lineNum">     231 </span>            :   unsigned char *p;
+<span class="lineNum">     232 </span>            :   size_t n;
+<span class="lineNum">     233 </span>            : 
+<span class="lineNum">     234 </span><span class="lineNoCov">          0 :   *nread = 0;</span>
+<span class="lineNum">     235 </span><span class="lineNoCov">          0 :   if (!buffer)</span>
+<span class="lineNum">     236 </span><span class="lineNoCov">          0 :     return -1; /* not supported */</span>
+<span class="lineNum">     237 </span>            : 
+<span class="lineNum">     238 </span><span class="lineNoCov">          0 :   if (parm-&gt;ready)</span>
+<span class="lineNum">     239 </span><span class="lineNoCov">          0 :     return -1;</span>
+<span class="lineNum">     240 </span>            : 
+<span class="lineNum">     241 </span><span class="lineNoCov">          0 :   if (count &lt; blklen)</span>
+<span class="lineNum">     242 </span><span class="lineNoCov">          0 :     BUG ();</span>
+<span class="lineNum">     243 </span>            : 
+<span class="lineNum">     244 </span><span class="lineNoCov">          0 :   if (!parm-&gt;eof_seen)</span>
+<span class="lineNum">     245 </span>            :     { /* fillup the buffer */
+<span class="lineNum">     246 </span><span class="lineNoCov">          0 :       p = parm-&gt;buffer;</span>
+<span class="lineNum">     247 </span><span class="lineNoCov">          0 :       for (n=parm-&gt;buflen; n &lt; parm-&gt;bufsize; n++)</span>
+<span class="lineNum">     248 </span>            :         {
+<span class="lineNum">     249 </span><span class="lineNoCov">          0 :           int c = es_getc (parm-&gt;fp);</span>
+<span class="lineNum">     250 </span><span class="lineNoCov">          0 :           if (c == EOF)</span>
+<span class="lineNum">     251 </span>            :             {
+<span class="lineNum">     252 </span><span class="lineNoCov">          0 :               if (es_ferror (parm-&gt;fp))</span>
+<span class="lineNum">     253 </span>            :                 {
+<span class="lineNum">     254 </span><span class="lineNoCov">          0 :                   parm-&gt;readerror = errno;</span>
+<span class="lineNum">     255 </span><span class="lineNoCov">          0 :                   return -1;</span>
+<span class="lineNum">     256 </span>            :                 }
+<span class="lineNum">     257 </span><span class="lineNoCov">          0 :               parm-&gt;eof_seen = 1;</span>
+<span class="lineNum">     258 </span><span class="lineNoCov">          0 :               break;</span>
+<span class="lineNum">     259 </span>            :             }
+<span class="lineNum">     260 </span><span class="lineNoCov">          0 :           p[n] = c;</span>
+<span class="lineNum">     261 </span>            :         }
+<span class="lineNum">     262 </span><span class="lineNoCov">          0 :       parm-&gt;buflen = n;</span>
+<span class="lineNum">     263 </span>            :     }
+<span class="lineNum">     264 </span>            : 
+<span class="lineNum">     265 </span><span class="lineNoCov">          0 :   n = parm-&gt;buflen &lt; count? parm-&gt;buflen : count;</span>
+<span class="lineNum">     266 </span><span class="lineNoCov">          0 :   n = n/blklen * blklen;</span>
+<span class="lineNum">     267 </span><span class="lineNoCov">          0 :   if (n)</span>
+<span class="lineNum">     268 </span>            :     { /* encrypt the stuff */
+<span class="lineNum">     269 </span><span class="lineNoCov">          0 :       gcry_cipher_encrypt (parm-&gt;dek-&gt;chd, buffer, n, parm-&gt;buffer, n);</span>
+<span class="lineNum">     270 </span><span class="lineNoCov">          0 :       *nread = n;</span>
+<span class="lineNum">     271 </span>            :       /* Who cares about cycles, take the easy way and shift the buffer */
+<span class="lineNum">     272 </span><span class="lineNoCov">          0 :       parm-&gt;buflen -= n;</span>
+<span class="lineNum">     273 </span><span class="lineNoCov">          0 :       memmove (parm-&gt;buffer, parm-&gt;buffer+n, parm-&gt;buflen);</span>
+<span class="lineNum">     274 </span>            :     }
+<span class="lineNum">     275 </span><span class="lineNoCov">          0 :   else if (parm-&gt;eof_seen)</span>
+<span class="lineNum">     276 </span>            :     { /* no complete block but eof: add padding */
+<span class="lineNum">     277 </span>            :       /* fixme: we should try to do this also in the above code path */
+<span class="lineNum">     278 </span><span class="lineNoCov">          0 :       int i, npad = blklen - (parm-&gt;buflen % blklen);</span>
+<span class="lineNum">     279 </span><span class="lineNoCov">          0 :       p = parm-&gt;buffer;</span>
+<span class="lineNum">     280 </span><span class="lineNoCov">          0 :       for (n=parm-&gt;buflen, i=0; n &lt; parm-&gt;bufsize &amp;&amp; i &lt; npad; n++, i++)</span>
+<span class="lineNum">     281 </span><span class="lineNoCov">          0 :         p[n] = npad;</span>
+<span class="lineNum">     282 </span><span class="lineNoCov">          0 :       gcry_cipher_encrypt (parm-&gt;dek-&gt;chd, buffer, n, parm-&gt;buffer, n);</span>
+<span class="lineNum">     283 </span><span class="lineNoCov">          0 :       *nread = n;</span>
+<span class="lineNum">     284 </span><span class="lineNoCov">          0 :       parm-&gt;ready = 1;</span>
+<span class="lineNum">     285 </span>            :     }
+<span class="lineNum">     286 </span>            : 
+<span class="lineNum">     287 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     288 </span>            : }
+<span class="lineNum">     289 </span>            : 
+<span class="lineNum">     290 </span>            : 
+<span class="lineNum">     291 </span>            : 
+<span class="lineNum">     292 </span>            : 
+<span class="lineNum">     293 </span>            : /* Perform an encrypt operation.
+<span class="lineNum">     294 </span>            : 
+<span class="lineNum">     295 </span>            :    Encrypt the data received on DATA-FD and write it to OUT_FP.  The
+<span class="lineNum">     296 </span>            :    recipients are take from the certificate given in recplist; if this
+<a name="297"><span class="lineNum">     297 </span>            :    is NULL it will be encrypted for a default recipient */</a>
+<span class="lineNum">     298 </span>            : int
+<span class="lineNum">     299 </span><span class="lineNoCov">          0 : gpgsm_encrypt (ctrl_t ctrl, certlist_t recplist, int data_fd, estream_t out_fp)</span>
+<span class="lineNum">     300 </span>            : {
+<span class="lineNum">     301 </span><span class="lineNoCov">          0 :   int rc = 0;</span>
+<span class="lineNum">     302 </span><span class="lineNoCov">          0 :   gnupg_ksba_io_t b64writer = NULL;</span>
+<span class="lineNum">     303 </span>            :   gpg_error_t err;
+<span class="lineNum">     304 </span>            :   ksba_writer_t writer;
+<span class="lineNum">     305 </span><span class="lineNoCov">          0 :   ksba_reader_t reader = NULL;</span>
+<span class="lineNum">     306 </span><span class="lineNoCov">          0 :   ksba_cms_t cms = NULL;</span>
+<span class="lineNum">     307 </span>            :   ksba_stop_reason_t stopreason;
+<span class="lineNum">     308 </span><span class="lineNoCov">          0 :   KEYDB_HANDLE kh = NULL;</span>
+<span class="lineNum">     309 </span>            :   struct encrypt_cb_parm_s encparm;
+<span class="lineNum">     310 </span><span class="lineNoCov">          0 :   DEK dek = NULL;</span>
+<span class="lineNum">     311 </span>            :   int recpno;
+<span class="lineNum">     312 </span><span class="lineNoCov">          0 :   estream_t data_fp = NULL;</span>
+<span class="lineNum">     313 </span>            :   certlist_t cl;
+<span class="lineNum">     314 </span>            :   int count;
+<span class="lineNum">     315 </span>            : 
+<span class="lineNum">     316 </span><span class="lineNoCov">          0 :   memset (&amp;encparm, 0, sizeof encparm);</span>
+<span class="lineNum">     317 </span>            : 
+<span class="lineNum">     318 </span><span class="lineNoCov">          0 :   audit_set_type (ctrl-&gt;audit, AUDIT_TYPE_ENCRYPT);</span>
+<span class="lineNum">     319 </span>            : 
+<span class="lineNum">     320 </span>            :   /* Check that the certificate list is not empty and that at least
+<span class="lineNum">     321 </span>            :      one certificate is not flagged as encrypt_to; i.e. is a real
+<span class="lineNum">     322 </span>            :      recipient. */
+<span class="lineNum">     323 </span><span class="lineNoCov">          0 :   for (cl = recplist; cl; cl = cl-&gt;next)</span>
+<span class="lineNum">     324 </span><span class="lineNoCov">          0 :     if (!cl-&gt;is_encrypt_to)</span>
+<span class="lineNum">     325 </span><span class="lineNoCov">          0 :       break;</span>
+<span class="lineNum">     326 </span><span class="lineNoCov">          0 :   if (!cl)</span>
+<span class="lineNum">     327 </span>            :     {
+<span class="lineNum">     328 </span><span class="lineNoCov">          0 :       log_error(_(&quot;no valid recipients given\n&quot;));</span>
+<span class="lineNum">     329 </span><span class="lineNoCov">          0 :       gpgsm_status (ctrl, STATUS_NO_RECP, &quot;0&quot;);</span>
+<span class="lineNum">     330 </span><span class="lineNoCov">          0 :       audit_log_i (ctrl-&gt;audit, AUDIT_GOT_RECIPIENTS, 0);</span>
+<span class="lineNum">     331 </span><span class="lineNoCov">          0 :       rc = gpg_error (GPG_ERR_NO_PUBKEY);</span>
+<span class="lineNum">     332 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     333 </span>            :     }
+<span class="lineNum">     334 </span>            : 
+<span class="lineNum">     335 </span><span class="lineNoCov">          0 :   for (count = 0, cl = recplist; cl; cl = cl-&gt;next)</span>
+<span class="lineNum">     336 </span><span class="lineNoCov">          0 :     count++;</span>
+<span class="lineNum">     337 </span><span class="lineNoCov">          0 :   audit_log_i (ctrl-&gt;audit, AUDIT_GOT_RECIPIENTS, count);</span>
+<span class="lineNum">     338 </span>            : 
+<span class="lineNum">     339 </span><span class="lineNoCov">          0 :   kh = keydb_new ();</span>
+<span class="lineNum">     340 </span><span class="lineNoCov">          0 :   if (!kh)</span>
+<span class="lineNum">     341 </span>            :     {
+<span class="lineNum">     342 </span><span class="lineNoCov">          0 :       log_error (_(&quot;failed to allocate keyDB handle\n&quot;));</span>
+<span class="lineNum">     343 </span><span class="lineNoCov">          0 :       rc = gpg_error (GPG_ERR_GENERAL);</span>
+<span class="lineNum">     344 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     345 </span>            :     }
+<span class="lineNum">     346 </span>            : 
+<span class="lineNum">     347 </span>            :   /* Fixme:  We should use the unlocked version of the es functions.  */
+<span class="lineNum">     348 </span><span class="lineNoCov">          0 :   data_fp = es_fdopen_nc (data_fd, &quot;rb&quot;);</span>
+<span class="lineNum">     349 </span><span class="lineNoCov">          0 :   if (!data_fp)</span>
+<span class="lineNum">     350 </span>            :     {
+<span class="lineNum">     351 </span><span class="lineNoCov">          0 :       rc = gpg_error_from_syserror ();</span>
+<span class="lineNum">     352 </span><span class="lineNoCov">          0 :       log_error (&quot;fdopen() failed: %s\n&quot;, strerror (errno));</span>
+<span class="lineNum">     353 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     354 </span>            :     }
+<span class="lineNum">     355 </span>            : 
+<span class="lineNum">     356 </span><span class="lineNoCov">          0 :   err = ksba_reader_new (&amp;reader);</span>
+<span class="lineNum">     357 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     358 </span><span class="lineNoCov">          0 :       rc = err;</span>
+<span class="lineNum">     359 </span><span class="lineNoCov">          0 :   if (!rc)</span>
+<span class="lineNum">     360 </span><span class="lineNoCov">          0 :     rc = ksba_reader_set_cb (reader, encrypt_cb, &amp;encparm);</span>
+<span class="lineNum">     361 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     362 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     363 </span>            : 
+<span class="lineNum">     364 </span><span class="lineNoCov">          0 :   encparm.fp = data_fp;</span>
+<span class="lineNum">     365 </span>            : 
+<span class="lineNum">     366 </span><span class="lineNoCov">          0 :   ctrl-&gt;pem_name = &quot;ENCRYPTED MESSAGE&quot;;</span>
+<span class="lineNum">     367 </span><span class="lineNoCov">          0 :   rc = gnupg_ksba_create_writer</span>
+<span class="lineNum">     368 </span><span class="lineNoCov">          0 :     (&amp;b64writer, ((ctrl-&gt;create_pem? GNUPG_KSBA_IO_PEM : 0)</span>
+<span class="lineNum">     369 </span><span class="lineNoCov">          0 :                   | (ctrl-&gt;create_base64? GNUPG_KSBA_IO_BASE64 : 0)),</span>
+<span class="lineNum">     370 </span>            :      ctrl-&gt;pem_name, out_fp, &amp;writer);
+<span class="lineNum">     371 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     372 </span>            :     {
+<span class="lineNum">     373 </span><span class="lineNoCov">          0 :       log_error (&quot;can't create writer: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">     374 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     375 </span>            :     }
+<span class="lineNum">     376 </span>            : 
+<span class="lineNum">     377 </span><span class="lineNoCov">          0 :   err = ksba_cms_new (&amp;cms);</span>
+<span class="lineNum">     378 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     379 </span>            :     {
+<span class="lineNum">     380 </span><span class="lineNoCov">          0 :       rc = err;</span>
+<span class="lineNum">     381 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     382 </span>            :     }
+<span class="lineNum">     383 </span>            : 
+<span class="lineNum">     384 </span><span class="lineNoCov">          0 :   err = ksba_cms_set_reader_writer (cms, reader, writer);</span>
+<span class="lineNum">     385 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     386 </span>            :     {
+<span class="lineNum">     387 </span><span class="lineNoCov">          0 :       log_debug (&quot;ksba_cms_set_reader_writer failed: %s\n&quot;,</span>
+<span class="lineNum">     388 </span>            :                  gpg_strerror (err));
+<span class="lineNum">     389 </span><span class="lineNoCov">          0 :       rc = err;</span>
+<span class="lineNum">     390 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     391 </span>            :     }
+<span class="lineNum">     392 </span>            : 
+<span class="lineNum">     393 </span><span class="lineNoCov">          0 :   audit_log (ctrl-&gt;audit, AUDIT_GOT_DATA);</span>
+<span class="lineNum">     394 </span>            : 
+<span class="lineNum">     395 </span>            :   /* We are going to create enveloped data with uninterpreted data as
+<span class="lineNum">     396 </span>            :      inner content */
+<span class="lineNum">     397 </span><span class="lineNoCov">          0 :   err = ksba_cms_set_content_type (cms, 0, KSBA_CT_ENVELOPED_DATA);</span>
+<span class="lineNum">     398 </span><span class="lineNoCov">          0 :   if (!err)</span>
+<span class="lineNum">     399 </span><span class="lineNoCov">          0 :     err = ksba_cms_set_content_type (cms, 1, KSBA_CT_DATA);</span>
+<span class="lineNum">     400 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     401 </span>            :     {
+<span class="lineNum">     402 </span><span class="lineNoCov">          0 :       log_debug (&quot;ksba_cms_set_content_type failed: %s\n&quot;,</span>
+<span class="lineNum">     403 </span>            :                  gpg_strerror (err));
+<span class="lineNum">     404 </span><span class="lineNoCov">          0 :       rc = err;</span>
+<span class="lineNum">     405 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     406 </span>            :     }
+<span class="lineNum">     407 </span>            : 
+<span class="lineNum">     408 </span>            :   /* Create a session key */
+<span class="lineNum">     409 </span><span class="lineNoCov">          0 :   dek = xtrycalloc_secure (1, sizeof *dek);</span>
+<span class="lineNum">     410 </span><span class="lineNoCov">          0 :   if (!dek)</span>
+<span class="lineNum">     411 </span><span class="lineNoCov">          0 :     rc = out_of_core ();</span>
+<span class="lineNum">     412 </span>            :   else
+<span class="lineNum">     413 </span>            :   {
+<span class="lineNum">     414 </span><span class="lineNoCov">          0 :     dek-&gt;algoid = opt.def_cipher_algoid;</span>
+<span class="lineNum">     415 </span><span class="lineNoCov">          0 :     rc = init_dek (dek);</span>
+<span class="lineNum">     416 </span>            :   }
+<span class="lineNum">     417 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     418 </span>            :     {
+<span class="lineNum">     419 </span><span class="lineNoCov">          0 :       log_error (&quot;failed to create the session key: %s\n&quot;,</span>
+<span class="lineNum">     420 </span>            :                  gpg_strerror (rc));
+<span class="lineNum">     421 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     422 </span>            :     }
+<span class="lineNum">     423 </span>            : 
+<span class="lineNum">     424 </span><span class="lineNoCov">          0 :   err = ksba_cms_set_content_enc_algo (cms, dek-&gt;algoid, dek-&gt;iv, dek-&gt;ivlen);</span>
+<span class="lineNum">     425 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">     426 </span>            :     {
+<span class="lineNum">     427 </span><span class="lineNoCov">          0 :       log_error (&quot;ksba_cms_set_content_enc_algo failed: %s\n&quot;,</span>
+<span class="lineNum">     428 </span>            :                  gpg_strerror (err));
+<span class="lineNum">     429 </span><span class="lineNoCov">          0 :       rc = err;</span>
+<span class="lineNum">     430 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     431 </span>            :     }
+<span class="lineNum">     432 </span>            : 
+<span class="lineNum">     433 </span><span class="lineNoCov">          0 :   encparm.dek = dek;</span>
+<span class="lineNum">     434 </span>            :   /* Use a ~8k (AES) or ~4k (3DES) buffer */
+<span class="lineNum">     435 </span><span class="lineNoCov">          0 :   encparm.bufsize = 500 * dek-&gt;ivlen;</span>
+<span class="lineNum">     436 </span><span class="lineNoCov">          0 :   encparm.buffer = xtrymalloc (encparm.bufsize);</span>
+<span class="lineNum">     437 </span><span class="lineNoCov">          0 :   if (!encparm.buffer)</span>
+<span class="lineNum">     438 </span>            :     {
+<span class="lineNum">     439 </span><span class="lineNoCov">          0 :       rc = out_of_core ();</span>
+<span class="lineNum">     440 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     441 </span>            :     }
+<span class="lineNum">     442 </span>            : 
+<span class="lineNum">     443 </span><span class="lineNoCov">          0 :   audit_log_s (ctrl-&gt;audit, AUDIT_SESSION_KEY, dek-&gt;algoid);</span>
+<span class="lineNum">     444 </span>            : 
+<span class="lineNum">     445 </span>            :   /* Gather certificates of recipients, encrypt the session key for
+<span class="lineNum">     446 </span>            :      each and store them in the CMS object */
+<span class="lineNum">     447 </span><span class="lineNoCov">          0 :   for (recpno = 0, cl = recplist; cl; recpno++, cl = cl-&gt;next)</span>
+<span class="lineNum">     448 </span>            :     {
+<span class="lineNum">     449 </span>            :       unsigned char *encval;
+<span class="lineNum">     450 </span>            : 
+<span class="lineNum">     451 </span><span class="lineNoCov">          0 :       rc = encrypt_dek (dek, cl-&gt;cert, &amp;encval);</span>
+<span class="lineNum">     452 </span><span class="lineNoCov">          0 :       if (rc)</span>
+<span class="lineNum">     453 </span>            :         {
+<span class="lineNum">     454 </span><span class="lineNoCov">          0 :           audit_log_cert (ctrl-&gt;audit, AUDIT_ENCRYPTED_TO, cl-&gt;cert, rc);</span>
+<span class="lineNum">     455 </span><span class="lineNoCov">          0 :           log_error (&quot;encryption failed for recipient no. %d: %s\n&quot;,</span>
+<span class="lineNum">     456 </span>            :                      recpno, gpg_strerror (rc));
+<span class="lineNum">     457 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     458 </span>            :         }
+<span class="lineNum">     459 </span>            : 
+<span class="lineNum">     460 </span><span class="lineNoCov">          0 :       err = ksba_cms_add_recipient (cms, cl-&gt;cert);</span>
+<span class="lineNum">     461 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     462 </span>            :         {
+<span class="lineNum">     463 </span><span class="lineNoCov">          0 :           audit_log_cert (ctrl-&gt;audit, AUDIT_ENCRYPTED_TO, cl-&gt;cert, err);</span>
+<span class="lineNum">     464 </span><span class="lineNoCov">          0 :           log_error (&quot;ksba_cms_add_recipient failed: %s\n&quot;,</span>
+<span class="lineNum">     465 </span>            :                      gpg_strerror (err));
+<span class="lineNum">     466 </span><span class="lineNoCov">          0 :           rc = err;</span>
+<span class="lineNum">     467 </span><span class="lineNoCov">          0 :           xfree (encval);</span>
+<span class="lineNum">     468 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     469 </span>            :         }
+<span class="lineNum">     470 </span>            : 
+<span class="lineNum">     471 </span><span class="lineNoCov">          0 :       err = ksba_cms_set_enc_val (cms, recpno, encval);</span>
+<span class="lineNum">     472 </span><span class="lineNoCov">          0 :       xfree (encval);</span>
+<span class="lineNum">     473 </span><span class="lineNoCov">          0 :       audit_log_cert (ctrl-&gt;audit, AUDIT_ENCRYPTED_TO, cl-&gt;cert, err);</span>
+<span class="lineNum">     474 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     475 </span>            :         {
+<span class="lineNum">     476 </span><span class="lineNoCov">          0 :           log_error (&quot;ksba_cms_set_enc_val failed: %s\n&quot;,</span>
+<span class="lineNum">     477 </span>            :                      gpg_strerror (err));
+<span class="lineNum">     478 </span><span class="lineNoCov">          0 :           rc = err;</span>
+<span class="lineNum">     479 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     480 </span>            :         }
+<span class="lineNum">     481 </span>            :     }
+<span class="lineNum">     482 </span>            : 
+<span class="lineNum">     483 </span>            :   /* Main control loop for encryption. */
+<span class="lineNum">     484 </span><span class="lineNoCov">          0 :   recpno = 0;</span>
+<span class="lineNum">     485 </span>            :   do
+<span class="lineNum">     486 </span>            :     {
+<span class="lineNum">     487 </span><span class="lineNoCov">          0 :       err = ksba_cms_build (cms, &amp;stopreason);</span>
+<span class="lineNum">     488 </span><span class="lineNoCov">          0 :       if (err)</span>
+<span class="lineNum">     489 </span>            :         {
+<span class="lineNum">     490 </span><span class="lineNoCov">          0 :           log_debug (&quot;ksba_cms_build failed: %s\n&quot;, gpg_strerror (err));</span>
+<span class="lineNum">     491 </span><span class="lineNoCov">          0 :           rc = err;</span>
+<span class="lineNum">     492 </span><span class="lineNoCov">          0 :           goto leave;</span>
+<span class="lineNum">     493 </span>            :         }
+<span class="lineNum">     494 </span>            :     }
+<span class="lineNum">     495 </span><span class="lineNoCov">          0 :   while (stopreason != KSBA_SR_READY);</span>
+<span class="lineNum">     496 </span>            : 
+<span class="lineNum">     497 </span><span class="lineNoCov">          0 :   if (encparm.readerror)</span>
+<span class="lineNum">     498 </span>            :     {
+<span class="lineNum">     499 </span><span class="lineNoCov">          0 :       log_error (&quot;error reading input: %s\n&quot;, strerror (encparm.readerror));</span>
+<span class="lineNum">     500 </span><span class="lineNoCov">          0 :       rc = gpg_error (gpg_err_code_from_errno (encparm.readerror));</span>
+<span class="lineNum">     501 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     502 </span>            :     }
+<span class="lineNum">     503 </span>            : 
+<span class="lineNum">     504 </span>            : 
+<span class="lineNum">     505 </span><span class="lineNoCov">          0 :   rc = gnupg_ksba_finish_writer (b64writer);</span>
+<span class="lineNum">     506 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     507 </span>            :     {
+<span class="lineNum">     508 </span><span class="lineNoCov">          0 :       log_error (&quot;write failed: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">     509 </span><span class="lineNoCov">          0 :       goto leave;</span>
+<span class="lineNum">     510 </span>            :     }
+<span class="lineNum">     511 </span><span class="lineNoCov">          0 :   audit_log (ctrl-&gt;audit, AUDIT_ENCRYPTION_DONE);</span>
+<span class="lineNum">     512 </span><span class="lineNoCov">          0 :   log_info (&quot;encrypted data created\n&quot;);</span>
+<span class="lineNum">     513 </span>            : 
+<span class="lineNum">     514 </span>            :  leave:
+<span class="lineNum">     515 </span><span class="lineNoCov">          0 :   ksba_cms_release (cms);</span>
+<span class="lineNum">     516 </span><span class="lineNoCov">          0 :   gnupg_ksba_destroy_writer (b64writer);</span>
+<span class="lineNum">     517 </span><span class="lineNoCov">          0 :   ksba_reader_release (reader);</span>
+<span class="lineNum">     518 </span><span class="lineNoCov">          0 :   keydb_release (kh);</span>
+<span class="lineNum">     519 </span><span class="lineNoCov">          0 :   xfree (dek);</span>
+<span class="lineNum">     520 </span><span class="lineNoCov">          0 :   es_fclose (data_fp);</span>
+<span class="lineNum">     521 </span><span class="lineNoCov">          0 :   xfree (encparm.buffer);</span>
+<span class="lineNum">     522 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     523 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

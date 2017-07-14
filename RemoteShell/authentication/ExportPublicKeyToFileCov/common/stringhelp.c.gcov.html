@@ -1,0 +1,1654 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - common/stringhelp.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">common</a> - stringhelp.c<span style="font-size: 80%;"> (source / <a href="stringhelp.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">101</td>
+            <td class="headerCovTableEntry">560</td>
+            <td class="headerCovTableEntryLo">18.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 14:32:15</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">12</td>
+            <td class="headerCovTableEntry">48</td>
+            <td class="headerCovTableEntryLo">25.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* stringhelp.c -  standard string helper functions</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 1998, 1999, 2000, 2001, 2003, 2004, 2005, 2006, 2007,
+<span class="lineNum">       3 </span>            :  *               2008, 2009, 2010  Free Software Foundation, Inc.
+<span class="lineNum">       4 </span>            :  * Copyright (C) 2014 Werner Koch
+<span class="lineNum">       5 </span>            :  * Copyright (C) 2015  g10 Code GmbH
+<span class="lineNum">       6 </span>            :  *
+<span class="lineNum">       7 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       8 </span>            :  *
+<span class="lineNum">       9 </span>            :  * GnuPG is free software; you can redistribute and/or modify this
+<span class="lineNum">      10 </span>            :  * part of GnuPG under the terms of either
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  *   - the GNU Lesser General Public License as published by the Free
+<span class="lineNum">      13 </span>            :  *     Software Foundation; either version 3 of the License, or (at
+<span class="lineNum">      14 </span>            :  *     your option) any later version.
+<span class="lineNum">      15 </span>            :  *
+<span class="lineNum">      16 </span>            :  * or
+<span class="lineNum">      17 </span>            :  *
+<span class="lineNum">      18 </span>            :  *   - the GNU General Public License as published by the Free
+<span class="lineNum">      19 </span>            :  *     Software Foundation; either version 2 of the License, or (at
+<span class="lineNum">      20 </span>            :  *     your option) any later version.
+<span class="lineNum">      21 </span>            :  *
+<span class="lineNum">      22 </span>            :  * or both in parallel, as here.
+<span class="lineNum">      23 </span>            :  *
+<span class="lineNum">      24 </span>            :  * GnuPG is distributed in the hope that it will be useful, but
+<span class="lineNum">      25 </span>            :  * WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      26 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+<span class="lineNum">      27 </span>            :  * General Public License for more details.
+<span class="lineNum">      28 </span>            :  *
+<span class="lineNum">      29 </span>            :  * You should have received a copies of the GNU General Public License
+<span class="lineNum">      30 </span>            :  * and the GNU Lesser General Public License along with this program;
+<span class="lineNum">      31 </span>            :  * if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      32 </span>            :  */
+<span class="lineNum">      33 </span>            : 
+<span class="lineNum">      34 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      35 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      36 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      37 </span>            : #include &lt;stdarg.h&gt;
+<span class="lineNum">      38 </span>            : #include &lt;ctype.h&gt;
+<span class="lineNum">      39 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      40 </span>            : #ifdef HAVE_PWD_H
+<span class="lineNum">      41 </span>            : # include &lt;pwd.h&gt;
+<span class="lineNum">      42 </span>            : #endif
+<span class="lineNum">      43 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      44 </span>            : #include &lt;sys/types.h&gt;
+<span class="lineNum">      45 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">      46 </span>            : # ifdef HAVE_WINSOCK2_H
+<span class="lineNum">      47 </span>            : #  include &lt;winsock2.h&gt;
+<span class="lineNum">      48 </span>            : # endif
+<span class="lineNum">      49 </span>            : # include &lt;windows.h&gt;
+<span class="lineNum">      50 </span>            : #endif
+<span class="lineNum">      51 </span>            : #include &lt;assert.h&gt;
+<span class="lineNum">      52 </span>            : #include &lt;limits.h&gt;
+<span class="lineNum">      53 </span>            : 
+<span class="lineNum">      54 </span>            : #include &quot;util.h&quot;
+<span class="lineNum">      55 </span>            : #include &quot;common-defs.h&quot;
+<span class="lineNum">      56 </span>            : #include &quot;utf8conv.h&quot;
+<span class="lineNum">      57 </span>            : #include &quot;sysutils.h&quot;
+<span class="lineNum">      58 </span>            : #include &quot;stringhelp.h&quot;
+<span class="lineNum">      59 </span>            : 
+<span class="lineNum">      60 </span>            : #define tohex_lower(n) ((n) &lt; 10 ? ((n) + '0') : (((n) - 10) + 'a'))
+<span class="lineNum">      61 </span>            : 
+<span class="lineNum">      62 </span>            : 
+<span class="lineNum">      63 </span>            : /* Sometimes we want to avoid mixing slashes and backslashes on W32
+<span class="lineNum">      64 </span>            :    and prefer backslashes.  There is usual no problem with mixing
+<span class="lineNum">      65 </span>            :    them, however a very few W32 API calls can't grok plain slashes.
+<span class="lineNum">      66 </span>            :    Printing filenames with mixed slashes also looks a bit strange.
+<a name="67"><span class="lineNum">      67 </span>            :    This function has no effext on POSIX. */</a>
+<span class="lineNum">      68 </span>            : static inline char *
+<span class="lineNum">      69 </span><span class="lineCov">          8 : change_slashes (char *name)</span>
+<span class="lineNum">      70 </span>            : {
+<span class="lineNum">      71 </span>            : #ifdef HAVE_DOSISH_SYSTEM
+<span class="lineNum">      72 </span>            :   char *p;
+<span class="lineNum">      73 </span>            : 
+<span class="lineNum">      74 </span>            :   if (strchr (name, '\\'))
+<span class="lineNum">      75 </span>            :     {
+<span class="lineNum">      76 </span>            :       for (p=name; *p; p++)
+<span class="lineNum">      77 </span>            :         if (*p == '/')
+<span class="lineNum">      78 </span>            :           *p = '\\';
+<span class="lineNum">      79 </span>            :     }
+<span class="lineNum">      80 </span>            : #endif /*HAVE_DOSISH_SYSTEM*/
+<span class="lineNum">      81 </span><span class="lineCov">          8 :   return name;</span>
+<span class="lineNum">      82 </span>            : }
+<span class="lineNum">      83 </span>            : 
+<span class="lineNum">      84 </span>            : 
+<span class="lineNum">      85 </span>            : /*
+<span class="lineNum">      86 </span>            :  * Check whether STRING starts with KEYWORD.  The keyword is
+<span class="lineNum">      87 </span>            :  * delimited by end of string, a space or a tab.  Returns NULL if not
+<span class="lineNum">      88 </span>            :  * found or a pointer into STRING to the next non-space character
+<span class="lineNum">      89 </span>            :  * after the KEYWORD (which may be end of string).
+<a name="90"><span class="lineNum">      90 </span>            :  */</a>
+<span class="lineNum">      91 </span>            : char *
+<span class="lineNum">      92 </span><span class="lineNoCov">          0 : has_leading_keyword (const char *string, const char *keyword)</span>
+<span class="lineNum">      93 </span>            : {
+<span class="lineNum">      94 </span><span class="lineNoCov">          0 :   size_t n = strlen (keyword);</span>
+<span class="lineNum">      95 </span>            : 
+<span class="lineNum">      96 </span><span class="lineNoCov">          0 :   if (!strncmp (string, keyword, n)</span>
+<span class="lineNum">      97 </span><span class="lineNoCov">          0 :       &amp;&amp; (!string[n] || string[n] == ' ' || string[n] == '\t'))</span>
+<span class="lineNum">      98 </span>            :     {
+<span class="lineNum">      99 </span><span class="lineNoCov">          0 :       string += n;</span>
+<span class="lineNum">     100 </span><span class="lineNoCov">          0 :       while (*string == ' ' || *string == '\t')</span>
+<span class="lineNum">     101 </span><span class="lineNoCov">          0 :         string++;</span>
+<span class="lineNum">     102 </span><span class="lineNoCov">          0 :       return (char*)string;</span>
+<span class="lineNum">     103 </span>            :     }
+<span class="lineNum">     104 </span><span class="lineNoCov">          0 :   return NULL;</span>
+<span class="lineNum">     105 </span>            : }
+<span class="lineNum">     106 </span>            : 
+<span class="lineNum">     107 </span>            : 
+<span class="lineNum">     108 </span>            : /*
+<span class="lineNum">     109 </span>            :  * Look for the substring SUB in buffer and return a pointer to that
+<span class="lineNum">     110 </span>            :  * substring in BUFFER or NULL if not found.
+<span class="lineNum">     111 </span>            :  * Comparison is case-insensitive.
+<a name="112"><span class="lineNum">     112 </span>            :  */</a>
+<span class="lineNum">     113 </span>            : const char *
+<span class="lineNum">     114 </span><span class="lineNoCov">          0 : memistr (const void *buffer, size_t buflen, const char *sub)</span>
+<span class="lineNum">     115 </span>            : {
+<span class="lineNum">     116 </span><span class="lineNoCov">          0 :   const unsigned char *buf = buffer;</span>
+<span class="lineNum">     117 </span><span class="lineNoCov">          0 :   const unsigned char *t = (const unsigned char *)buffer;</span>
+<span class="lineNum">     118 </span><span class="lineNoCov">          0 :   const unsigned char *s = (const unsigned char *)sub;</span>
+<span class="lineNum">     119 </span><span class="lineNoCov">          0 :   size_t n = buflen;</span>
+<span class="lineNum">     120 </span>            : 
+<span class="lineNum">     121 </span><span class="lineNoCov">          0 :   for ( ; n ; t++, n-- )</span>
+<span class="lineNum">     122 </span>            :     {
+<span class="lineNum">     123 </span><span class="lineNoCov">          0 :       if ( toupper (*t) == toupper (*s) )</span>
+<span class="lineNum">     124 </span>            :         {
+<span class="lineNum">     125 </span><span class="lineNoCov">          0 :           for ( buf=t++, buflen = n--, s++;</span>
+<span class="lineNum">     126 </span><span class="lineNoCov">          0 :                 n &amp;&amp; toupper (*t) == toupper (*s); t++, s++, n-- )</span>
+<span class="lineNum">     127 </span>            :             ;
+<span class="lineNum">     128 </span><span class="lineNoCov">          0 :           if (!*s)</span>
+<span class="lineNum">     129 </span><span class="lineNoCov">          0 :             return (const char*)buf;</span>
+<span class="lineNum">     130 </span><span class="lineNoCov">          0 :           t = buf;</span>
+<span class="lineNum">     131 </span><span class="lineNoCov">          0 :           s = (const unsigned char *)sub ;</span>
+<span class="lineNum">     132 </span><span class="lineNoCov">          0 :           n = buflen;</span>
+<span class="lineNum">     133 </span>            :         }
+<span class="lineNum">     134 </span>            :     }
+<span class="lineNum">     135 </span><span class="lineNoCov">          0 :   return NULL;</span>
+<span class="lineNum">     136 </span>            : }
+<a name="137"><span class="lineNum">     137 </span>            : </a>
+<span class="lineNum">     138 </span>            : const char *
+<span class="lineNum">     139 </span><span class="lineNoCov">          0 : ascii_memistr ( const void *buffer, size_t buflen, const char *sub )</span>
+<span class="lineNum">     140 </span>            : {
+<span class="lineNum">     141 </span><span class="lineNoCov">          0 :   const unsigned char *buf = buffer;</span>
+<span class="lineNum">     142 </span><span class="lineNoCov">          0 :   const unsigned char *t = (const unsigned char *)buf;</span>
+<span class="lineNum">     143 </span><span class="lineNoCov">          0 :   const unsigned char *s = (const unsigned char *)sub;</span>
+<span class="lineNum">     144 </span><span class="lineNoCov">          0 :   size_t n = buflen;</span>
+<span class="lineNum">     145 </span>            : 
+<span class="lineNum">     146 </span><span class="lineNoCov">          0 :   for ( ; n ; t++, n-- )</span>
+<span class="lineNum">     147 </span>            :     {
+<span class="lineNum">     148 </span><span class="lineNoCov">          0 :       if (ascii_toupper (*t) == ascii_toupper (*s) )</span>
+<span class="lineNum">     149 </span>            :         {
+<span class="lineNum">     150 </span><span class="lineNoCov">          0 :           for ( buf=t++, buflen = n--, s++;</span>
+<span class="lineNum">     151 </span><span class="lineNoCov">          0 :                 n &amp;&amp; ascii_toupper (*t) == ascii_toupper (*s); t++, s++, n-- )</span>
+<span class="lineNum">     152 </span>            :             ;
+<span class="lineNum">     153 </span><span class="lineNoCov">          0 :           if (!*s)</span>
+<span class="lineNum">     154 </span><span class="lineNoCov">          0 :             return (const char*)buf;</span>
+<span class="lineNum">     155 </span><span class="lineNoCov">          0 :           t = (const unsigned char *)buf;</span>
+<span class="lineNum">     156 </span><span class="lineNoCov">          0 :           s = (const unsigned char *)sub ;</span>
+<span class="lineNum">     157 </span><span class="lineNoCov">          0 :           n = buflen;</span>
+<span class="lineNum">     158 </span>            :         }
+<span class="lineNum">     159 </span>            :     }
+<span class="lineNum">     160 </span><span class="lineNoCov">          0 :   return NULL;</span>
+<span class="lineNum">     161 </span>            : }
+<span class="lineNum">     162 </span>            : 
+<span class="lineNum">     163 </span>            : /* This function is similar to strncpy().  However it won't copy more
+<span class="lineNum">     164 </span>            :    than N - 1 characters and makes sure that a '\0' is appended. With
+<span class="lineNum">     165 </span>            :    N given as 0, nothing will happen.  With DEST given as NULL, memory
+<span class="lineNum">     166 </span>            :    will be allocated using xmalloc (i.e. if it runs out of core
+<span class="lineNum">     167 </span>            :    the function terminates).  Returns DES or a pointer to the
+<span class="lineNum">     168 </span>            :    allocated memory.
+<a name="169"><span class="lineNum">     169 </span>            :  */</a>
+<span class="lineNum">     170 </span>            : char *
+<span class="lineNum">     171 </span><span class="lineNoCov">          0 : mem2str( char *dest , const void *src , size_t n )</span>
+<span class="lineNum">     172 </span>            : {
+<span class="lineNum">     173 </span>            :     char *d;
+<span class="lineNum">     174 </span>            :     const char *s;
+<span class="lineNum">     175 </span>            : 
+<span class="lineNum">     176 </span><span class="lineNoCov">          0 :     if( n ) {</span>
+<span class="lineNum">     177 </span><span class="lineNoCov">          0 :         if( !dest )</span>
+<span class="lineNum">     178 </span><span class="lineNoCov">          0 :             dest = xmalloc( n ) ;</span>
+<span class="lineNum">     179 </span><span class="lineNoCov">          0 :         d = dest;</span>
+<span class="lineNum">     180 </span><span class="lineNoCov">          0 :         s = src ;</span>
+<span class="lineNum">     181 </span><span class="lineNoCov">          0 :         for(n--; n &amp;&amp; *s; n-- )</span>
+<span class="lineNum">     182 </span><span class="lineNoCov">          0 :             *d++ = *s++;</span>
+<span class="lineNum">     183 </span><span class="lineNoCov">          0 :         *d = '\0' ;</span>
+<span class="lineNum">     184 </span>            :     }
+<span class="lineNum">     185 </span>            : 
+<span class="lineNum">     186 </span><span class="lineNoCov">          0 :     return dest ;</span>
+<span class="lineNum">     187 </span>            : }
+<span class="lineNum">     188 </span>            : 
+<span class="lineNum">     189 </span>            : 
+<span class="lineNum">     190 </span>            : /****************
+<span class="lineNum">     191 </span>            :  * remove leading and trailing white spaces
+<a name="192"><span class="lineNum">     192 </span>            :  */</a>
+<span class="lineNum">     193 </span>            : char *
+<span class="lineNum">     194 </span><span class="lineCov">          1 : trim_spaces( char *str )</span>
+<span class="lineNum">     195 </span>            : {
+<span class="lineNum">     196 </span>            :     char *string, *p, *mark;
+<span class="lineNum">     197 </span>            : 
+<span class="lineNum">     198 </span><span class="lineCov">          1 :     string = str;</span>
+<span class="lineNum">     199 </span>            :     /* find first non space character */
+<span class="lineNum">     200 </span><span class="lineCov">          1 :     for( p=string; *p &amp;&amp; isspace( *(byte*)p ) ; p++ )</span>
+<span class="lineNum">     201 </span>            :         ;
+<span class="lineNum">     202 </span>            :     /* move characters */
+<span class="lineNum">     203 </span><span class="lineCov">         21 :     for( (mark = NULL); (*string = *p); string++, p++ )</span>
+<span class="lineNum">     204 </span><span class="lineCov">         20 :         if( isspace( *(byte*)p ) ) {</span>
+<span class="lineNum">     205 </span><span class="lineNoCov">          0 :             if( !mark )</span>
+<span class="lineNum">     206 </span><span class="lineNoCov">          0 :                 mark = string ;</span>
+<span class="lineNum">     207 </span>            :         }
+<span class="lineNum">     208 </span>            :         else
+<span class="lineNum">     209 </span><span class="lineCov">         20 :             mark = NULL ;</span>
+<span class="lineNum">     210 </span><span class="lineCov">          1 :     if( mark )</span>
+<span class="lineNum">     211 </span><span class="lineNoCov">          0 :         *mark = '\0' ;  /* remove trailing spaces */</span>
+<span class="lineNum">     212 </span>            : 
+<span class="lineNum">     213 </span><span class="lineCov">          1 :     return str ;</span>
+<span class="lineNum">     214 </span>            : }
+<span class="lineNum">     215 </span>            : 
+<span class="lineNum">     216 </span>            : /****************
+<span class="lineNum">     217 </span>            :  * remove trailing white spaces
+<a name="218"><span class="lineNum">     218 </span>            :  */</a>
+<span class="lineNum">     219 </span>            : char *
+<span class="lineNum">     220 </span><span class="lineNoCov">          0 : trim_trailing_spaces( char *string )</span>
+<span class="lineNum">     221 </span>            : {
+<span class="lineNum">     222 </span>            :     char *p, *mark;
+<span class="lineNum">     223 </span>            : 
+<span class="lineNum">     224 </span><span class="lineNoCov">          0 :     for( mark = NULL, p = string; *p; p++ ) {</span>
+<span class="lineNum">     225 </span><span class="lineNoCov">          0 :         if( isspace( *(byte*)p ) ) {</span>
+<span class="lineNum">     226 </span><span class="lineNoCov">          0 :             if( !mark )</span>
+<span class="lineNum">     227 </span><span class="lineNoCov">          0 :                 mark = p;</span>
+<span class="lineNum">     228 </span>            :         }
+<span class="lineNum">     229 </span>            :         else
+<span class="lineNum">     230 </span><span class="lineNoCov">          0 :             mark = NULL;</span>
+<span class="lineNum">     231 </span>            :     }
+<span class="lineNum">     232 </span><span class="lineNoCov">          0 :     if( mark )</span>
+<span class="lineNum">     233 </span><span class="lineNoCov">          0 :         *mark = '\0' ;</span>
+<span class="lineNum">     234 </span>            : 
+<span class="lineNum">     235 </span><span class="lineNoCov">          0 :     return string ;</span>
+<span class="lineNum">     236 </span>            : }
+<span class="lineNum">     237 </span>            : 
+<a name="238"><span class="lineNum">     238 </span>            : </a>
+<span class="lineNum">     239 </span>            : unsigned
+<span class="lineNum">     240 </span><span class="lineNoCov">          0 : trim_trailing_chars( byte *line, unsigned len, const char *trimchars )</span>
+<span class="lineNum">     241 </span>            : {
+<span class="lineNum">     242 </span>            :     byte *p, *mark;
+<span class="lineNum">     243 </span>            :     unsigned n;
+<span class="lineNum">     244 </span>            : 
+<span class="lineNum">     245 </span><span class="lineNoCov">          0 :     for(mark=NULL, p=line, n=0; n &lt; len; n++, p++ ) {</span>
+<span class="lineNum">     246 </span><span class="lineNoCov">          0 :         if( strchr(trimchars, *p ) ) {</span>
+<span class="lineNum">     247 </span><span class="lineNoCov">          0 :             if( !mark )</span>
+<span class="lineNum">     248 </span><span class="lineNoCov">          0 :                 mark = p;</span>
+<span class="lineNum">     249 </span>            :         }
+<span class="lineNum">     250 </span>            :         else
+<span class="lineNum">     251 </span><span class="lineNoCov">          0 :             mark = NULL;</span>
+<span class="lineNum">     252 </span>            :     }
+<span class="lineNum">     253 </span>            : 
+<span class="lineNum">     254 </span><span class="lineNoCov">          0 :     if( mark ) {</span>
+<span class="lineNum">     255 </span><span class="lineNoCov">          0 :         *mark = 0;</span>
+<span class="lineNum">     256 </span><span class="lineNoCov">          0 :         return mark - line;</span>
+<span class="lineNum">     257 </span>            :     }
+<span class="lineNum">     258 </span><span class="lineNoCov">          0 :     return len;</span>
+<span class="lineNum">     259 </span>            : }
+<span class="lineNum">     260 </span>            : 
+<span class="lineNum">     261 </span>            : /****************
+<span class="lineNum">     262 </span>            :  * remove trailing white spaces and return the length of the buffer
+<a name="263"><span class="lineNum">     263 </span>            :  */</a>
+<span class="lineNum">     264 </span>            : unsigned
+<span class="lineNum">     265 </span><span class="lineNoCov">          0 : trim_trailing_ws( byte *line, unsigned len )</span>
+<span class="lineNum">     266 </span>            : {
+<span class="lineNum">     267 </span><span class="lineNoCov">          0 :     return trim_trailing_chars( line, len, &quot; \t\r\n&quot; );</span>
+<span class="lineNum">     268 </span>            : }
+<a name="269"><span class="lineNum">     269 </span>            : </a>
+<span class="lineNum">     270 </span>            : size_t
+<span class="lineNum">     271 </span><span class="lineNoCov">          0 : length_sans_trailing_chars (const unsigned char *line, size_t len,</span>
+<span class="lineNum">     272 </span>            :                             const char *trimchars )
+<span class="lineNum">     273 </span>            : {
+<span class="lineNum">     274 </span>            :   const unsigned char *p, *mark;
+<span class="lineNum">     275 </span>            :   size_t n;
+<span class="lineNum">     276 </span>            : 
+<span class="lineNum">     277 </span><span class="lineNoCov">          0 :   for( mark=NULL, p=line, n=0; n &lt; len; n++, p++ )</span>
+<span class="lineNum">     278 </span>            :     {
+<span class="lineNum">     279 </span><span class="lineNoCov">          0 :       if (strchr (trimchars, *p ))</span>
+<span class="lineNum">     280 </span>            :         {
+<span class="lineNum">     281 </span><span class="lineNoCov">          0 :           if( !mark )</span>
+<span class="lineNum">     282 </span><span class="lineNoCov">          0 :             mark = p;</span>
+<span class="lineNum">     283 </span>            :         }
+<span class="lineNum">     284 </span>            :       else
+<span class="lineNum">     285 </span><span class="lineNoCov">          0 :         mark = NULL;</span>
+<span class="lineNum">     286 </span>            :     }
+<span class="lineNum">     287 </span>            : 
+<span class="lineNum">     288 </span><span class="lineNoCov">          0 :   if (mark)</span>
+<span class="lineNum">     289 </span><span class="lineNoCov">          0 :     return mark - line;</span>
+<span class="lineNum">     290 </span><span class="lineNoCov">          0 :   return len;</span>
+<span class="lineNum">     291 </span>            : }
+<span class="lineNum">     292 </span>            : 
+<span class="lineNum">     293 </span>            : /*
+<span class="lineNum">     294 </span>            :  *  Return the length of line ignoring trailing white-space.
+<a name="295"><span class="lineNum">     295 </span>            :  */</a>
+<span class="lineNum">     296 </span>            : size_t
+<span class="lineNum">     297 </span><span class="lineNoCov">          0 : length_sans_trailing_ws (const unsigned char *line, size_t len)</span>
+<span class="lineNum">     298 </span>            : {
+<span class="lineNum">     299 </span><span class="lineNoCov">          0 :   return length_sans_trailing_chars (line, len, &quot; \t\r\n&quot;);</span>
+<span class="lineNum">     300 </span>            : }
+<span class="lineNum">     301 </span>            : 
+<span class="lineNum">     302 </span>            : 
+<span class="lineNum">     303 </span>            : 
+<span class="lineNum">     304 </span>            : /*
+<span class="lineNum">     305 </span>            :  * Extract from a given path the filename component.  This function
+<span class="lineNum">     306 </span>            :  * terminates the process on memory shortage.
+<a name="307"><span class="lineNum">     307 </span>            :  */</a>
+<span class="lineNum">     308 </span>            : char *
+<span class="lineNum">     309 </span><span class="lineNoCov">          0 : make_basename(const char *filepath, const char *inputpath)</span>
+<span class="lineNum">     310 </span>            : {
+<span class="lineNum">     311 </span>            : #ifdef __riscos__
+<span class="lineNum">     312 </span>            :     return riscos_make_basename(filepath, inputpath);
+<span class="lineNum">     313 </span>            : #else
+<span class="lineNum">     314 </span>            :     char *p;
+<span class="lineNum">     315 </span>            : 
+<span class="lineNum">     316 </span>            :     (void)inputpath; /* Only required for riscos.  */
+<span class="lineNum">     317 </span>            : 
+<span class="lineNum">     318 </span><span class="lineNoCov">          0 :     if ( !(p=strrchr(filepath, '/')) )</span>
+<span class="lineNum">     319 </span>            : #ifdef HAVE_DOSISH_SYSTEM
+<span class="lineNum">     320 </span>            :         if ( !(p=strrchr(filepath, '\\')) )
+<span class="lineNum">     321 </span>            : #endif
+<span class="lineNum">     322 </span>            : #ifdef HAVE_DRIVE_LETTERS
+<span class="lineNum">     323 </span>            :             if ( !(p=strrchr(filepath, ':')) )
+<span class="lineNum">     324 </span>            : #endif
+<span class="lineNum">     325 </span>            :               {
+<span class="lineNum">     326 </span><span class="lineNoCov">          0 :                 return xstrdup(filepath);</span>
+<span class="lineNum">     327 </span>            :               }
+<span class="lineNum">     328 </span>            : 
+<span class="lineNum">     329 </span><span class="lineNoCov">          0 :     return xstrdup(p+1);</span>
+<span class="lineNum">     330 </span>            : #endif
+<span class="lineNum">     331 </span>            : }
+<span class="lineNum">     332 </span>            : 
+<span class="lineNum">     333 </span>            : 
+<span class="lineNum">     334 </span>            : 
+<span class="lineNum">     335 </span>            : /*
+<span class="lineNum">     336 </span>            :  * Extract from a given filename the path prepended to it.  If there
+<span class="lineNum">     337 </span>            :  * isn't a path prepended to the filename, a dot is returned ('.').
+<span class="lineNum">     338 </span>            :  * This function terminates the process on memory shortage.
+<a name="339"><span class="lineNum">     339 </span>            :  */</a>
+<span class="lineNum">     340 </span>            : char *
+<span class="lineNum">     341 </span><span class="lineCov">          1 : make_dirname(const char *filepath)</span>
+<span class="lineNum">     342 </span>            : {
+<span class="lineNum">     343 </span>            :     char *dirname;
+<span class="lineNum">     344 </span>            :     int  dirname_length;
+<span class="lineNum">     345 </span>            :     char *p;
+<span class="lineNum">     346 </span>            : 
+<span class="lineNum">     347 </span><span class="lineCov">          1 :     if ( !(p=strrchr(filepath, '/')) )</span>
+<span class="lineNum">     348 </span>            : #ifdef HAVE_DOSISH_SYSTEM
+<span class="lineNum">     349 </span>            :         if ( !(p=strrchr(filepath, '\\')) )
+<span class="lineNum">     350 </span>            : #endif
+<span class="lineNum">     351 </span>            : #ifdef HAVE_DRIVE_LETTERS
+<span class="lineNum">     352 </span>            :             if ( !(p=strrchr(filepath, ':')) )
+<span class="lineNum">     353 </span>            : #endif
+<span class="lineNum">     354 </span>            :               {
+<span class="lineNum">     355 </span><span class="lineNoCov">          0 :                 return xstrdup(&quot;.&quot;);</span>
+<span class="lineNum">     356 </span>            :               }
+<span class="lineNum">     357 </span>            : 
+<span class="lineNum">     358 </span><span class="lineCov">          1 :     dirname_length = p-filepath;</span>
+<span class="lineNum">     359 </span><span class="lineCov">          1 :     dirname = xmalloc(dirname_length+1);</span>
+<span class="lineNum">     360 </span><span class="lineCov">          1 :     strncpy(dirname, filepath, dirname_length);</span>
+<span class="lineNum">     361 </span><span class="lineCov">          1 :     dirname[dirname_length] = 0;</span>
+<span class="lineNum">     362 </span>            : 
+<span class="lineNum">     363 </span><span class="lineCov">          1 :     return dirname;</span>
+<span class="lineNum">     364 </span>            : }
+<span class="lineNum">     365 </span>            : 
+<span class="lineNum">     366 </span>            : 
+<a name="367"><span class="lineNum">     367 </span>            : </a>
+<span class="lineNum">     368 </span>            : static char *
+<span class="lineNum">     369 </span><span class="lineNoCov">          0 : get_pwdir (int xmode, const char *name)</span>
+<span class="lineNum">     370 </span>            : {
+<span class="lineNum">     371 </span><span class="lineNoCov">          0 :   char *result = NULL;</span>
+<span class="lineNum">     372 </span>            : #ifdef HAVE_PWD_H
+<span class="lineNum">     373 </span><span class="lineNoCov">          0 :   struct passwd *pwd = NULL;</span>
+<span class="lineNum">     374 </span>            : 
+<span class="lineNum">     375 </span><span class="lineNoCov">          0 :   if (name)</span>
+<span class="lineNum">     376 </span>            :     {
+<span class="lineNum">     377 </span>            : #ifdef HAVE_GETPWNAM
+<span class="lineNum">     378 </span>            :       /* Fixme: We should use getpwnam_r if available.  */
+<span class="lineNum">     379 </span><span class="lineNoCov">          0 :       pwd = getpwnam (name);</span>
+<span class="lineNum">     380 </span>            : #endif
+<span class="lineNum">     381 </span>            :     }
+<span class="lineNum">     382 </span>            :   else
+<span class="lineNum">     383 </span>            :     {
+<span class="lineNum">     384 </span>            : #ifdef HAVE_GETPWUID
+<span class="lineNum">     385 </span>            :       /* Fixme: We should use getpwuid_r if available.  */
+<span class="lineNum">     386 </span><span class="lineNoCov">          0 :       pwd = getpwuid (getuid());</span>
+<span class="lineNum">     387 </span>            : #endif
+<span class="lineNum">     388 </span>            :     }
+<span class="lineNum">     389 </span><span class="lineNoCov">          0 :   if (pwd)</span>
+<span class="lineNum">     390 </span>            :     {
+<span class="lineNum">     391 </span><span class="lineNoCov">          0 :       if (xmode)</span>
+<span class="lineNum">     392 </span><span class="lineNoCov">          0 :         result = xstrdup (pwd-&gt;pw_dir);</span>
+<span class="lineNum">     393 </span>            :       else
+<span class="lineNum">     394 </span><span class="lineNoCov">          0 :         result = xtrystrdup (pwd-&gt;pw_dir);</span>
+<span class="lineNum">     395 </span>            :     }
+<span class="lineNum">     396 </span>            : #else /*!HAVE_PWD_H*/
+<span class="lineNum">     397 </span>            :   /* No support at all.  */
+<span class="lineNum">     398 </span>            :   (void)xmode;
+<span class="lineNum">     399 </span>            :   (void)name;
+<span class="lineNum">     400 </span>            : #endif /*HAVE_PWD_H*/
+<span class="lineNum">     401 </span><span class="lineNoCov">          0 :   return result;</span>
+<span class="lineNum">     402 </span>            : }
+<span class="lineNum">     403 </span>            : 
+<span class="lineNum">     404 </span>            : 
+<span class="lineNum">     405 </span>            : /* xmode 0 := Return NULL on error
+<span class="lineNum">     406 </span>            :          1 := Terminate on error
+<span class="lineNum">     407 </span>            :          2 := Make sure that name is absolute; return NULL on error
+<span class="lineNum">     408 </span>            :          3 := Make sure that name is absolute; terminate on error
+<a name="409"><span class="lineNum">     409 </span>            :  */</a>
+<span class="lineNum">     410 </span>            : static char *
+<span class="lineNum">     411 </span><span class="lineCov">          8 : do_make_filename (int xmode, const char *first_part, va_list arg_ptr)</span>
+<span class="lineNum">     412 </span>            : {
+<span class="lineNum">     413 </span>            :   const char *argv[32];
+<span class="lineNum">     414 </span>            :   int argc;
+<span class="lineNum">     415 </span>            :   size_t n;
+<span class="lineNum">     416 </span><span class="lineCov">          8 :   int skip = 1;</span>
+<span class="lineNum">     417 </span><span class="lineCov">          8 :   char *home_buffer = NULL;</span>
+<span class="lineNum">     418 </span>            :   char *name, *home, *p;
+<span class="lineNum">     419 </span>            :   int want_abs;
+<span class="lineNum">     420 </span>            : 
+<span class="lineNum">     421 </span><span class="lineCov">          8 :   want_abs = !!(xmode &amp; 2);</span>
+<span class="lineNum">     422 </span><span class="lineCov">          8 :   xmode &amp;= 1;</span>
+<span class="lineNum">     423 </span>            : 
+<span class="lineNum">     424 </span><span class="lineCov">          8 :   n = strlen (first_part) + 1;</span>
+<span class="lineNum">     425 </span><span class="lineCov">          8 :   argc = 0;</span>
+<span class="lineNum">     426 </span><span class="lineCov">         23 :   while ( (argv[argc] = va_arg (arg_ptr, const char *)) )</span>
+<span class="lineNum">     427 </span>            :     {
+<span class="lineNum">     428 </span><span class="lineCov">          7 :       n += strlen (argv[argc]) + 1;</span>
+<span class="lineNum">     429 </span><span class="lineCov">          7 :       if (argc &gt;= DIM (argv)-1)</span>
+<span class="lineNum">     430 </span>            :         {
+<span class="lineNum">     431 </span><span class="lineNoCov">          0 :           if (xmode)</span>
+<span class="lineNum">     432 </span><span class="lineNoCov">          0 :             BUG ();</span>
+<span class="lineNum">     433 </span><span class="lineNoCov">          0 :           gpg_err_set_errno (EINVAL);</span>
+<span class="lineNum">     434 </span><span class="lineNoCov">          0 :           return NULL;</span>
+<span class="lineNum">     435 </span>            :         }
+<span class="lineNum">     436 </span><span class="lineCov">          7 :       argc++;</span>
+<span class="lineNum">     437 </span>            :     }
+<span class="lineNum">     438 </span><span class="lineCov">          8 :   n++;</span>
+<span class="lineNum">     439 </span>            : 
+<span class="lineNum">     440 </span><span class="lineCov">          8 :   home = NULL;</span>
+<span class="lineNum">     441 </span><span class="lineCov">          8 :   if (*first_part == '~')</span>
+<span class="lineNum">     442 </span>            :     {
+<span class="lineNum">     443 </span><span class="lineCov">          1 :       if (first_part[1] == '/' || !first_part[1])</span>
+<span class="lineNum">     444 </span>            :         {
+<span class="lineNum">     445 </span>            :           /* This is the &quot;~/&quot; or &quot;~&quot; case.  */
+<span class="lineNum">     446 </span><span class="lineCov">          1 :           home = getenv(&quot;HOME&quot;);</span>
+<span class="lineNum">     447 </span><span class="lineCov">          1 :           if (!home)</span>
+<span class="lineNum">     448 </span><span class="lineNoCov">          0 :             home = home_buffer = get_pwdir (xmode, NULL);</span>
+<span class="lineNum">     449 </span><span class="lineCov">          2 :           if (home &amp;&amp; *home)</span>
+<span class="lineNum">     450 </span><span class="lineCov">          1 :             n += strlen (home);</span>
+<span class="lineNum">     451 </span>            :         }
+<span class="lineNum">     452 </span>            :       else
+<span class="lineNum">     453 </span>            :         {
+<span class="lineNum">     454 </span>            :           /* This is the &quot;~username/&quot; or &quot;~username&quot; case.  */
+<span class="lineNum">     455 </span>            :           char *user;
+<span class="lineNum">     456 </span>            : 
+<span class="lineNum">     457 </span><span class="lineNoCov">          0 :           if (xmode)</span>
+<span class="lineNum">     458 </span><span class="lineNoCov">          0 :             user = xstrdup (first_part+1);</span>
+<span class="lineNum">     459 </span>            :           else
+<span class="lineNum">     460 </span>            :             {
+<span class="lineNum">     461 </span><span class="lineNoCov">          0 :               user = xtrystrdup (first_part+1);</span>
+<span class="lineNum">     462 </span><span class="lineNoCov">          0 :               if (!user)</span>
+<span class="lineNum">     463 </span><span class="lineNoCov">          0 :                 return NULL;</span>
+<span class="lineNum">     464 </span>            :             }
+<span class="lineNum">     465 </span><span class="lineNoCov">          0 :           p = strchr (user, '/');</span>
+<span class="lineNum">     466 </span><span class="lineNoCov">          0 :           if (p)</span>
+<span class="lineNum">     467 </span><span class="lineNoCov">          0 :             *p = 0;</span>
+<span class="lineNum">     468 </span><span class="lineNoCov">          0 :           skip = 1 + strlen (user);</span>
+<span class="lineNum">     469 </span>            : 
+<span class="lineNum">     470 </span><span class="lineNoCov">          0 :           home = home_buffer = get_pwdir (xmode, user);</span>
+<span class="lineNum">     471 </span><span class="lineNoCov">          0 :           xfree (user);</span>
+<span class="lineNum">     472 </span><span class="lineNoCov">          0 :           if (home)</span>
+<span class="lineNum">     473 </span><span class="lineNoCov">          0 :             n += strlen (home);</span>
+<span class="lineNum">     474 </span>            :           else
+<span class="lineNum">     475 </span><span class="lineNoCov">          0 :             skip = 1;</span>
+<span class="lineNum">     476 </span>            :         }
+<span class="lineNum">     477 </span>            :     }
+<span class="lineNum">     478 </span>            : 
+<span class="lineNum">     479 </span><span class="lineCov">          8 :   if (xmode)</span>
+<span class="lineNum">     480 </span><span class="lineCov">          8 :     name = xmalloc (n);</span>
+<span class="lineNum">     481 </span>            :   else
+<span class="lineNum">     482 </span>            :     {
+<span class="lineNum">     483 </span><span class="lineNoCov">          0 :       name = xtrymalloc (n);</span>
+<span class="lineNum">     484 </span><span class="lineNoCov">          0 :       if (!name)</span>
+<span class="lineNum">     485 </span>            :         {
+<span class="lineNum">     486 </span><span class="lineNoCov">          0 :           xfree (home_buffer);</span>
+<span class="lineNum">     487 </span><span class="lineNoCov">          0 :           return NULL;</span>
+<span class="lineNum">     488 </span>            :         }
+<span class="lineNum">     489 </span>            :     }
+<span class="lineNum">     490 </span>            : 
+<span class="lineNum">     491 </span><span class="lineCov">          8 :   if (home)</span>
+<span class="lineNum">     492 </span><span class="lineCov">          1 :     p = stpcpy (stpcpy (name, home), first_part + skip);</span>
+<span class="lineNum">     493 </span>            :   else
+<span class="lineNum">     494 </span><span class="lineCov">          7 :     p = stpcpy (name, first_part);</span>
+<span class="lineNum">     495 </span>            : 
+<span class="lineNum">     496 </span><span class="lineCov">          8 :   xfree (home_buffer);</span>
+<span class="lineNum">     497 </span><span class="lineCov">         15 :   for (argc=0; argv[argc]; argc++)</span>
+<span class="lineNum">     498 </span>            :     {
+<span class="lineNum">     499 </span>            :       /* Avoid a leading double slash if the first part was &quot;/&quot;.  */
+<span class="lineNum">     500 </span><span class="lineCov">          7 :       if (!argc &amp;&amp; name[0] == '/' &amp;&amp; !name[1])</span>
+<span class="lineNum">     501 </span><span class="lineNoCov">          0 :         p = stpcpy (p, argv[argc]);</span>
+<span class="lineNum">     502 </span>            :       else
+<span class="lineNum">     503 </span><span class="lineCov">          7 :         p = stpcpy (stpcpy (p, &quot;/&quot;), argv[argc]);</span>
+<span class="lineNum">     504 </span>            :     }
+<span class="lineNum">     505 </span>            : 
+<span class="lineNum">     506 </span><span class="lineCov">          8 :   if (want_abs)</span>
+<span class="lineNum">     507 </span>            :     {
+<span class="lineNum">     508 </span>            : #ifdef HAVE_DRIVE_LETTERS
+<span class="lineNum">     509 </span>            :       p = strchr (name, ':');
+<span class="lineNum">     510 </span>            :       if (p)
+<span class="lineNum">     511 </span>            :         p++;
+<span class="lineNum">     512 </span>            :       else
+<span class="lineNum">     513 </span>            :         p = name;
+<span class="lineNum">     514 </span>            : #else
+<span class="lineNum">     515 </span><span class="lineCov">          1 :       p = name;</span>
+<span class="lineNum">     516 </span>            : #endif
+<span class="lineNum">     517 </span><span class="lineCov">          1 :       if (*p != '/'</span>
+<span class="lineNum">     518 </span>            : #ifdef HAVE_DRIVE_LETTERS
+<span class="lineNum">     519 </span>            :           &amp;&amp; *p != '\\'
+<span class="lineNum">     520 </span>            : #endif
+<span class="lineNum">     521 </span>            :           )
+<span class="lineNum">     522 </span>            :         {
+<span class="lineNum">     523 </span><span class="lineNoCov">          0 :           home = gnupg_getcwd ();</span>
+<span class="lineNum">     524 </span><span class="lineNoCov">          0 :           if (!home)</span>
+<span class="lineNum">     525 </span>            :             {
+<span class="lineNum">     526 </span><span class="lineNoCov">          0 :               if (xmode)</span>
+<span class="lineNum">     527 </span>            :                 {
+<span class="lineNum">     528 </span><span class="lineNoCov">          0 :                   fprintf (stderr, &quot;\nfatal: getcwd failed: %s\n&quot;,</span>
+<span class="lineNum">     529 </span><span class="lineNoCov">          0 :                            strerror (errno));</span>
+<span class="lineNum">     530 </span><span class="lineNoCov">          0 :                   exit(2);</span>
+<span class="lineNum">     531 </span>            :                 }
+<span class="lineNum">     532 </span><span class="lineNoCov">          0 :               xfree (name);</span>
+<span class="lineNum">     533 </span><span class="lineNoCov">          0 :               return NULL;</span>
+<span class="lineNum">     534 </span>            :             }
+<span class="lineNum">     535 </span><span class="lineNoCov">          0 :           n = strlen (home) + 1 + strlen (name) + 1;</span>
+<span class="lineNum">     536 </span><span class="lineNoCov">          0 :           if (xmode)</span>
+<span class="lineNum">     537 </span><span class="lineNoCov">          0 :             home_buffer = xmalloc (n);</span>
+<span class="lineNum">     538 </span>            :           else
+<span class="lineNum">     539 </span>            :             {
+<span class="lineNum">     540 </span><span class="lineNoCov">          0 :               home_buffer = xtrymalloc (n);</span>
+<span class="lineNum">     541 </span><span class="lineNoCov">          0 :               if (!home_buffer)</span>
+<span class="lineNum">     542 </span>            :                 {
+<span class="lineNum">     543 </span><span class="lineNoCov">          0 :                   xfree (home);</span>
+<span class="lineNum">     544 </span><span class="lineNoCov">          0 :                   xfree (name);</span>
+<span class="lineNum">     545 </span><span class="lineNoCov">          0 :                   return NULL;</span>
+<span class="lineNum">     546 </span>            :                 }
+<span class="lineNum">     547 </span>            :             }
+<span class="lineNum">     548 </span><span class="lineNoCov">          0 :           if (p == name)</span>
+<span class="lineNum">     549 </span><span class="lineNoCov">          0 :             p = home_buffer;</span>
+<span class="lineNum">     550 </span>            :           else /* Windows case.  */
+<span class="lineNum">     551 </span>            :             {
+<span class="lineNum">     552 </span><span class="lineNoCov">          0 :               memcpy (home_buffer, p, p - name + 1);</span>
+<span class="lineNum">     553 </span><span class="lineNoCov">          0 :               p = home_buffer + (p - name + 1);</span>
+<span class="lineNum">     554 </span>            :             }
+<span class="lineNum">     555 </span>            : 
+<span class="lineNum">     556 </span>            :           /* Avoid a leading double slash if the cwd is &quot;/&quot;.  */
+<span class="lineNum">     557 </span><span class="lineNoCov">          0 :           if (home[0] == '/' &amp;&amp; !home[1])</span>
+<span class="lineNum">     558 </span><span class="lineNoCov">          0 :             strcpy (stpcpy (p, &quot;/&quot;), name);</span>
+<span class="lineNum">     559 </span>            :           else
+<span class="lineNum">     560 </span><span class="lineNoCov">          0 :             strcpy (stpcpy (stpcpy (p, home), &quot;/&quot;), name);</span>
+<span class="lineNum">     561 </span>            : 
+<span class="lineNum">     562 </span><span class="lineNoCov">          0 :           xfree (home);</span>
+<span class="lineNum">     563 </span><span class="lineNoCov">          0 :           xfree (name);</span>
+<span class="lineNum">     564 </span><span class="lineNoCov">          0 :           name = home_buffer;</span>
+<span class="lineNum">     565 </span>            :           /* Let's do a simple compression to catch the most common
+<span class="lineNum">     566 </span>            :              case of using &quot;.&quot; for gpg's --homedir option.  */
+<span class="lineNum">     567 </span><span class="lineNoCov">          0 :           n = strlen (name);</span>
+<span class="lineNum">     568 </span><span class="lineNoCov">          0 :           if (n &gt; 2 &amp;&amp; name[n-2] == '/' &amp;&amp; name[n-1] == '.')</span>
+<span class="lineNum">     569 </span><span class="lineNoCov">          0 :             name[n-2] = 0;</span>
+<span class="lineNum">     570 </span>            :         }
+<span class="lineNum">     571 </span>            :     }
+<span class="lineNum">     572 </span><span class="lineCov">          8 :   return change_slashes (name);</span>
+<span class="lineNum">     573 </span>            : }
+<span class="lineNum">     574 </span>            : 
+<span class="lineNum">     575 </span>            : /* Construct a filename from the NULL terminated list of parts.  Tilde
+<span class="lineNum">     576 </span>            :    expansion is done for the first argument.  This function terminates
+<a name="577"><span class="lineNum">     577 </span>            :    the process on memory shortage. */</a>
+<span class="lineNum">     578 </span>            : char *
+<span class="lineNum">     579 </span><span class="lineCov">          7 : make_filename (const char *first_part, ... )</span>
+<span class="lineNum">     580 </span>            : {
+<span class="lineNum">     581 </span>            :   va_list arg_ptr;
+<span class="lineNum">     582 </span>            :   char *result;
+<span class="lineNum">     583 </span>            : 
+<span class="lineNum">     584 </span><span class="lineCov">          7 :   va_start (arg_ptr, first_part);</span>
+<span class="lineNum">     585 </span><span class="lineCov">          7 :   result = do_make_filename (1, first_part, arg_ptr);</span>
+<span class="lineNum">     586 </span><span class="lineCov">          7 :   va_end (arg_ptr);</span>
+<span class="lineNum">     587 </span><span class="lineCov">          7 :   return result;</span>
+<span class="lineNum">     588 </span>            : }
+<span class="lineNum">     589 </span>            : 
+<span class="lineNum">     590 </span>            : /* Construct a filename from the NULL terminated list of parts.  Tilde
+<span class="lineNum">     591 </span>            :    expansion is done for the first argument.  This function may return
+<a name="592"><span class="lineNum">     592 </span>            :    NULL on error. */</a>
+<span class="lineNum">     593 </span>            : char *
+<span class="lineNum">     594 </span><span class="lineNoCov">          0 : make_filename_try (const char *first_part, ... )</span>
+<span class="lineNum">     595 </span>            : {
+<span class="lineNum">     596 </span>            :   va_list arg_ptr;
+<span class="lineNum">     597 </span>            :   char *result;
+<span class="lineNum">     598 </span>            : 
+<span class="lineNum">     599 </span><span class="lineNoCov">          0 :   va_start (arg_ptr, first_part);</span>
+<span class="lineNum">     600 </span><span class="lineNoCov">          0 :   result = do_make_filename (0, first_part, arg_ptr);</span>
+<span class="lineNum">     601 </span><span class="lineNoCov">          0 :   va_end (arg_ptr);</span>
+<span class="lineNum">     602 </span><span class="lineNoCov">          0 :   return result;</span>
+<span class="lineNum">     603 </span>            : }
+<span class="lineNum">     604 </span>            : 
+<span class="lineNum">     605 </span>            : /* Construct an absolute filename from the NULL terminated list of
+<span class="lineNum">     606 </span>            :    parts.  Tilde expansion is done for the first argument.  This
+<a name="607"><span class="lineNum">     607 </span>            :    function terminates the process on memory shortage. */</a>
+<span class="lineNum">     608 </span>            : char *
+<span class="lineNum">     609 </span><span class="lineCov">          1 : make_absfilename (const char *first_part, ... )</span>
+<span class="lineNum">     610 </span>            : {
+<span class="lineNum">     611 </span>            :   va_list arg_ptr;
+<span class="lineNum">     612 </span>            :   char *result;
+<span class="lineNum">     613 </span>            : 
+<span class="lineNum">     614 </span><span class="lineCov">          1 :   va_start (arg_ptr, first_part);</span>
+<span class="lineNum">     615 </span><span class="lineCov">          1 :   result = do_make_filename (3, first_part, arg_ptr);</span>
+<span class="lineNum">     616 </span><span class="lineCov">          1 :   va_end (arg_ptr);</span>
+<span class="lineNum">     617 </span><span class="lineCov">          1 :   return result;</span>
+<span class="lineNum">     618 </span>            : }
+<span class="lineNum">     619 </span>            : 
+<span class="lineNum">     620 </span>            : /* Construct an absolute filename from the NULL terminated list of
+<span class="lineNum">     621 </span>            :    parts.  Tilde expansion is done for the first argument.  This
+<a name="622"><span class="lineNum">     622 </span>            :    function may return NULL on error. */</a>
+<span class="lineNum">     623 </span>            : char *
+<span class="lineNum">     624 </span><span class="lineNoCov">          0 : make_absfilename_try (const char *first_part, ... )</span>
+<span class="lineNum">     625 </span>            : {
+<span class="lineNum">     626 </span>            :   va_list arg_ptr;
+<span class="lineNum">     627 </span>            :   char *result;
+<span class="lineNum">     628 </span>            : 
+<span class="lineNum">     629 </span><span class="lineNoCov">          0 :   va_start (arg_ptr, first_part);</span>
+<span class="lineNum">     630 </span><span class="lineNoCov">          0 :   result = do_make_filename (2, first_part, arg_ptr);</span>
+<span class="lineNum">     631 </span><span class="lineNoCov">          0 :   va_end (arg_ptr);</span>
+<span class="lineNum">     632 </span><span class="lineNoCov">          0 :   return result;</span>
+<span class="lineNum">     633 </span>            : }
+<span class="lineNum">     634 </span>            : 
+<span class="lineNum">     635 </span>            : 
+<span class="lineNum">     636 </span>            : 
+<span class="lineNum">     637 </span>            : /* Compare whether the filenames are identical.  This is a
+<span class="lineNum">     638 </span>            :    special version of strcmp() taking the semantics of filenames in
+<span class="lineNum">     639 </span>            :    account.  Note that this function works only on the supplied names
+<span class="lineNum">     640 </span>            :    without considering any context like the current directory.  See
+<a name="641"><span class="lineNum">     641 </span>            :    also same_file_p(). */</a>
+<span class="lineNum">     642 </span>            : int
+<span class="lineNum">     643 </span><span class="lineNoCov">          0 : compare_filenames (const char *a, const char *b)</span>
+<span class="lineNum">     644 </span>            : {
+<span class="lineNum">     645 </span>            : #ifdef HAVE_DOSISH_SYSTEM
+<span class="lineNum">     646 </span>            :   for ( ; *a &amp;&amp; *b; a++, b++ )
+<span class="lineNum">     647 </span>            :     {
+<span class="lineNum">     648 </span>            :       if (*a != *b
+<span class="lineNum">     649 </span>            :           &amp;&amp; (toupper (*(const unsigned char*)a)
+<span class="lineNum">     650 </span>            :               != toupper (*(const unsigned char*)b) )
+<span class="lineNum">     651 </span>            :           &amp;&amp; !((*a == '/' &amp;&amp; *b == '\\') || (*a == '\\' &amp;&amp; *b == '/')))
+<span class="lineNum">     652 </span>            :         break;
+<span class="lineNum">     653 </span>            :     }
+<span class="lineNum">     654 </span>            :   if ((*a == '/' &amp;&amp; *b == '\\') || (*a == '\\' &amp;&amp; *b == '/'))
+<span class="lineNum">     655 </span>            :     return 0;
+<span class="lineNum">     656 </span>            :   else
+<span class="lineNum">     657 </span>            :     return (toupper (*(const unsigned char*)a)
+<span class="lineNum">     658 </span>            :             - toupper (*(const unsigned char*)b));
+<span class="lineNum">     659 </span>            : #else
+<span class="lineNum">     660 </span><span class="lineNoCov">          0 :     return strcmp(a,b);</span>
+<span class="lineNum">     661 </span>            : #endif
+<span class="lineNum">     662 </span>            : }
+<span class="lineNum">     663 </span>            : 
+<span class="lineNum">     664 </span>            : 
+<span class="lineNum">     665 </span>            : /* Convert a base-10 number in STRING into a 64 bit unsigned int
+<span class="lineNum">     666 </span>            :  * value.  Leading white spaces are skipped but no error checking is
+<a name="667"><span class="lineNum">     667 </span>            :  * done.  Thus it is similar to atoi(). */</a>
+<span class="lineNum">     668 </span>            : uint64_t
+<span class="lineNum">     669 </span><span class="lineNoCov">          0 : string_to_u64 (const char *string)</span>
+<span class="lineNum">     670 </span>            : {
+<span class="lineNum">     671 </span><span class="lineNoCov">          0 :   uint64_t val = 0;</span>
+<span class="lineNum">     672 </span>            : 
+<span class="lineNum">     673 </span><span class="lineNoCov">          0 :   while (spacep (string))</span>
+<span class="lineNum">     674 </span><span class="lineNoCov">          0 :     string++;</span>
+<span class="lineNum">     675 </span><span class="lineNoCov">          0 :   for (; digitp (string); string++)</span>
+<span class="lineNum">     676 </span>            :     {
+<span class="lineNum">     677 </span><span class="lineNoCov">          0 :       val *= 10;</span>
+<span class="lineNum">     678 </span><span class="lineNoCov">          0 :       val += *string - '0';</span>
+<span class="lineNum">     679 </span>            :     }
+<span class="lineNum">     680 </span><span class="lineNoCov">          0 :   return val;</span>
+<span class="lineNum">     681 </span>            : }
+<span class="lineNum">     682 </span>            : 
+<span class="lineNum">     683 </span>            : 
+<span class="lineNum">     684 </span>            : /* Convert 2 hex characters at S to a byte value.  Return this value
+<a name="685"><span class="lineNum">     685 </span>            :    or -1 if there is an error. */</a>
+<span class="lineNum">     686 </span>            : int
+<span class="lineNum">     687 </span><span class="lineCov">         20 : hextobyte (const char *s)</span>
+<span class="lineNum">     688 </span>            : {
+<span class="lineNum">     689 </span>            :   int c;
+<span class="lineNum">     690 </span>            : 
+<span class="lineNum">     691 </span><span class="lineCov">         20 :   if ( *s &gt;= '0' &amp;&amp; *s &lt;= '9' )</span>
+<span class="lineNum">     692 </span><span class="lineCov">         11 :     c = 16 * (*s - '0');</span>
+<span class="lineNum">     693 </span><span class="lineCov">          9 :   else if ( *s &gt;= 'A' &amp;&amp; *s &lt;= 'F' )</span>
+<span class="lineNum">     694 </span><span class="lineCov">          9 :     c = 16 * (10 + *s - 'A');</span>
+<span class="lineNum">     695 </span><span class="lineNoCov">          0 :   else if ( *s &gt;= 'a' &amp;&amp; *s &lt;= 'f' )</span>
+<span class="lineNum">     696 </span><span class="lineNoCov">          0 :     c = 16 * (10 + *s - 'a');</span>
+<span class="lineNum">     697 </span>            :   else
+<span class="lineNum">     698 </span><span class="lineNoCov">          0 :     return -1;</span>
+<span class="lineNum">     699 </span><span class="lineCov">         20 :   s++;</span>
+<span class="lineNum">     700 </span><span class="lineCov">         20 :   if ( *s &gt;= '0' &amp;&amp; *s &lt;= '9' )</span>
+<span class="lineNum">     701 </span><span class="lineCov">         17 :     c += *s - '0';</span>
+<span class="lineNum">     702 </span><span class="lineCov">          3 :   else if ( *s &gt;= 'A' &amp;&amp; *s &lt;= 'F' )</span>
+<span class="lineNum">     703 </span><span class="lineCov">          3 :     c += 10 + *s - 'A';</span>
+<span class="lineNum">     704 </span><span class="lineNoCov">          0 :   else if ( *s &gt;= 'a' &amp;&amp; *s &lt;= 'f' )</span>
+<span class="lineNum">     705 </span><span class="lineNoCov">          0 :     c += 10 + *s - 'a';</span>
+<span class="lineNum">     706 </span>            :   else
+<span class="lineNum">     707 </span><span class="lineNoCov">          0 :     return -1;</span>
+<span class="lineNum">     708 </span><span class="lineCov">         20 :   return c;</span>
+<span class="lineNum">     709 </span>            : }
+<span class="lineNum">     710 </span>            : 
+<span class="lineNum">     711 </span>            : /* Given a string containing an UTF-8 encoded text, return the number
+<span class="lineNum">     712 </span>            :    of characters in this string.  It differs from strlen in that it
+<span class="lineNum">     713 </span>            :    only counts complete UTF-8 characters.  SIZE is the maximum length
+<span class="lineNum">     714 </span>            :    of the string in bytes.  If SIZE is -1, then a NUL character is
+<span class="lineNum">     715 </span>            :    taken to be the end of the string.  Note, that this function does
+<a name="716"><span class="lineNum">     716 </span>            :    not take combined characters into account.  */</a>
+<span class="lineNum">     717 </span>            : size_t
+<span class="lineNum">     718 </span><span class="lineNoCov">          0 : utf8_charcount (const char *s, int len)</span>
+<span class="lineNum">     719 </span>            : {
+<span class="lineNum">     720 </span>            :   size_t n;
+<span class="lineNum">     721 </span>            : 
+<span class="lineNum">     722 </span><span class="lineNoCov">          0 :   if (len == 0)</span>
+<span class="lineNum">     723 </span><span class="lineNoCov">          0 :     return 0;</span>
+<span class="lineNum">     724 </span>            : 
+<span class="lineNum">     725 </span><span class="lineNoCov">          0 :   for (n=0; *s; s++)</span>
+<span class="lineNum">     726 </span>            :     {
+<span class="lineNum">     727 </span><span class="lineNoCov">          0 :       if ( (*s&amp;0xc0) != 0x80 ) /* Exclude continuation bytes: 10xxxxxx */</span>
+<span class="lineNum">     728 </span><span class="lineNoCov">          0 :         n++;</span>
+<span class="lineNum">     729 </span>            : 
+<span class="lineNum">     730 </span><span class="lineNoCov">          0 :       if (len != -1)</span>
+<span class="lineNum">     731 </span>            :         {
+<span class="lineNum">     732 </span><span class="lineNoCov">          0 :           len --;</span>
+<span class="lineNum">     733 </span><span class="lineNoCov">          0 :           if (len == 0)</span>
+<span class="lineNum">     734 </span><span class="lineNoCov">          0 :             break;</span>
+<span class="lineNum">     735 </span>            :         }
+<span class="lineNum">     736 </span>            :     }
+<span class="lineNum">     737 </span>            : 
+<span class="lineNum">     738 </span><span class="lineNoCov">          0 :   return n;</span>
+<span class="lineNum">     739 </span>            : }
+<span class="lineNum">     740 </span>            : 
+<span class="lineNum">     741 </span>            : 
+<span class="lineNum">     742 </span>            : /****************************************************
+<span class="lineNum">     743 </span>            :  **********  W32 specific functions  ****************
+<span class="lineNum">     744 </span>            :  ****************************************************/
+<span class="lineNum">     745 </span>            : 
+<span class="lineNum">     746 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     747 </span>            : const char *
+<span class="lineNum">     748 </span>            : w32_strerror (int ec)
+<span class="lineNum">     749 </span>            : {
+<span class="lineNum">     750 </span>            :   static char strerr[256];
+<span class="lineNum">     751 </span>            : 
+<span class="lineNum">     752 </span>            :   if (ec == -1)
+<span class="lineNum">     753 </span>            :     ec = (int)GetLastError ();
+<span class="lineNum">     754 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">     755 </span>            :   /* There is only a wchar_t FormatMessage.  It does not make much
+<span class="lineNum">     756 </span>            :      sense to play the conversion game; we print only the code.  */
+<span class="lineNum">     757 </span>            :   snprintf (strerr, sizeof strerr, &quot;ec=%d&quot;, (int)GetLastError ());
+<span class="lineNum">     758 </span>            : #else
+<span class="lineNum">     759 </span>            :   FormatMessage (FORMAT_MESSAGE_FROM_SYSTEM, NULL, ec,
+<span class="lineNum">     760 </span>            :                  MAKELANGID (LANG_NEUTRAL, SUBLANG_DEFAULT),
+<span class="lineNum">     761 </span>            :                  strerr, DIM (strerr)-1, NULL);
+<span class="lineNum">     762 </span>            : #endif
+<span class="lineNum">     763 </span>            :   return strerr;
+<span class="lineNum">     764 </span>            : }
+<span class="lineNum">     765 </span>            : #endif /*HAVE_W32_SYSTEM*/
+<span class="lineNum">     766 </span>            : 
+<span class="lineNum">     767 </span>            : 
+<span class="lineNum">     768 </span>            : /****************************************************
+<span class="lineNum">     769 </span>            :  ******** Locale insensitive ctype functions ********
+<span class="lineNum">     770 </span>            :  ****************************************************/
+<a name="771"><span class="lineNum">     771 </span>            : /* FIXME: replace them by a table lookup and macros */</a>
+<span class="lineNum">     772 </span>            : int
+<span class="lineNum">     773 </span><span class="lineNoCov">          0 : ascii_isupper (int c)</span>
+<span class="lineNum">     774 </span>            : {
+<span class="lineNum">     775 </span><span class="lineNoCov">          0 :     return c &gt;= 'A' &amp;&amp; c &lt;= 'Z';</span>
+<span class="lineNum">     776 </span>            : }
+<a name="777"><span class="lineNum">     777 </span>            : </a>
+<span class="lineNum">     778 </span>            : int
+<span class="lineNum">     779 </span><span class="lineNoCov">          0 : ascii_islower (int c)</span>
+<span class="lineNum">     780 </span>            : {
+<span class="lineNum">     781 </span><span class="lineNoCov">          0 :     return c &gt;= 'a' &amp;&amp; c &lt;= 'z';</span>
+<span class="lineNum">     782 </span>            : }
+<a name="783"><span class="lineNum">     783 </span>            : </a>
+<span class="lineNum">     784 </span>            : int
+<span class="lineNum">     785 </span><span class="lineCov">         44 : ascii_toupper (int c)</span>
+<span class="lineNum">     786 </span>            : {
+<span class="lineNum">     787 </span><span class="lineCov">         44 :     if (c &gt;= 'a' &amp;&amp; c &lt;= 'z')</span>
+<span class="lineNum">     788 </span><span class="lineCov">         16 :         c &amp;= ~0x20;</span>
+<span class="lineNum">     789 </span><span class="lineCov">         44 :     return c;</span>
+<span class="lineNum">     790 </span>            : }
+<a name="791"><span class="lineNum">     791 </span>            : </a>
+<span class="lineNum">     792 </span>            : int
+<span class="lineNum">     793 </span><span class="lineCov">         41 : ascii_tolower (int c)</span>
+<span class="lineNum">     794 </span>            : {
+<span class="lineNum">     795 </span><span class="lineCov">         41 :     if (c &gt;= 'A' &amp;&amp; c &lt;= 'Z')</span>
+<span class="lineNum">     796 </span><span class="lineNoCov">          0 :         c |= 0x20;</span>
+<span class="lineNum">     797 </span><span class="lineCov">         41 :     return c;</span>
+<span class="lineNum">     798 </span>            : }
+<span class="lineNum">     799 </span>            : 
+<a name="800"><span class="lineNum">     800 </span>            : /* Lowercase all ASCII characters in S.  */</a>
+<span class="lineNum">     801 </span>            : char *
+<span class="lineNum">     802 </span><span class="lineNoCov">          0 : ascii_strlwr (char *s)</span>
+<span class="lineNum">     803 </span>            : {
+<span class="lineNum">     804 </span><span class="lineNoCov">          0 :   char *p = s;</span>
+<span class="lineNum">     805 </span>            : 
+<span class="lineNum">     806 </span><span class="lineNoCov">          0 :   for (p=s; *p; p++ )</span>
+<span class="lineNum">     807 </span><span class="lineNoCov">          0 :     if (isascii (*p) &amp;&amp; *p &gt;= 'A' &amp;&amp; *p &lt;= 'Z')</span>
+<span class="lineNum">     808 </span><span class="lineNoCov">          0 :       *p |= 0x20;</span>
+<span class="lineNum">     809 </span>            : 
+<span class="lineNum">     810 </span><span class="lineNoCov">          0 :   return s;</span>
+<span class="lineNum">     811 </span>            : }
+<a name="812"><span class="lineNum">     812 </span>            : </a>
+<span class="lineNum">     813 </span>            : int
+<span class="lineNum">     814 </span><span class="lineCov">          8 : ascii_strcasecmp( const char *a, const char *b )</span>
+<span class="lineNum">     815 </span>            : {
+<span class="lineNum">     816 </span><span class="lineCov">          8 :     if (a == b)</span>
+<span class="lineNum">     817 </span><span class="lineNoCov">          0 :         return 0;</span>
+<span class="lineNum">     818 </span>            : 
+<span class="lineNum">     819 </span><span class="lineCov">         16 :     for (; *a &amp;&amp; *b; a++, b++) {</span>
+<span class="lineNum">     820 </span><span class="lineCov">         15 :         if (*a != *b &amp;&amp; ascii_toupper(*a) != ascii_toupper(*b))</span>
+<span class="lineNum">     821 </span><span class="lineCov">          7 :             break;</span>
+<span class="lineNum">     822 </span>            :     }
+<span class="lineNum">     823 </span><span class="lineCov">          8 :     return *a == *b? 0 : (ascii_toupper (*a) - ascii_toupper (*b));</span>
+<span class="lineNum">     824 </span>            : }
+<a name="825"><span class="lineNum">     825 </span>            : </a>
+<span class="lineNum">     826 </span>            : int
+<span class="lineNum">     827 </span><span class="lineCov">          1 : ascii_strncasecmp (const char *a, const char *b, size_t n)</span>
+<span class="lineNum">     828 </span>            : {
+<span class="lineNum">     829 </span><span class="lineCov">          1 :   const unsigned char *p1 = (const unsigned char *)a;</span>
+<span class="lineNum">     830 </span><span class="lineCov">          1 :   const unsigned char *p2 = (const unsigned char *)b;</span>
+<span class="lineNum">     831 </span>            :   unsigned char c1, c2;
+<span class="lineNum">     832 </span>            : 
+<span class="lineNum">     833 </span><span class="lineCov">          1 :   if (p1 == p2 || !n )</span>
+<span class="lineNum">     834 </span><span class="lineNoCov">          0 :     return 0;</span>
+<span class="lineNum">     835 </span>            : 
+<span class="lineNum">     836 </span>            :   do
+<span class="lineNum">     837 </span>            :     {
+<span class="lineNum">     838 </span><span class="lineCov">         19 :       c1 = ascii_tolower (*p1);</span>
+<span class="lineNum">     839 </span><span class="lineCov">         19 :       c2 = ascii_tolower (*p2);</span>
+<span class="lineNum">     840 </span>            : 
+<span class="lineNum">     841 </span><span class="lineCov">         19 :       if ( !--n || c1 == '\0')</span>
+<span class="lineNum">     842 </span>            :         break;
+<span class="lineNum">     843 </span>            : 
+<span class="lineNum">     844 </span><span class="lineCov">         18 :       ++p1;</span>
+<span class="lineNum">     845 </span><span class="lineCov">         18 :       ++p2;</span>
+<span class="lineNum">     846 </span>            :     }
+<span class="lineNum">     847 </span><span class="lineCov">         18 :   while (c1 == c2);</span>
+<span class="lineNum">     848 </span>            : 
+<span class="lineNum">     849 </span><span class="lineCov">          1 :   return c1 - c2;</span>
+<span class="lineNum">     850 </span>            : }
+<span class="lineNum">     851 </span>            : 
+<a name="852"><span class="lineNum">     852 </span>            : </a>
+<span class="lineNum">     853 </span>            : int
+<span class="lineNum">     854 </span><span class="lineCov">          1 : ascii_memcasecmp (const void *a_arg, const void *b_arg, size_t n )</span>
+<span class="lineNum">     855 </span>            : {
+<span class="lineNum">     856 </span><span class="lineCov">          1 :   const char *a = a_arg;</span>
+<span class="lineNum">     857 </span><span class="lineCov">          1 :   const char *b = b_arg;</span>
+<span class="lineNum">     858 </span>            : 
+<span class="lineNum">     859 </span><span class="lineCov">          1 :   if (a == b)</span>
+<span class="lineNum">     860 </span><span class="lineNoCov">          0 :     return 0;</span>
+<span class="lineNum">     861 </span><span class="lineCov">          1 :   for ( ; n; n--, a++, b++ )</span>
+<span class="lineNum">     862 </span>            :     {
+<span class="lineNum">     863 </span><span class="lineCov">          1 :       if( *a != *b  &amp;&amp; ascii_toupper (*a) != ascii_toupper (*b) )</span>
+<span class="lineNum">     864 </span><span class="lineCov">          1 :         return *a == *b? 0 : (ascii_toupper (*a) - ascii_toupper (*b));</span>
+<span class="lineNum">     865 </span>            :     }
+<span class="lineNum">     866 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     867 </span>            : }
+<a name="868"><span class="lineNum">     868 </span>            : </a>
+<span class="lineNum">     869 </span>            : int
+<span class="lineNum">     870 </span><span class="lineNoCov">          0 : ascii_strcmp( const char *a, const char *b )</span>
+<span class="lineNum">     871 </span>            : {
+<span class="lineNum">     872 </span><span class="lineNoCov">          0 :     if (a == b)</span>
+<span class="lineNum">     873 </span><span class="lineNoCov">          0 :         return 0;</span>
+<span class="lineNum">     874 </span>            : 
+<span class="lineNum">     875 </span><span class="lineNoCov">          0 :     for (; *a &amp;&amp; *b; a++, b++) {</span>
+<span class="lineNum">     876 </span><span class="lineNoCov">          0 :         if (*a != *b )</span>
+<span class="lineNum">     877 </span><span class="lineNoCov">          0 :             break;</span>
+<span class="lineNum">     878 </span>            :     }
+<span class="lineNum">     879 </span><span class="lineNoCov">          0 :     return *a == *b? 0 : (*(signed char *)a - *(signed char *)b);</span>
+<span class="lineNum">     880 </span>            : }
+<span class="lineNum">     881 </span>            : 
+<a name="882"><span class="lineNum">     882 </span>            : </a>
+<span class="lineNum">     883 </span>            : void *
+<span class="lineNum">     884 </span><span class="lineNoCov">          0 : ascii_memcasemem (const void *haystack, size_t nhaystack,</span>
+<span class="lineNum">     885 </span>            :                   const void *needle, size_t nneedle)
+<span class="lineNum">     886 </span>            : {
+<span class="lineNum">     887 </span>            : 
+<span class="lineNum">     888 </span><span class="lineNoCov">          0 :   if (!nneedle)</span>
+<span class="lineNum">     889 </span><span class="lineNoCov">          0 :     return (void*)haystack; /* finding an empty needle is really easy */</span>
+<span class="lineNum">     890 </span><span class="lineNoCov">          0 :   if (nneedle &lt;= nhaystack)</span>
+<span class="lineNum">     891 </span>            :     {
+<span class="lineNum">     892 </span><span class="lineNoCov">          0 :       const char *a = haystack;</span>
+<span class="lineNum">     893 </span><span class="lineNoCov">          0 :       const char *b = a + nhaystack - nneedle;</span>
+<span class="lineNum">     894 </span>            : 
+<span class="lineNum">     895 </span><span class="lineNoCov">          0 :       for (; a &lt;= b; a++)</span>
+<span class="lineNum">     896 </span>            :         {
+<span class="lineNum">     897 </span><span class="lineNoCov">          0 :           if ( !ascii_memcasecmp (a, needle, nneedle) )</span>
+<span class="lineNum">     898 </span><span class="lineNoCov">          0 :             return (void *)a;</span>
+<span class="lineNum">     899 </span>            :         }
+<span class="lineNum">     900 </span>            :     }
+<span class="lineNum">     901 </span><span class="lineNoCov">          0 :   return NULL;</span>
+<span class="lineNum">     902 </span>            : }
+<span class="lineNum">     903 </span>            : 
+<span class="lineNum">     904 </span>            : /*********************************************
+<span class="lineNum">     905 </span>            :  ********** missing string functions *********
+<span class="lineNum">     906 </span>            :  *********************************************/
+<span class="lineNum">     907 </span>            : 
+<span class="lineNum">     908 </span>            : #ifndef HAVE_STPCPY
+<span class="lineNum">     909 </span>            : char *
+<span class="lineNum">     910 </span>            : stpcpy(char *a,const char *b)
+<span class="lineNum">     911 </span>            : {
+<span class="lineNum">     912 </span>            :     while( *b )
+<span class="lineNum">     913 </span>            :         *a++ = *b++;
+<span class="lineNum">     914 </span>            :     *a = 0;
+<span class="lineNum">     915 </span>            : 
+<span class="lineNum">     916 </span>            :     return (char*)a;
+<span class="lineNum">     917 </span>            : }
+<span class="lineNum">     918 </span>            : #endif
+<span class="lineNum">     919 </span>            : 
+<span class="lineNum">     920 </span>            : #ifndef HAVE_STRPBRK
+<span class="lineNum">     921 </span>            : /* Find the first occurrence in S of any character in ACCEPT.
+<span class="lineNum">     922 </span>            :    Code taken from glibc-2.6/string/strpbrk.c (LGPLv2.1+) and modified. */
+<span class="lineNum">     923 </span>            : char *
+<span class="lineNum">     924 </span>            : strpbrk (const char *s, const char *accept)
+<span class="lineNum">     925 </span>            : {
+<span class="lineNum">     926 </span>            :   while (*s != '\0')
+<span class="lineNum">     927 </span>            :     {
+<span class="lineNum">     928 </span>            :       const char *a = accept;
+<span class="lineNum">     929 </span>            :       while (*a != '\0')
+<span class="lineNum">     930 </span>            :         if (*a++ == *s)
+<span class="lineNum">     931 </span>            :           return (char *) s;
+<span class="lineNum">     932 </span>            :       ++s;
+<span class="lineNum">     933 </span>            :     }
+<span class="lineNum">     934 </span>            : 
+<span class="lineNum">     935 </span>            :   return NULL;
+<span class="lineNum">     936 </span>            : }
+<span class="lineNum">     937 </span>            : #endif /*!HAVE_STRPBRK*/
+<span class="lineNum">     938 </span>            : 
+<span class="lineNum">     939 </span>            : 
+<span class="lineNum">     940 </span>            : #ifndef HAVE_STRSEP
+<span class="lineNum">     941 </span>            : /* Code taken from glibc-2.2.1/sysdeps/generic/strsep.c. */
+<span class="lineNum">     942 </span>            : char *
+<span class="lineNum">     943 </span>            : strsep (char **stringp, const char *delim)
+<span class="lineNum">     944 </span>            : {
+<span class="lineNum">     945 </span>            :   char *begin, *end;
+<span class="lineNum">     946 </span>            : 
+<span class="lineNum">     947 </span>            :   begin = *stringp;
+<span class="lineNum">     948 </span>            :   if (begin == NULL)
+<span class="lineNum">     949 </span>            :     return NULL;
+<span class="lineNum">     950 </span>            : 
+<span class="lineNum">     951 </span>            :   /* A frequent case is when the delimiter string contains only one
+<span class="lineNum">     952 </span>            :      character.  Here we don't need to call the expensive 'strpbrk'
+<span class="lineNum">     953 </span>            :      function and instead work using 'strchr'.  */
+<span class="lineNum">     954 </span>            :   if (delim[0] == '\0' || delim[1] == '\0')
+<span class="lineNum">     955 </span>            :     {
+<span class="lineNum">     956 </span>            :       char ch = delim[0];
+<span class="lineNum">     957 </span>            : 
+<span class="lineNum">     958 </span>            :       if (ch == '\0')
+<span class="lineNum">     959 </span>            :         end = NULL;
+<span class="lineNum">     960 </span>            :       else
+<span class="lineNum">     961 </span>            :         {
+<span class="lineNum">     962 </span>            :           if (*begin == ch)
+<span class="lineNum">     963 </span>            :             end = begin;
+<span class="lineNum">     964 </span>            :           else if (*begin == '\0')
+<span class="lineNum">     965 </span>            :             end = NULL;
+<span class="lineNum">     966 </span>            :           else
+<span class="lineNum">     967 </span>            :             end = strchr (begin + 1, ch);
+<span class="lineNum">     968 </span>            :         }
+<span class="lineNum">     969 </span>            :     }
+<span class="lineNum">     970 </span>            :   else
+<span class="lineNum">     971 </span>            :     /* Find the end of the token.  */
+<span class="lineNum">     972 </span>            :     end = strpbrk (begin, delim);
+<span class="lineNum">     973 </span>            : 
+<span class="lineNum">     974 </span>            :   if (end)
+<span class="lineNum">     975 </span>            :     {
+<span class="lineNum">     976 </span>            :       /* Terminate the token and set *STRINGP past NUL character.  */
+<span class="lineNum">     977 </span>            :       *end++ = '\0';
+<span class="lineNum">     978 </span>            :       *stringp = end;
+<span class="lineNum">     979 </span>            :     }
+<span class="lineNum">     980 </span>            :   else
+<span class="lineNum">     981 </span>            :     /* No more delimiters; this is the last token.  */
+<span class="lineNum">     982 </span>            :     *stringp = NULL;
+<span class="lineNum">     983 </span>            : 
+<span class="lineNum">     984 </span>            :   return begin;
+<span class="lineNum">     985 </span>            : }
+<span class="lineNum">     986 </span>            : #endif /*HAVE_STRSEP*/
+<span class="lineNum">     987 </span>            : 
+<span class="lineNum">     988 </span>            : 
+<a name="989"><span class="lineNum">     989 </span>            : #ifndef HAVE_STRLWR</a>
+<span class="lineNum">     990 </span>            : char *
+<span class="lineNum">     991 </span><span class="lineNoCov">          0 : strlwr(char *s)</span>
+<span class="lineNum">     992 </span>            : {
+<span class="lineNum">     993 </span>            :     char *p;
+<span class="lineNum">     994 </span><span class="lineNoCov">          0 :     for(p=s; *p; p++ )</span>
+<span class="lineNum">     995 </span><span class="lineNoCov">          0 :         *p = tolower(*p);</span>
+<span class="lineNum">     996 </span><span class="lineNoCov">          0 :     return s;</span>
+<span class="lineNum">     997 </span>            : }
+<span class="lineNum">     998 </span>            : #endif
+<span class="lineNum">     999 </span>            : 
+<span class="lineNum">    1000 </span>            : 
+<span class="lineNum">    1001 </span>            : #ifndef HAVE_STRCASECMP
+<span class="lineNum">    1002 </span>            : int
+<span class="lineNum">    1003 </span>            : strcasecmp( const char *a, const char *b )
+<span class="lineNum">    1004 </span>            : {
+<span class="lineNum">    1005 </span>            :     for( ; *a &amp;&amp; *b; a++, b++ ) {
+<span class="lineNum">    1006 </span>            :         if( *a != *b &amp;&amp; toupper(*a) != toupper(*b) )
+<span class="lineNum">    1007 </span>            :             break;
+<span class="lineNum">    1008 </span>            :     }
+<span class="lineNum">    1009 </span>            :     return *(const byte*)a - *(const byte*)b;
+<span class="lineNum">    1010 </span>            : }
+<span class="lineNum">    1011 </span>            : #endif
+<span class="lineNum">    1012 </span>            : 
+<span class="lineNum">    1013 </span>            : 
+<span class="lineNum">    1014 </span>            : /****************
+<span class="lineNum">    1015 </span>            :  * mingw32/cpd has a memicmp()
+<span class="lineNum">    1016 </span>            :  */
+<a name="1017"><span class="lineNum">    1017 </span>            : #ifndef HAVE_MEMICMP</a>
+<span class="lineNum">    1018 </span>            : int
+<span class="lineNum">    1019 </span><span class="lineNoCov">          0 : memicmp( const char *a, const char *b, size_t n )</span>
+<span class="lineNum">    1020 </span>            : {
+<span class="lineNum">    1021 </span><span class="lineNoCov">          0 :     for( ; n; n--, a++, b++ )</span>
+<span class="lineNum">    1022 </span><span class="lineNoCov">          0 :         if( *a != *b  &amp;&amp; toupper(*(const byte*)a) != toupper(*(const byte*)b) )</span>
+<span class="lineNum">    1023 </span><span class="lineNoCov">          0 :             return *(const byte *)a - *(const byte*)b;</span>
+<span class="lineNum">    1024 </span><span class="lineNoCov">          0 :     return 0;</span>
+<span class="lineNum">    1025 </span>            : }
+<span class="lineNum">    1026 </span>            : #endif
+<span class="lineNum">    1027 </span>            : 
+<span class="lineNum">    1028 </span>            : 
+<span class="lineNum">    1029 </span>            : #ifndef HAVE_MEMRCHR
+<span class="lineNum">    1030 </span>            : void *
+<span class="lineNum">    1031 </span>            : memrchr (const void *buffer, int c, size_t n)
+<span class="lineNum">    1032 </span>            : {
+<span class="lineNum">    1033 </span>            :   const unsigned char *p = buffer;
+<span class="lineNum">    1034 </span>            : 
+<span class="lineNum">    1035 </span>            :   for (p += n; n ; n--)
+<span class="lineNum">    1036 </span>            :     if (*--p == c)
+<span class="lineNum">    1037 </span>            :       return (void *)p;
+<span class="lineNum">    1038 </span>            :   return NULL;
+<span class="lineNum">    1039 </span>            : }
+<span class="lineNum">    1040 </span>            : #endif /*HAVE_MEMRCHR*/
+<span class="lineNum">    1041 </span>            : 
+<span class="lineNum">    1042 </span>            : 
+<span class="lineNum">    1043 </span>            : /* Percent-escape the string STR by replacing colons with '%3a'.  If
+<a name="1044"><span class="lineNum">    1044 </span>            :    EXTRA is not NULL all characters in EXTRA are also escaped.  */</a>
+<span class="lineNum">    1045 </span>            : static char *
+<span class="lineNum">    1046 </span><span class="lineNoCov">          0 : do_percent_escape (const char *str, const char *extra, int die)</span>
+<span class="lineNum">    1047 </span>            : {
+<span class="lineNum">    1048 </span>            :   int i, j;
+<span class="lineNum">    1049 </span>            :   char *ptr;
+<span class="lineNum">    1050 </span>            : 
+<span class="lineNum">    1051 </span><span class="lineNoCov">          0 :   if (!str)</span>
+<span class="lineNum">    1052 </span><span class="lineNoCov">          0 :     return NULL;</span>
+<span class="lineNum">    1053 </span>            : 
+<span class="lineNum">    1054 </span><span class="lineNoCov">          0 :   for (i=j=0; str[i]; i++)</span>
+<span class="lineNum">    1055 </span><span class="lineNoCov">          0 :     if (str[i] == ':' || str[i] == '%' || str[i] == '\n'</span>
+<span class="lineNum">    1056 </span><span class="lineNoCov">          0 :         || (extra &amp;&amp; strchr (extra, str[i])))</span>
+<span class="lineNum">    1057 </span><span class="lineNoCov">          0 :       j++;</span>
+<span class="lineNum">    1058 </span><span class="lineNoCov">          0 :   if (die)</span>
+<span class="lineNum">    1059 </span><span class="lineNoCov">          0 :     ptr = xmalloc (i + 2 * j + 1);</span>
+<span class="lineNum">    1060 </span>            :   else
+<span class="lineNum">    1061 </span>            :     {
+<span class="lineNum">    1062 </span><span class="lineNoCov">          0 :       ptr = xtrymalloc (i + 2 * j + 1);</span>
+<span class="lineNum">    1063 </span><span class="lineNoCov">          0 :       if (!ptr)</span>
+<span class="lineNum">    1064 </span><span class="lineNoCov">          0 :         return NULL;</span>
+<span class="lineNum">    1065 </span>            :     }
+<span class="lineNum">    1066 </span><span class="lineNoCov">          0 :   i = 0;</span>
+<span class="lineNum">    1067 </span><span class="lineNoCov">          0 :   while (*str)</span>
+<span class="lineNum">    1068 </span>            :     {
+<span class="lineNum">    1069 </span><span class="lineNoCov">          0 :       if (*str == ':')</span>
+<span class="lineNum">    1070 </span>            :         {
+<span class="lineNum">    1071 </span><span class="lineNoCov">          0 :           ptr[i++] = '%';</span>
+<span class="lineNum">    1072 </span><span class="lineNoCov">          0 :           ptr[i++] = '3';</span>
+<span class="lineNum">    1073 </span><span class="lineNoCov">          0 :           ptr[i++] = 'a';</span>
+<span class="lineNum">    1074 </span>            :         }
+<span class="lineNum">    1075 </span><span class="lineNoCov">          0 :       else if (*str == '%')</span>
+<span class="lineNum">    1076 </span>            :         {
+<span class="lineNum">    1077 </span><span class="lineNoCov">          0 :           ptr[i++] = '%';</span>
+<span class="lineNum">    1078 </span><span class="lineNoCov">          0 :           ptr[i++] = '2';</span>
+<span class="lineNum">    1079 </span><span class="lineNoCov">          0 :           ptr[i++] = '5';</span>
+<span class="lineNum">    1080 </span>            :         }
+<span class="lineNum">    1081 </span><span class="lineNoCov">          0 :       else if (*str == '\n')</span>
+<span class="lineNum">    1082 </span>            :         {
+<span class="lineNum">    1083 </span>            :           /* The newline is problematic in a line-based format.  */
+<span class="lineNum">    1084 </span><span class="lineNoCov">          0 :           ptr[i++] = '%';</span>
+<span class="lineNum">    1085 </span><span class="lineNoCov">          0 :           ptr[i++] = '0';</span>
+<span class="lineNum">    1086 </span><span class="lineNoCov">          0 :           ptr[i++] = 'a';</span>
+<span class="lineNum">    1087 </span>            :         }
+<span class="lineNum">    1088 </span><span class="lineNoCov">          0 :       else if (extra &amp;&amp; strchr (extra, *str))</span>
+<span class="lineNum">    1089 </span>            :         {
+<span class="lineNum">    1090 </span><span class="lineNoCov">          0 :           ptr[i++] = '%';</span>
+<span class="lineNum">    1091 </span><span class="lineNoCov">          0 :           ptr[i++] = tohex_lower ((*str&gt;&gt;4)&amp;15);</span>
+<span class="lineNum">    1092 </span><span class="lineNoCov">          0 :           ptr[i++] = tohex_lower (*str&amp;15);</span>
+<span class="lineNum">    1093 </span>            :         }
+<span class="lineNum">    1094 </span>            :       else
+<span class="lineNum">    1095 </span><span class="lineNoCov">          0 :         ptr[i++] = *str;</span>
+<span class="lineNum">    1096 </span><span class="lineNoCov">          0 :       str++;</span>
+<span class="lineNum">    1097 </span>            :     }
+<span class="lineNum">    1098 </span><span class="lineNoCov">          0 :   ptr[i] = '\0';</span>
+<span class="lineNum">    1099 </span>            : 
+<span class="lineNum">    1100 </span><span class="lineNoCov">          0 :   return ptr;</span>
+<span class="lineNum">    1101 </span>            : }
+<span class="lineNum">    1102 </span>            : 
+<span class="lineNum">    1103 </span>            : /* Percent-escape the string STR by replacing colons with '%3a'.  If
+<span class="lineNum">    1104 </span>            :    EXTRA is not NULL all characters in EXTRA are also escaped.  This
+<a name="1105"><span class="lineNum">    1105 </span>            :    function terminates the process on memory shortage.  */</a>
+<span class="lineNum">    1106 </span>            : char *
+<span class="lineNum">    1107 </span><span class="lineNoCov">          0 : percent_escape (const char *str, const char *extra)</span>
+<span class="lineNum">    1108 </span>            : {
+<span class="lineNum">    1109 </span><span class="lineNoCov">          0 :   return do_percent_escape (str, extra, 1);</span>
+<span class="lineNum">    1110 </span>            : }
+<span class="lineNum">    1111 </span>            : 
+<span class="lineNum">    1112 </span>            : /* Same as percent_escape but return NULL instead of exiting on memory
+<a name="1113"><span class="lineNum">    1113 </span>            :    error. */</a>
+<span class="lineNum">    1114 </span>            : char *
+<span class="lineNum">    1115 </span><span class="lineNoCov">          0 : try_percent_escape (const char *str, const char *extra)</span>
+<span class="lineNum">    1116 </span>            : {
+<span class="lineNum">    1117 </span><span class="lineNoCov">          0 :   return do_percent_escape (str, extra, 0);</span>
+<span class="lineNum">    1118 </span>            : }
+<span class="lineNum">    1119 </span>            : 
+<span class="lineNum">    1120 </span>            : 
+<a name="1121"><span class="lineNum">    1121 </span>            : </a>
+<span class="lineNum">    1122 </span>            : static char *
+<span class="lineNum">    1123 </span><span class="lineNoCov">          0 : do_strconcat (const char *s1, va_list arg_ptr)</span>
+<span class="lineNum">    1124 </span>            : {
+<span class="lineNum">    1125 </span>            :   const char *argv[48];
+<span class="lineNum">    1126 </span>            :   size_t argc;
+<span class="lineNum">    1127 </span>            :   size_t needed;
+<span class="lineNum">    1128 </span>            :   char *buffer, *p;
+<span class="lineNum">    1129 </span>            : 
+<span class="lineNum">    1130 </span><span class="lineNoCov">          0 :   argc = 0;</span>
+<span class="lineNum">    1131 </span><span class="lineNoCov">          0 :   argv[argc++] = s1;</span>
+<span class="lineNum">    1132 </span><span class="lineNoCov">          0 :   needed = strlen (s1);</span>
+<span class="lineNum">    1133 </span><span class="lineNoCov">          0 :   while (((argv[argc] = va_arg (arg_ptr, const char *))))</span>
+<span class="lineNum">    1134 </span>            :     {
+<span class="lineNum">    1135 </span><span class="lineNoCov">          0 :       needed += strlen (argv[argc]);</span>
+<span class="lineNum">    1136 </span><span class="lineNoCov">          0 :       if (argc &gt;= DIM (argv)-1)</span>
+<span class="lineNum">    1137 </span>            :         {
+<span class="lineNum">    1138 </span><span class="lineNoCov">          0 :           gpg_err_set_errno (EINVAL);</span>
+<span class="lineNum">    1139 </span><span class="lineNoCov">          0 :           return NULL;</span>
+<span class="lineNum">    1140 </span>            :         }
+<span class="lineNum">    1141 </span><span class="lineNoCov">          0 :       argc++;</span>
+<span class="lineNum">    1142 </span>            :     }
+<span class="lineNum">    1143 </span><span class="lineNoCov">          0 :   needed++;</span>
+<span class="lineNum">    1144 </span><span class="lineNoCov">          0 :   buffer = xtrymalloc (needed);</span>
+<span class="lineNum">    1145 </span><span class="lineNoCov">          0 :   if (buffer)</span>
+<span class="lineNum">    1146 </span>            :     {
+<span class="lineNum">    1147 </span><span class="lineNoCov">          0 :       for (p = buffer, argc=0; argv[argc]; argc++)</span>
+<span class="lineNum">    1148 </span><span class="lineNoCov">          0 :         p = stpcpy (p, argv[argc]);</span>
+<span class="lineNum">    1149 </span>            :     }
+<span class="lineNum">    1150 </span><span class="lineNoCov">          0 :   return buffer;</span>
+<span class="lineNum">    1151 </span>            : }
+<span class="lineNum">    1152 </span>            : 
+<span class="lineNum">    1153 </span>            : 
+<span class="lineNum">    1154 </span>            : /* Concatenate the string S1 with all the following strings up to a
+<span class="lineNum">    1155 </span>            :    NULL.  Returns a malloced buffer with the new string or NULL on a
+<a name="1156"><span class="lineNum">    1156 </span>            :    malloc error or if too many arguments are given.  */</a>
+<span class="lineNum">    1157 </span>            : char *
+<span class="lineNum">    1158 </span><span class="lineNoCov">          0 : strconcat (const char *s1, ...)</span>
+<span class="lineNum">    1159 </span>            : {
+<span class="lineNum">    1160 </span>            :   va_list arg_ptr;
+<span class="lineNum">    1161 </span>            :   char *result;
+<span class="lineNum">    1162 </span>            : 
+<span class="lineNum">    1163 </span><span class="lineNoCov">          0 :   if (!s1)</span>
+<span class="lineNum">    1164 </span><span class="lineNoCov">          0 :     result = xtrystrdup (&quot;&quot;);</span>
+<span class="lineNum">    1165 </span>            :   else
+<span class="lineNum">    1166 </span>            :     {
+<span class="lineNum">    1167 </span><span class="lineNoCov">          0 :       va_start (arg_ptr, s1);</span>
+<span class="lineNum">    1168 </span><span class="lineNoCov">          0 :       result = do_strconcat (s1, arg_ptr);</span>
+<span class="lineNum">    1169 </span><span class="lineNoCov">          0 :       va_end (arg_ptr);</span>
+<span class="lineNum">    1170 </span>            :     }
+<span class="lineNum">    1171 </span><span class="lineNoCov">          0 :   return result;</span>
+<span class="lineNum">    1172 </span>            : }
+<span class="lineNum">    1173 </span>            : 
+<span class="lineNum">    1174 </span>            : /* Same as strconcat but terminate the process with an error message
+<a name="1175"><span class="lineNum">    1175 </span>            :    if something goes wrong.  */</a>
+<span class="lineNum">    1176 </span>            : char *
+<span class="lineNum">    1177 </span><span class="lineNoCov">          0 : xstrconcat (const char *s1, ...)</span>
+<span class="lineNum">    1178 </span>            : {
+<span class="lineNum">    1179 </span>            :   va_list arg_ptr;
+<span class="lineNum">    1180 </span>            :   char *result;
+<span class="lineNum">    1181 </span>            : 
+<span class="lineNum">    1182 </span><span class="lineNoCov">          0 :   if (!s1)</span>
+<span class="lineNum">    1183 </span><span class="lineNoCov">          0 :     result = xstrdup (&quot;&quot;);</span>
+<span class="lineNum">    1184 </span>            :   else
+<span class="lineNum">    1185 </span>            :     {
+<span class="lineNum">    1186 </span><span class="lineNoCov">          0 :       va_start (arg_ptr, s1);</span>
+<span class="lineNum">    1187 </span><span class="lineNoCov">          0 :       result = do_strconcat (s1, arg_ptr);</span>
+<span class="lineNum">    1188 </span><span class="lineNoCov">          0 :       va_end (arg_ptr);</span>
+<span class="lineNum">    1189 </span>            :     }
+<span class="lineNum">    1190 </span><span class="lineNoCov">          0 :   if (!result)</span>
+<span class="lineNum">    1191 </span>            :     {
+<span class="lineNum">    1192 </span><span class="lineNoCov">          0 :       if (errno == EINVAL)</span>
+<span class="lineNum">    1193 </span><span class="lineNoCov">          0 :         fputs (&quot;\nfatal: too many args for xstrconcat\n&quot;, stderr);</span>
+<span class="lineNum">    1194 </span>            :       else
+<span class="lineNum">    1195 </span><span class="lineNoCov">          0 :         fputs (&quot;\nfatal: out of memory\n&quot;, stderr);</span>
+<span class="lineNum">    1196 </span><span class="lineNoCov">          0 :       exit (2);</span>
+<span class="lineNum">    1197 </span>            :     }
+<span class="lineNum">    1198 </span><span class="lineNoCov">          0 :   return result;</span>
+<span class="lineNum">    1199 </span>            : }
+<span class="lineNum">    1200 </span>            : 
+<span class="lineNum">    1201 </span>            : /* Split a string into fields at DELIM.  REPLACEMENT is the character
+<span class="lineNum">    1202 </span>            :    to replace the delimiter with (normally: '\0' so that each field is
+<span class="lineNum">    1203 </span>            :    NUL terminated).  The caller is responsible for freeing the result.
+<span class="lineNum">    1204 </span>            :    Note: this function modifies STRING!  If you need the original
+<span class="lineNum">    1205 </span>            :    value, then you should pass a copy to this function.
+<span class="lineNum">    1206 </span>            : 
+<a name="1207"><span class="lineNum">    1207 </span>            :    If malloc fails, this function returns NULL.  */</a>
+<span class="lineNum">    1208 </span>            : char **
+<span class="lineNum">    1209 </span><span class="lineNoCov">          0 : strsplit (char *string, char delim, char replacement, int *count)</span>
+<span class="lineNum">    1210 </span>            : {
+<span class="lineNum">    1211 </span><span class="lineNoCov">          0 :   int fields = 1;</span>
+<span class="lineNum">    1212 </span>            :   char *t;
+<span class="lineNum">    1213 </span>            :   char **result;
+<span class="lineNum">    1214 </span>            : 
+<span class="lineNum">    1215 </span>            :   /* First, count the number of fields.  */
+<span class="lineNum">    1216 </span><span class="lineNoCov">          0 :   for (t = strchr (string, delim); t; t = strchr (t + 1, delim))</span>
+<span class="lineNum">    1217 </span><span class="lineNoCov">          0 :     fields ++;</span>
+<span class="lineNum">    1218 </span>            : 
+<span class="lineNum">    1219 </span><span class="lineNoCov">          0 :   result = xtrycalloc ((fields + 1), sizeof (*result));</span>
+<span class="lineNum">    1220 </span><span class="lineNoCov">          0 :   if (! result)</span>
+<span class="lineNum">    1221 </span><span class="lineNoCov">          0 :     return NULL;</span>
+<span class="lineNum">    1222 </span>            : 
+<span class="lineNum">    1223 </span><span class="lineNoCov">          0 :   result[0] = string;</span>
+<span class="lineNum">    1224 </span><span class="lineNoCov">          0 :   fields = 1;</span>
+<span class="lineNum">    1225 </span><span class="lineNoCov">          0 :   for (t = strchr (string, delim); t; t = strchr (t + 1, delim))</span>
+<span class="lineNum">    1226 </span>            :     {
+<span class="lineNum">    1227 </span><span class="lineNoCov">          0 :       result[fields ++] = t + 1;</span>
+<span class="lineNum">    1228 </span><span class="lineNoCov">          0 :       *t = replacement;</span>
+<span class="lineNum">    1229 </span>            :     }
+<span class="lineNum">    1230 </span>            : 
+<span class="lineNum">    1231 </span><span class="lineNoCov">          0 :   if (count)</span>
+<span class="lineNum">    1232 </span><span class="lineNoCov">          0 :     *count = fields;</span>
+<span class="lineNum">    1233 </span>            : 
+<span class="lineNum">    1234 </span><span class="lineNoCov">          0 :   return result;</span>
+<span class="lineNum">    1235 </span>            : }
+<span class="lineNum">    1236 </span>            : 
+<span class="lineNum">    1237 </span>            : 
+<span class="lineNum">    1238 </span>            : /* Tokenize STRING using the set of delimiters in DELIM.  Leading
+<span class="lineNum">    1239 </span>            :  * spaces and tabs are removed from all tokens.  The caller must xfree
+<span class="lineNum">    1240 </span>            :  * the result.
+<span class="lineNum">    1241 </span>            :  *
+<span class="lineNum">    1242 </span>            :  * Returns: A malloced and NULL delimited array with the tokens.  On
+<span class="lineNum">    1243 </span>            :  *          memory error NULL is returned and ERRNO is set.
+<a name="1244"><span class="lineNum">    1244 </span>            :  */</a>
+<span class="lineNum">    1245 </span>            : char **
+<span class="lineNum">    1246 </span><span class="lineNoCov">          0 : strtokenize (const char *string, const char *delim)</span>
+<span class="lineNum">    1247 </span>            : {
+<span class="lineNum">    1248 </span>            :   const char *s;
+<span class="lineNum">    1249 </span>            :   size_t fields;
+<span class="lineNum">    1250 </span>            :   size_t bytes, n;
+<span class="lineNum">    1251 </span>            :   char *buffer;
+<span class="lineNum">    1252 </span>            :   char *p, *px, *pend;
+<span class="lineNum">    1253 </span>            :   char **result;
+<span class="lineNum">    1254 </span>            : 
+<span class="lineNum">    1255 </span>            :   /* Count the number of fields.  */
+<span class="lineNum">    1256 </span><span class="lineNoCov">          0 :   for (fields = 1, s = strpbrk (string, delim); s; s = strpbrk (s + 1, delim))</span>
+<span class="lineNum">    1257 </span><span class="lineNoCov">          0 :     fields++;</span>
+<span class="lineNum">    1258 </span><span class="lineNoCov">          0 :   fields++; /* Add one for the terminating NULL.  */</span>
+<span class="lineNum">    1259 </span>            : 
+<span class="lineNum">    1260 </span>            :   /* Allocate an array for all fields, a terminating NULL, and space
+<span class="lineNum">    1261 </span>            :      for a copy of the string.  */
+<span class="lineNum">    1262 </span><span class="lineNoCov">          0 :   bytes = fields * sizeof *result;</span>
+<span class="lineNum">    1263 </span><span class="lineNoCov">          0 :   if (bytes / sizeof *result != fields)</span>
+<span class="lineNum">    1264 </span>            :     {
+<span class="lineNum">    1265 </span><span class="lineNoCov">          0 :       gpg_err_set_errno (ENOMEM);</span>
+<span class="lineNum">    1266 </span><span class="lineNoCov">          0 :       return NULL;</span>
+<span class="lineNum">    1267 </span>            :     }
+<span class="lineNum">    1268 </span><span class="lineNoCov">          0 :   n = strlen (string) + 1;</span>
+<span class="lineNum">    1269 </span><span class="lineNoCov">          0 :   bytes += n;</span>
+<span class="lineNum">    1270 </span><span class="lineNoCov">          0 :   if (bytes &lt; n)</span>
+<span class="lineNum">    1271 </span>            :     {
+<span class="lineNum">    1272 </span><span class="lineNoCov">          0 :       gpg_err_set_errno (ENOMEM);</span>
+<span class="lineNum">    1273 </span><span class="lineNoCov">          0 :       return NULL;</span>
+<span class="lineNum">    1274 </span>            :     }
+<span class="lineNum">    1275 </span><span class="lineNoCov">          0 :   result = xtrymalloc (bytes);</span>
+<span class="lineNum">    1276 </span><span class="lineNoCov">          0 :   if (!result)</span>
+<span class="lineNum">    1277 </span><span class="lineNoCov">          0 :     return NULL;</span>
+<span class="lineNum">    1278 </span><span class="lineNoCov">          0 :   buffer = (char*)(result + fields);</span>
+<span class="lineNum">    1279 </span>            : 
+<span class="lineNum">    1280 </span>            :   /* Copy and parse the string.  */
+<span class="lineNum">    1281 </span><span class="lineNoCov">          0 :   strcpy (buffer, string);</span>
+<span class="lineNum">    1282 </span><span class="lineNoCov">          0 :   for (n = 0, p = buffer; (pend = strpbrk (p, delim)); p = pend + 1)</span>
+<span class="lineNum">    1283 </span>            :     {
+<span class="lineNum">    1284 </span><span class="lineNoCov">          0 :       *pend = 0;</span>
+<span class="lineNum">    1285 </span><span class="lineNoCov">          0 :       while (spacep (p))</span>
+<span class="lineNum">    1286 </span><span class="lineNoCov">          0 :         p++;</span>
+<span class="lineNum">    1287 </span><span class="lineNoCov">          0 :       for (px = pend - 1; px &gt;= p &amp;&amp; spacep (px); px--)</span>
+<span class="lineNum">    1288 </span><span class="lineNoCov">          0 :         *px = 0;</span>
+<span class="lineNum">    1289 </span><span class="lineNoCov">          0 :       result[n++] = p;</span>
+<span class="lineNum">    1290 </span>            :     }
+<span class="lineNum">    1291 </span><span class="lineNoCov">          0 :   while (spacep (p))</span>
+<span class="lineNum">    1292 </span><span class="lineNoCov">          0 :     p++;</span>
+<span class="lineNum">    1293 </span><span class="lineNoCov">          0 :   for (px = p + strlen (p) - 1; px &gt;= p &amp;&amp; spacep (px); px--)</span>
+<span class="lineNum">    1294 </span><span class="lineNoCov">          0 :     *px = 0;</span>
+<span class="lineNum">    1295 </span><span class="lineNoCov">          0 :   result[n++] = p;</span>
+<span class="lineNum">    1296 </span><span class="lineNoCov">          0 :   result[n] = NULL;</span>
+<span class="lineNum">    1297 </span>            : 
+<span class="lineNum">    1298 </span><span class="lineNoCov">          0 :   assert ((char*)(result + n + 1) == buffer);</span>
+<span class="lineNum">    1299 </span>            : 
+<span class="lineNum">    1300 </span><span class="lineNoCov">          0 :   return result;</span>
+<span class="lineNum">    1301 </span>            : }
+<span class="lineNum">    1302 </span>            : 
+<span class="lineNum">    1303 </span>            : 
+<span class="lineNum">    1304 </span>            : /* Split a string into space delimited fields and remove leading and
+<span class="lineNum">    1305 </span>            :  * trailing spaces from each field.  A pointer to each field is stored
+<span class="lineNum">    1306 </span>            :  * in ARRAY.  Stop splitting at ARRAYSIZE fields.  The function
+<span class="lineNum">    1307 </span>            :  * modifies STRING.  The number of parsed fields is returned.
+<span class="lineNum">    1308 </span>            :  * Example:
+<span class="lineNum">    1309 </span>            :  *
+<span class="lineNum">    1310 </span>            :  *   char *fields[2];
+<span class="lineNum">    1311 </span>            :  *   if (split_fields (string, fields, DIM (fields)) &lt; 2)
+<span class="lineNum">    1312 </span>            :  *     return  // Not enough args.
+<span class="lineNum">    1313 </span>            :  *   foo (fields[0]);
+<span class="lineNum">    1314 </span>            :  *   foo (fields[1]);
+<a name="1315"><span class="lineNum">    1315 </span>            :  */</a>
+<span class="lineNum">    1316 </span>            : int
+<span class="lineNum">    1317 </span><span class="lineNoCov">          0 : split_fields (char *string, char **array, int arraysize)</span>
+<span class="lineNum">    1318 </span>            : {
+<span class="lineNum">    1319 </span><span class="lineNoCov">          0 :   int n = 0;</span>
+<span class="lineNum">    1320 </span>            :   char *p, *pend;
+<span class="lineNum">    1321 </span>            : 
+<span class="lineNum">    1322 </span><span class="lineNoCov">          0 :   for (p = string; *p == ' '; p++)</span>
+<span class="lineNum">    1323 </span>            :     ;
+<span class="lineNum">    1324 </span>            :   do
+<span class="lineNum">    1325 </span>            :     {
+<span class="lineNum">    1326 </span><span class="lineNoCov">          0 :       if (n == arraysize)</span>
+<span class="lineNum">    1327 </span><span class="lineNoCov">          0 :         break;</span>
+<span class="lineNum">    1328 </span><span class="lineNoCov">          0 :       array[n++] = p;</span>
+<span class="lineNum">    1329 </span><span class="lineNoCov">          0 :       pend = strchr (p, ' ');</span>
+<span class="lineNum">    1330 </span><span class="lineNoCov">          0 :       if (!pend)</span>
+<span class="lineNum">    1331 </span><span class="lineNoCov">          0 :         break;</span>
+<span class="lineNum">    1332 </span><span class="lineNoCov">          0 :       *pend++ = 0;</span>
+<span class="lineNum">    1333 </span><span class="lineNoCov">          0 :       for (p = pend; *p == ' '; p++)</span>
+<span class="lineNum">    1334 </span>            :         ;
+<span class="lineNum">    1335 </span>            :     }
+<span class="lineNum">    1336 </span><span class="lineNoCov">          0 :   while (*p);</span>
+<span class="lineNum">    1337 </span>            : 
+<span class="lineNum">    1338 </span><span class="lineNoCov">          0 :   return n;</span>
+<span class="lineNum">    1339 </span>            : }
+<span class="lineNum">    1340 </span>            : 
+<span class="lineNum">    1341 </span>            : 
+<span class="lineNum">    1342 </span>            : 
+<span class="lineNum">    1343 </span>            : /* Version number parsing.  */
+<span class="lineNum">    1344 </span>            : 
+<span class="lineNum">    1345 </span>            : /* This function parses the first portion of the version number S and
+<span class="lineNum">    1346 </span>            :    stores it in *NUMBER.  On success, this function returns a pointer
+<span class="lineNum">    1347 </span>            :    into S starting with the first character, which is not part of the
+<a name="1348"><span class="lineNum">    1348 </span>            :    initial number portion; on failure, NULL is returned.  */</a>
+<span class="lineNum">    1349 </span>            : static const char*
+<span class="lineNum">    1350 </span><span class="lineNoCov">          0 : parse_version_number (const char *s, int *number)</span>
+<span class="lineNum">    1351 </span>            : {
+<span class="lineNum">    1352 </span><span class="lineNoCov">          0 :   int val = 0;</span>
+<span class="lineNum">    1353 </span>            : 
+<span class="lineNum">    1354 </span><span class="lineNoCov">          0 :   if (*s == '0' &amp;&amp; digitp (s+1))</span>
+<span class="lineNum">    1355 </span><span class="lineNoCov">          0 :     return NULL;  /* Leading zeros are not allowed.  */</span>
+<span class="lineNum">    1356 </span><span class="lineNoCov">          0 :   for (; digitp (s); s++)</span>
+<span class="lineNum">    1357 </span>            :     {
+<span class="lineNum">    1358 </span><span class="lineNoCov">          0 :       val *= 10;</span>
+<span class="lineNum">    1359 </span><span class="lineNoCov">          0 :       val += *s - '0';</span>
+<span class="lineNum">    1360 </span>            :     }
+<span class="lineNum">    1361 </span><span class="lineNoCov">          0 :   *number = val;</span>
+<span class="lineNum">    1362 </span><span class="lineNoCov">          0 :   return val &lt; 0 ? NULL : s;</span>
+<span class="lineNum">    1363 </span>            : }
+<span class="lineNum">    1364 </span>            : 
+<span class="lineNum">    1365 </span>            : 
+<span class="lineNum">    1366 </span>            : /* This function breaks up the complete string-representation of the
+<span class="lineNum">    1367 </span>            :    version number S, which is of the following struture: &lt;major
+<span class="lineNum">    1368 </span>            :    number&gt;.&lt;minor number&gt;[.&lt;micro number&gt;]&lt;patch level&gt;.  The major,
+<span class="lineNum">    1369 </span>            :    minor, and micro number components will be stored in *MAJOR, *MINOR
+<span class="lineNum">    1370 </span>            :    and *MICRO.  If MICRO is not given 0 is used instead.
+<span class="lineNum">    1371 </span>            : 
+<span class="lineNum">    1372 </span>            :    On success, the last component, the patch level, will be returned;
+<a name="1373"><span class="lineNum">    1373 </span>            :    in failure, NULL will be returned.  */</a>
+<span class="lineNum">    1374 </span>            : static const char *
+<span class="lineNum">    1375 </span><span class="lineNoCov">          0 : parse_version_string (const char *s, int *major, int *minor, int *micro)</span>
+<span class="lineNum">    1376 </span>            : {
+<span class="lineNum">    1377 </span><span class="lineNoCov">          0 :   s = parse_version_number (s, major);</span>
+<span class="lineNum">    1378 </span><span class="lineNoCov">          0 :   if (!s || *s != '.')</span>
+<span class="lineNum">    1379 </span><span class="lineNoCov">          0 :     return NULL;</span>
+<span class="lineNum">    1380 </span><span class="lineNoCov">          0 :   s++;</span>
+<span class="lineNum">    1381 </span><span class="lineNoCov">          0 :   s = parse_version_number (s, minor);</span>
+<span class="lineNum">    1382 </span><span class="lineNoCov">          0 :   if (!s)</span>
+<span class="lineNum">    1383 </span><span class="lineNoCov">          0 :     return NULL;</span>
+<span class="lineNum">    1384 </span><span class="lineNoCov">          0 :   if (*s == '.')</span>
+<span class="lineNum">    1385 </span>            :     {
+<span class="lineNum">    1386 </span><span class="lineNoCov">          0 :       s++;</span>
+<span class="lineNum">    1387 </span><span class="lineNoCov">          0 :       s = parse_version_number (s, micro);</span>
+<span class="lineNum">    1388 </span><span class="lineNoCov">          0 :       if (!s)</span>
+<span class="lineNum">    1389 </span><span class="lineNoCov">          0 :         return NULL;</span>
+<span class="lineNum">    1390 </span>            :     }
+<span class="lineNum">    1391 </span>            :   else
+<span class="lineNum">    1392 </span><span class="lineNoCov">          0 :     *micro = 0;</span>
+<span class="lineNum">    1393 </span><span class="lineNoCov">          0 :   return s;  /* Patchlevel.  */</span>
+<span class="lineNum">    1394 </span>            : }
+<span class="lineNum">    1395 </span>            : 
+<span class="lineNum">    1396 </span>            : 
+<span class="lineNum">    1397 </span>            : /* Compare the version string MY_VERSION to the version string
+<span class="lineNum">    1398 </span>            :  * REQ_VERSION.  Returns -1, 0, or 1 if MY_VERSION is found,
+<span class="lineNum">    1399 </span>            :  * respectively, to be less than, to match, or be greater than
+<span class="lineNum">    1400 </span>            :  * REQ_VERSION.  This function works for three and two part version
+<span class="lineNum">    1401 </span>            :  * strings; for a two part version string the micro part is assumed to
+<span class="lineNum">    1402 </span>            :  * be 0.  Patch levels are compared as strings.  If a version number
+<span class="lineNum">    1403 </span>            :  * is invalid INT_MIN is returned.  If REQ_VERSION is given as NULL
+<a name="1404"><span class="lineNum">    1404 </span>            :  * the function returns 0 if MY_VERSION is parsable version string. */</a>
+<span class="lineNum">    1405 </span>            : int
+<span class="lineNum">    1406 </span><span class="lineNoCov">          0 : compare_version_strings (const char *my_version, const char *req_version)</span>
+<span class="lineNum">    1407 </span>            : {
+<span class="lineNum">    1408 </span>            :   int my_major, my_minor, my_micro;
+<span class="lineNum">    1409 </span>            :   int rq_major, rq_minor, rq_micro;
+<span class="lineNum">    1410 </span>            :   const char *my_patch, *rq_patch;
+<span class="lineNum">    1411 </span>            :   int result;
+<span class="lineNum">    1412 </span>            : 
+<span class="lineNum">    1413 </span><span class="lineNoCov">          0 :   if (!my_version)</span>
+<span class="lineNum">    1414 </span><span class="lineNoCov">          0 :     return INT_MIN;</span>
+<span class="lineNum">    1415 </span>            : 
+<span class="lineNum">    1416 </span><span class="lineNoCov">          0 :   my_patch = parse_version_string (my_version, &amp;my_major, &amp;my_minor, &amp;my_micro);</span>
+<span class="lineNum">    1417 </span><span class="lineNoCov">          0 :   if (!my_patch)</span>
+<span class="lineNum">    1418 </span><span class="lineNoCov">          0 :     return INT_MIN;</span>
+<span class="lineNum">    1419 </span><span class="lineNoCov">          0 :   if (!req_version)</span>
+<span class="lineNum">    1420 </span><span class="lineNoCov">          0 :     return 0; /* MY_VERSION can be parsed.  */</span>
+<span class="lineNum">    1421 </span><span class="lineNoCov">          0 :   rq_patch = parse_version_string (req_version, &amp;rq_major, &amp;rq_minor,&amp;rq_micro);</span>
+<span class="lineNum">    1422 </span><span class="lineNoCov">          0 :   if (!rq_patch)</span>
+<span class="lineNum">    1423 </span><span class="lineNoCov">          0 :     return INT_MIN;</span>
+<span class="lineNum">    1424 </span>            : 
+<span class="lineNum">    1425 </span><span class="lineNoCov">          0 :   if (my_major == rq_major)</span>
+<span class="lineNum">    1426 </span>            :     {
+<span class="lineNum">    1427 </span><span class="lineNoCov">          0 :       if (my_minor == rq_minor)</span>
+<span class="lineNum">    1428 </span>            :         {
+<span class="lineNum">    1429 </span><span class="lineNoCov">          0 :           if (my_micro == rq_micro)</span>
+<span class="lineNum">    1430 </span><span class="lineNoCov">          0 :             result = strcmp (my_patch, rq_patch);</span>
+<span class="lineNum">    1431 </span>            :           else
+<span class="lineNum">    1432 </span><span class="lineNoCov">          0 :             result = my_micro - rq_micro;</span>
+<span class="lineNum">    1433 </span>            :         }
+<span class="lineNum">    1434 </span>            :       else
+<span class="lineNum">    1435 </span><span class="lineNoCov">          0 :         result = my_minor - rq_minor;</span>
+<span class="lineNum">    1436 </span>            :     }
+<span class="lineNum">    1437 </span>            :   else
+<span class="lineNum">    1438 </span><span class="lineNoCov">          0 :     result = my_major - rq_major;</span>
+<span class="lineNum">    1439 </span>            : 
+<span class="lineNum">    1440 </span><span class="lineNoCov">          0 :   return !result? 0 : result &lt; 0 ? -1 : 1;</span>
+<span class="lineNum">    1441 </span>            : }
+<span class="lineNum">    1442 </span>            : 
+<span class="lineNum">    1443 </span>            : 
+<span class="lineNum">    1444 </span>            : 
+<span class="lineNum">    1445 </span>            : /* Format a string so that it fits within about TARGET_COLS columns.
+<span class="lineNum">    1446 </span>            :  * TEXT_IN is copied to a new buffer, which is returned.  Normally,
+<span class="lineNum">    1447 </span>            :  * target_cols will be 72 and max_cols is 80.  On error NULL is
+<a name="1448"><span class="lineNum">    1448 </span>            :  * returned and ERRNO is set. */</a>
+<span class="lineNum">    1449 </span>            : char *
+<span class="lineNum">    1450 </span><span class="lineNoCov">          0 : format_text (const char *text_in, int target_cols, int max_cols)</span>
+<span class="lineNum">    1451 </span>            : {
+<span class="lineNum">    1452 </span>            :   /* const int do_debug = 0; */
+<span class="lineNum">    1453 </span>            : 
+<span class="lineNum">    1454 </span>            :   /* The character under consideration.  */
+<span class="lineNum">    1455 </span>            :   char *p;
+<span class="lineNum">    1456 </span>            :   /* The start of the current line.  */
+<span class="lineNum">    1457 </span>            :   char *line;
+<span class="lineNum">    1458 </span>            :   /* The last space that we saw.  */
+<span class="lineNum">    1459 </span><span class="lineNoCov">          0 :   char *last_space = NULL;</span>
+<span class="lineNum">    1460 </span><span class="lineNoCov">          0 :   int last_space_cols = 0;</span>
+<span class="lineNum">    1461 </span><span class="lineNoCov">          0 :   int copied_last_space = 0;</span>
+<span class="lineNum">    1462 </span>            :   char *text;
+<span class="lineNum">    1463 </span>            : 
+<span class="lineNum">    1464 </span><span class="lineNoCov">          0 :   text = xtrystrdup (text_in);</span>
+<span class="lineNum">    1465 </span><span class="lineNoCov">          0 :   if (!text)</span>
+<span class="lineNum">    1466 </span><span class="lineNoCov">          0 :     return NULL;</span>
+<span class="lineNum">    1467 </span>            : 
+<span class="lineNum">    1468 </span><span class="lineNoCov">          0 :   p = line = text;</span>
+<span class="lineNum">    1469 </span>            :   while (1)
+<span class="lineNum">    1470 </span>            :     {
+<span class="lineNum">    1471 </span>            :       /* The number of columns including any trailing space.  */
+<span class="lineNum">    1472 </span>            :       int cols;
+<span class="lineNum">    1473 </span>            : 
+<span class="lineNum">    1474 </span><span class="lineNoCov">          0 :       p = p + strcspn (p, &quot;\n &quot;);</span>
+<span class="lineNum">    1475 </span><span class="lineNoCov">          0 :       if (! p)</span>
+<span class="lineNum">    1476 </span>            :         /* P now points to the NUL character.  */
+<span class="lineNum">    1477 </span><span class="lineNoCov">          0 :         p = &amp;text[strlen (text)];</span>
+<span class="lineNum">    1478 </span>            : 
+<span class="lineNum">    1479 </span><span class="lineNoCov">          0 :       if (*p == '\n')</span>
+<span class="lineNum">    1480 </span>            :         /* Pass through any newlines.  */
+<span class="lineNum">    1481 </span>            :         {
+<span class="lineNum">    1482 </span><span class="lineNoCov">          0 :           p ++;</span>
+<span class="lineNum">    1483 </span><span class="lineNoCov">          0 :           line = p;</span>
+<span class="lineNum">    1484 </span><span class="lineNoCov">          0 :           last_space = NULL;</span>
+<span class="lineNum">    1485 </span><span class="lineNoCov">          0 :           last_space_cols = 0;</span>
+<span class="lineNum">    1486 </span><span class="lineNoCov">          0 :           copied_last_space = 1;</span>
+<span class="lineNum">    1487 </span><span class="lineNoCov">          0 :           continue;</span>
+<span class="lineNum">    1488 </span>            :         }
+<span class="lineNum">    1489 </span>            : 
+<span class="lineNum">    1490 </span>            :       /* Have a space or a NUL.  Note: we don't count the trailing
+<span class="lineNum">    1491 </span>            :          space.  */
+<span class="lineNum">    1492 </span><span class="lineNoCov">          0 :       cols = utf8_charcount (line, (uintptr_t) p - (uintptr_t) line);</span>
+<span class="lineNum">    1493 </span><span class="lineNoCov">          0 :       if (cols &lt; target_cols)</span>
+<span class="lineNum">    1494 </span>            :         {
+<span class="lineNum">    1495 </span><span class="lineNoCov">          0 :           if (! *p)</span>
+<span class="lineNum">    1496 </span>            :             /* Nothing left to break.  */
+<span class="lineNum">    1497 </span><span class="lineNoCov">          0 :             break;</span>
+<span class="lineNum">    1498 </span>            : 
+<span class="lineNum">    1499 </span><span class="lineNoCov">          0 :           last_space = p;</span>
+<span class="lineNum">    1500 </span><span class="lineNoCov">          0 :           last_space_cols = cols;</span>
+<span class="lineNum">    1501 </span><span class="lineNoCov">          0 :           p ++;</span>
+<span class="lineNum">    1502 </span>            :           /* Skip any immediately following spaces.  If we break:
+<span class="lineNum">    1503 </span>            :              &quot;... foo bar ...&quot; between &quot;foo&quot; and &quot;bar&quot; then we want:
+<span class="lineNum">    1504 </span>            :              &quot;... foo\nbar ...&quot;, which means that the left space has
+<span class="lineNum">    1505 </span>            :              to be the first space after foo, not the last space
+<span class="lineNum">    1506 </span>            :              before bar.  */
+<span class="lineNum">    1507 </span><span class="lineNoCov">          0 :           while (*p == ' ')</span>
+<span class="lineNum">    1508 </span><span class="lineNoCov">          0 :             p ++;</span>
+<span class="lineNum">    1509 </span>            :         }
+<span class="lineNum">    1510 </span>            :       else
+<span class="lineNum">    1511 </span>            :         {
+<span class="lineNum">    1512 </span>            :           int cols_with_left_space;
+<span class="lineNum">    1513 </span>            :           int cols_with_right_space;
+<span class="lineNum">    1514 </span>            :           int left_penalty;
+<span class="lineNum">    1515 </span>            :           int right_penalty;
+<span class="lineNum">    1516 </span>            : 
+<span class="lineNum">    1517 </span><span class="lineNoCov">          0 :           cols_with_left_space = last_space_cols;</span>
+<span class="lineNum">    1518 </span><span class="lineNoCov">          0 :           cols_with_right_space = cols;</span>
+<span class="lineNum">    1519 </span>            : 
+<span class="lineNum">    1520 </span>            :           /* if (do_debug) */
+<span class="lineNum">    1521 </span>            :           /*   log_debug (&quot;Breaking: '%.*s'\n&quot;, */
+<span class="lineNum">    1522 </span>            :           /*              (int) ((uintptr_t) p - (uintptr_t) line), line); */
+<span class="lineNum">    1523 </span>            : 
+<span class="lineNum">    1524 </span>            :           /* The number of columns away from TARGET_COLS.  We prefer
+<span class="lineNum">    1525 </span>            :              to underflow than to overflow.  */
+<span class="lineNum">    1526 </span><span class="lineNoCov">          0 :           left_penalty = target_cols - cols_with_left_space;</span>
+<span class="lineNum">    1527 </span><span class="lineNoCov">          0 :           right_penalty = 2 * (cols_with_right_space - target_cols);</span>
+<span class="lineNum">    1528 </span>            : 
+<span class="lineNum">    1529 </span><span class="lineNoCov">          0 :           if (cols_with_right_space &gt; max_cols)</span>
+<span class="lineNum">    1530 </span>            :             /* Add a large penalty for each column that exceeds
+<span class="lineNum">    1531 </span>            :                max_cols.  */
+<span class="lineNum">    1532 </span><span class="lineNoCov">          0 :             right_penalty += 4 * (cols_with_right_space - max_cols);</span>
+<span class="lineNum">    1533 </span>            : 
+<span class="lineNum">    1534 </span>            :           /* if (do_debug) */
+<span class="lineNum">    1535 </span>            :           /*   log_debug (&quot;Left space =&gt; %d cols (penalty: %d); &quot; */
+<span class="lineNum">    1536 </span>            :           /*              &quot;right space =&gt; %d cols (penalty: %d)\n&quot;, */
+<span class="lineNum">    1537 </span>            :           /*              cols_with_left_space, left_penalty, */
+<span class="lineNum">    1538 </span>            :           /*              cols_with_right_space, right_penalty); */
+<span class="lineNum">    1539 </span><span class="lineNoCov">          0 :           if (last_space_cols &amp;&amp; left_penalty &lt;= right_penalty)</span>
+<span class="lineNum">    1540 </span>            :             {
+<span class="lineNum">    1541 </span>            :               /* Prefer the left space.  */
+<span class="lineNum">    1542 </span>            :               /* if (do_debug) */
+<span class="lineNum">    1543 </span>            :               /*   log_debug (&quot;Breaking at left space.\n&quot;); */
+<span class="lineNum">    1544 </span><span class="lineNoCov">          0 :               p = last_space;</span>
+<span class="lineNum">    1545 </span>            :             }
+<span class="lineNum">    1546 </span>            :           else
+<span class="lineNum">    1547 </span>            :             {
+<span class="lineNum">    1548 </span>            :               /* if (do_debug) */
+<span class="lineNum">    1549 </span>            :               /*   log_debug (&quot;Breaking at right space.\n&quot;); */
+<span class="lineNum">    1550 </span>            :             }
+<span class="lineNum">    1551 </span>            : 
+<span class="lineNum">    1552 </span><span class="lineNoCov">          0 :           if (! *p)</span>
+<span class="lineNum">    1553 </span><span class="lineNoCov">          0 :             break;</span>
+<span class="lineNum">    1554 </span>            : 
+<span class="lineNum">    1555 </span><span class="lineNoCov">          0 :           *p = '\n';</span>
+<span class="lineNum">    1556 </span><span class="lineNoCov">          0 :           p ++;</span>
+<span class="lineNum">    1557 </span><span class="lineNoCov">          0 :           if (*p == ' ')</span>
+<span class="lineNum">    1558 </span>            :             {
+<span class="lineNum">    1559 </span>            :               int spaces;
+<span class="lineNum">    1560 </span><span class="lineNoCov">          0 :               for (spaces = 1; p[spaces] == ' '; spaces ++)</span>
+<span class="lineNum">    1561 </span>            :                 ;
+<span class="lineNum">    1562 </span><span class="lineNoCov">          0 :               memmove (p, &amp;p[spaces], strlen (&amp;p[spaces]) + 1);</span>
+<span class="lineNum">    1563 </span>            :             }
+<span class="lineNum">    1564 </span><span class="lineNoCov">          0 :           line = p;</span>
+<span class="lineNum">    1565 </span><span class="lineNoCov">          0 :           last_space = NULL;</span>
+<span class="lineNum">    1566 </span><span class="lineNoCov">          0 :           last_space_cols = 0;</span>
+<span class="lineNum">    1567 </span><span class="lineNoCov">          0 :           copied_last_space = 0;</span>
+<span class="lineNum">    1568 </span>            :         }
+<span class="lineNum">    1569 </span><span class="lineNoCov">          0 :     }</span>
+<span class="lineNum">    1570 </span>            : 
+<span class="lineNum">    1571 </span>            :   /* Chop off any trailing space.  */
+<span class="lineNum">    1572 </span><span class="lineNoCov">          0 :   trim_trailing_chars (text, strlen (text), &quot; &quot;);</span>
+<span class="lineNum">    1573 </span>            :   /* If we inserted the trailing newline, then remove it.  */
+<span class="lineNum">    1574 </span><span class="lineNoCov">          0 :   if (! copied_last_space &amp;&amp; *text &amp;&amp; text[strlen (text) - 1] == '\n')</span>
+<span class="lineNum">    1575 </span><span class="lineNoCov">          0 :     text[strlen (text) - 1] = '\0';</span>
+<span class="lineNum">    1576 </span>            : 
+<span class="lineNum">    1577 </span><span class="lineNoCov">          0 :   return text;</span>
+<span class="lineNum">    1578 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

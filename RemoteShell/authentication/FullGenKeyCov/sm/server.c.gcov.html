@@ -1,0 +1,1572 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - sm/server.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">sm</a> - server.c<span style="font-size: 80%;"> (source / <a href="server.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">8</td>
+            <td class="headerCovTableEntry">613</td>
+            <td class="headerCovTableEntryLo">1.3 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 12:47:41</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">2</td>
+            <td class="headerCovTableEntry">36</td>
+            <td class="headerCovTableEntryLo">5.6 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* server.c - Server mode and main entry point</a>
+<span class="lineNum">       2 </span>            :  * Copyright (C) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009,
+<span class="lineNum">       3 </span>            :  *               2010 Free Software Foundation, Inc.
+<span class="lineNum">       4 </span>            :  *
+<span class="lineNum">       5 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       6 </span>            :  *
+<span class="lineNum">       7 </span>            :  * GnuPG is free software; you can redistribute it and/or modify
+<span class="lineNum">       8 </span>            :  * it under the terms of the GNU General Public License as published by
+<span class="lineNum">       9 </span>            :  * the Free Software Foundation; either version 3 of the License, or
+<span class="lineNum">      10 </span>            :  * (at your option) any later version.
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * GnuPG is distributed in the hope that it will be useful,
+<span class="lineNum">      13 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      14 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      15 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      16 </span>            :  *
+<span class="lineNum">      17 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      18 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      19 </span>            :  */
+<span class="lineNum">      20 </span>            : 
+<span class="lineNum">      21 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      22 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      23 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      24 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      25 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      26 </span>            : #include &lt;stdarg.h&gt;
+<span class="lineNum">      27 </span>            : #include &lt;ctype.h&gt;
+<span class="lineNum">      28 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      29 </span>            : 
+<span class="lineNum">      30 </span>            : #include &quot;gpgsm.h&quot;
+<span class="lineNum">      31 </span>            : #include &lt;assuan.h&gt;
+<span class="lineNum">      32 </span>            : #include &quot;../common/sysutils.h&quot;
+<span class="lineNum">      33 </span>            : #include &quot;../common/server-help.h&quot;
+<span class="lineNum">      34 </span>            : 
+<span class="lineNum">      35 </span>            : #define set_error(e,t) assuan_set_error (ctx, gpg_error (e), (t))
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span>            : 
+<span class="lineNum">      38 </span>            : /* The filepointer for status message used in non-server mode */
+<span class="lineNum">      39 </span>            : static FILE *statusfp;
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span>            : /* Data used to assuciate an Assuan context with local server data */
+<span class="lineNum">      42 </span>            : struct server_local_s {
+<span class="lineNum">      43 </span>            :   assuan_context_t assuan_ctx;
+<span class="lineNum">      44 </span>            :   int message_fd;
+<span class="lineNum">      45 </span>            :   int list_internal;
+<span class="lineNum">      46 </span>            :   int list_external;
+<span class="lineNum">      47 </span>            :   int list_to_output;           /* Write keylistings to the output fd. */
+<span class="lineNum">      48 </span>            :   int enable_audit_log;         /* Use an audit log.  */
+<span class="lineNum">      49 </span>            :   certlist_t recplist;
+<span class="lineNum">      50 </span>            :   certlist_t signerlist;
+<span class="lineNum">      51 </span>            :   certlist_t default_recplist; /* As set by main() - don't release. */
+<span class="lineNum">      52 </span>            :   int allow_pinentry_notify;   /* Set if pinentry notifications should
+<span class="lineNum">      53 </span>            :                                   be passed back to the client. */
+<span class="lineNum">      54 </span>            :   int no_encrypt_to;           /* Local version of option.  */
+<span class="lineNum">      55 </span>            : };
+<span class="lineNum">      56 </span>            : 
+<span class="lineNum">      57 </span>            : 
+<span class="lineNum">      58 </span>            : /* Cookie definition for assuan data line output.  */
+<span class="lineNum">      59 </span>            : static gpgrt_ssize_t data_line_cookie_write (void *cookie,
+<span class="lineNum">      60 </span>            :                                              const void *buffer, size_t size);
+<span class="lineNum">      61 </span>            : static int data_line_cookie_close (void *cookie);
+<span class="lineNum">      62 </span>            : static es_cookie_io_functions_t data_line_cookie_functions =
+<span class="lineNum">      63 </span>            :   {
+<span class="lineNum">      64 </span>            :     NULL,
+<span class="lineNum">      65 </span>            :     data_line_cookie_write,
+<span class="lineNum">      66 </span>            :     NULL,
+<span class="lineNum">      67 </span>            :     data_line_cookie_close
+<span class="lineNum">      68 </span>            :   };
+<span class="lineNum">      69 </span>            : 
+<span class="lineNum">      70 </span>            : 
+<span class="lineNum">      71 </span>            : 
+<span class="lineNum">      72 </span>            : static int command_has_option (const char *cmd, const char *cmdopt);
+<span class="lineNum">      73 </span>            : 
+<span class="lineNum">      74 </span>            : 
+<span class="lineNum">      75 </span>            : 
+<span class="lineNum">      76 </span>            : 
+<span class="lineNum">      77 </span>            : /* Note that it is sufficient to allocate the target string D as
+<a name="78"><span class="lineNum">      78 </span>            :    long as the source string S, i.e.: strlen(s)+1; */</a>
+<span class="lineNum">      79 </span>            : static void
+<span class="lineNum">      80 </span><span class="lineNoCov">          0 : strcpy_escaped_plus (char *d, const char *s)</span>
+<span class="lineNum">      81 </span>            : {
+<span class="lineNum">      82 </span><span class="lineNoCov">          0 :   while (*s)</span>
+<span class="lineNum">      83 </span>            :     {
+<span class="lineNum">      84 </span><span class="lineNoCov">          0 :       if (*s == '%' &amp;&amp; s[1] &amp;&amp; s[2])</span>
+<span class="lineNum">      85 </span>            :         {
+<span class="lineNum">      86 </span><span class="lineNoCov">          0 :           s++;</span>
+<span class="lineNum">      87 </span><span class="lineNoCov">          0 :           *d++ = xtoi_2 (s);</span>
+<span class="lineNum">      88 </span><span class="lineNoCov">          0 :           s += 2;</span>
+<span class="lineNum">      89 </span>            :         }
+<span class="lineNum">      90 </span><span class="lineNoCov">          0 :       else if (*s == '+')</span>
+<span class="lineNum">      91 </span><span class="lineNoCov">          0 :         *d++ = ' ', s++;</span>
+<span class="lineNum">      92 </span>            :       else
+<span class="lineNum">      93 </span><span class="lineNoCov">          0 :         *d++ = *s++;</span>
+<span class="lineNum">      94 </span>            :     }
+<span class="lineNum">      95 </span><span class="lineNoCov">          0 :   *d = 0;</span>
+<span class="lineNum">      96 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">      97 </span>            : 
+<span class="lineNum">      98 </span>            : 
+<span class="lineNum">      99 </span>            : /* A write handler used by es_fopencookie to write assuan data
+<a name="100"><span class="lineNum">     100 </span>            :    lines.  */</a>
+<span class="lineNum">     101 </span>            : static gpgrt_ssize_t
+<span class="lineNum">     102 </span><span class="lineNoCov">          0 : data_line_cookie_write (void *cookie, const void *buffer, size_t size)</span>
+<span class="lineNum">     103 </span>            : {
+<span class="lineNum">     104 </span><span class="lineNoCov">          0 :   assuan_context_t ctx = cookie;</span>
+<span class="lineNum">     105 </span>            : 
+<span class="lineNum">     106 </span><span class="lineNoCov">          0 :   if (assuan_send_data (ctx, buffer, size))</span>
+<span class="lineNum">     107 </span>            :     {
+<span class="lineNum">     108 </span><span class="lineNoCov">          0 :       gpg_err_set_errno (EIO);</span>
+<span class="lineNum">     109 </span><span class="lineNoCov">          0 :       return -1;</span>
+<span class="lineNum">     110 </span>            :     }
+<span class="lineNum">     111 </span>            : 
+<span class="lineNum">     112 </span><span class="lineNoCov">          0 :   return (gpgrt_ssize_t)size;</span>
+<span class="lineNum">     113 </span>            : }
+<a name="114"><span class="lineNum">     114 </span>            : </a>
+<span class="lineNum">     115 </span>            : static int
+<span class="lineNum">     116 </span><span class="lineNoCov">          0 : data_line_cookie_close (void *cookie)</span>
+<span class="lineNum">     117 </span>            : {
+<span class="lineNum">     118 </span><span class="lineNoCov">          0 :   assuan_context_t ctx = cookie;</span>
+<span class="lineNum">     119 </span>            : 
+<span class="lineNum">     120 </span><span class="lineNoCov">          0 :   if (assuan_send_data (ctx, NULL, 0))</span>
+<span class="lineNum">     121 </span>            :     {
+<span class="lineNum">     122 </span><span class="lineNoCov">          0 :       gpg_err_set_errno (EIO);</span>
+<span class="lineNum">     123 </span><span class="lineNoCov">          0 :       return -1;</span>
+<span class="lineNum">     124 </span>            :     }
+<span class="lineNum">     125 </span>            : 
+<span class="lineNum">     126 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     127 </span>            : }
+<span class="lineNum">     128 </span>            : 
+<a name="129"><span class="lineNum">     129 </span>            : </a>
+<span class="lineNum">     130 </span>            : static void
+<span class="lineNum">     131 </span><span class="lineNoCov">          0 : close_message_fd (ctrl_t ctrl)</span>
+<span class="lineNum">     132 </span>            : {
+<span class="lineNum">     133 </span><span class="lineNoCov">          0 :   if (ctrl-&gt;server_local-&gt;message_fd != -1)</span>
+<span class="lineNum">     134 </span>            :     {
+<span class="lineNum">     135 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">     136 </span>            : #warning Is this correct for W32/W32CE?
+<span class="lineNum">     137 </span>            : #endif
+<span class="lineNum">     138 </span><span class="lineNoCov">          0 :       close (ctrl-&gt;server_local-&gt;message_fd);</span>
+<span class="lineNum">     139 </span><span class="lineNoCov">          0 :       ctrl-&gt;server_local-&gt;message_fd = -1;</span>
+<span class="lineNum">     140 </span>            :     }
+<span class="lineNum">     141 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">     142 </span>            : 
+<span class="lineNum">     143 </span>            : 
+<a name="144"><span class="lineNum">     144 </span>            : /* Start a new audit session if this has been enabled.  */</a>
+<span class="lineNum">     145 </span>            : static gpg_error_t
+<span class="lineNum">     146 </span><span class="lineNoCov">          0 : start_audit_session (ctrl_t ctrl)</span>
+<span class="lineNum">     147 </span>            : {
+<span class="lineNum">     148 </span><span class="lineNoCov">          0 :   audit_release (ctrl-&gt;audit);</span>
+<span class="lineNum">     149 </span><span class="lineNoCov">          0 :   ctrl-&gt;audit = NULL;</span>
+<span class="lineNum">     150 </span><span class="lineNoCov">          0 :   if (ctrl-&gt;server_local-&gt;enable_audit_log &amp;&amp; !(ctrl-&gt;audit = audit_new ()) )</span>
+<span class="lineNum">     151 </span><span class="lineNoCov">          0 :     return gpg_error_from_syserror ();</span>
+<span class="lineNum">     152 </span>            : 
+<span class="lineNum">     153 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     154 </span>            : }
+<span class="lineNum">     155 </span>            : 
+<a name="156"><span class="lineNum">     156 </span>            : </a>
+<span class="lineNum">     157 </span>            : static gpg_error_t
+<span class="lineNum">     158 </span><span class="lineNoCov">          0 : option_handler (assuan_context_t ctx, const char *key, const char *value)</span>
+<span class="lineNum">     159 </span>            : {
+<span class="lineNum">     160 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">     161 </span><span class="lineNoCov">          0 :   gpg_error_t err = 0;</span>
+<span class="lineNum">     162 </span>            : 
+<span class="lineNum">     163 </span><span class="lineNoCov">          0 :   if (!strcmp (key, &quot;putenv&quot;))</span>
+<span class="lineNum">     164 </span>            :     {
+<span class="lineNum">     165 </span>            :       /* Change the session's environment to be used for the
+<span class="lineNum">     166 </span>            :          Pinentry.  Valid values are:
+<span class="lineNum">     167 </span>            :           &lt;NAME&gt;            Delete envvar NAME
+<span class="lineNum">     168 </span>            :           &lt;KEY&gt;=            Set envvar NAME to the empty string
+<span class="lineNum">     169 </span>            :           &lt;KEY&gt;=&lt;VALUE&gt;     Set envvar NAME to VALUE
+<span class="lineNum">     170 </span>            :       */
+<span class="lineNum">     171 </span><span class="lineNoCov">          0 :       err = session_env_putenv (opt.session_env, value);</span>
+<span class="lineNum">     172 </span>            :     }
+<span class="lineNum">     173 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;display&quot;))</span>
+<span class="lineNum">     174 </span>            :     {
+<span class="lineNum">     175 </span><span class="lineNoCov">          0 :       err = session_env_setenv (opt.session_env, &quot;DISPLAY&quot;, value);</span>
+<span class="lineNum">     176 </span>            :     }
+<span class="lineNum">     177 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;ttyname&quot;))</span>
+<span class="lineNum">     178 </span>            :     {
+<span class="lineNum">     179 </span><span class="lineNoCov">          0 :       err = session_env_setenv (opt.session_env, &quot;GPG_TTY&quot;, value);</span>
+<span class="lineNum">     180 </span>            :     }
+<span class="lineNum">     181 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;ttytype&quot;))</span>
+<span class="lineNum">     182 </span>            :     {
+<span class="lineNum">     183 </span><span class="lineNoCov">          0 :       err = session_env_setenv (opt.session_env, &quot;TERM&quot;, value);</span>
+<span class="lineNum">     184 </span>            :     }
+<span class="lineNum">     185 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;lc-ctype&quot;))</span>
+<span class="lineNum">     186 </span>            :     {
+<span class="lineNum">     187 </span><span class="lineNoCov">          0 :       xfree (opt.lc_ctype);</span>
+<span class="lineNum">     188 </span><span class="lineNoCov">          0 :       opt.lc_ctype = xtrystrdup (value);</span>
+<span class="lineNum">     189 </span><span class="lineNoCov">          0 :       if (!opt.lc_ctype)</span>
+<span class="lineNum">     190 </span><span class="lineNoCov">          0 :         err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     191 </span>            :     }
+<span class="lineNum">     192 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;lc-messages&quot;))</span>
+<span class="lineNum">     193 </span>            :     {
+<span class="lineNum">     194 </span><span class="lineNoCov">          0 :       xfree (opt.lc_messages);</span>
+<span class="lineNum">     195 </span><span class="lineNoCov">          0 :       opt.lc_messages = xtrystrdup (value);</span>
+<span class="lineNum">     196 </span><span class="lineNoCov">          0 :       if (!opt.lc_messages)</span>
+<span class="lineNum">     197 </span><span class="lineNoCov">          0 :         err = gpg_error_from_syserror ();</span>
+<span class="lineNum">     198 </span>            :     }
+<span class="lineNum">     199 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;xauthority&quot;))</span>
+<span class="lineNum">     200 </span>            :     {
+<span class="lineNum">     201 </span><span class="lineNoCov">          0 :       err = session_env_setenv (opt.session_env, &quot;XAUTHORITY&quot;, value);</span>
+<span class="lineNum">     202 </span>            :     }
+<span class="lineNum">     203 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;pinentry-user-data&quot;))</span>
+<span class="lineNum">     204 </span>            :     {
+<span class="lineNum">     205 </span><span class="lineNoCov">          0 :       err = session_env_setenv (opt.session_env, &quot;PINENTRY_USER_DATA&quot;, value);</span>
+<span class="lineNum">     206 </span>            :     }
+<span class="lineNum">     207 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;include-certs&quot;))</span>
+<span class="lineNum">     208 </span>            :     {
+<span class="lineNum">     209 </span><span class="lineNoCov">          0 :       int i = *value? atoi (value) : -1;</span>
+<span class="lineNum">     210 </span><span class="lineNoCov">          0 :       if (ctrl-&gt;include_certs &lt; -2)</span>
+<span class="lineNum">     211 </span><span class="lineNoCov">          0 :         err = gpg_error (GPG_ERR_ASS_PARAMETER);</span>
+<span class="lineNum">     212 </span>            :       else
+<span class="lineNum">     213 </span><span class="lineNoCov">          0 :         ctrl-&gt;include_certs = i;</span>
+<span class="lineNum">     214 </span>            :     }
+<span class="lineNum">     215 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;list-mode&quot;))</span>
+<span class="lineNum">     216 </span>            :     {
+<span class="lineNum">     217 </span><span class="lineNoCov">          0 :       int i = *value? atoi (value) : 0;</span>
+<span class="lineNum">     218 </span><span class="lineNoCov">          0 :       if (!i || i == 1) /* default and mode 1 */</span>
+<span class="lineNum">     219 </span>            :         {
+<span class="lineNum">     220 </span><span class="lineNoCov">          0 :           ctrl-&gt;server_local-&gt;list_internal = 1;</span>
+<span class="lineNum">     221 </span><span class="lineNoCov">          0 :           ctrl-&gt;server_local-&gt;list_external = 0;</span>
+<span class="lineNum">     222 </span>            :         }
+<span class="lineNum">     223 </span><span class="lineNoCov">          0 :       else if (i == 2)</span>
+<span class="lineNum">     224 </span>            :         {
+<span class="lineNum">     225 </span><span class="lineNoCov">          0 :           ctrl-&gt;server_local-&gt;list_internal = 0;</span>
+<span class="lineNum">     226 </span><span class="lineNoCov">          0 :           ctrl-&gt;server_local-&gt;list_external = 1;</span>
+<span class="lineNum">     227 </span>            :         }
+<span class="lineNum">     228 </span><span class="lineNoCov">          0 :       else if (i == 3)</span>
+<span class="lineNum">     229 </span>            :         {
+<span class="lineNum">     230 </span><span class="lineNoCov">          0 :           ctrl-&gt;server_local-&gt;list_internal = 1;</span>
+<span class="lineNum">     231 </span><span class="lineNoCov">          0 :           ctrl-&gt;server_local-&gt;list_external = 1;</span>
+<span class="lineNum">     232 </span>            :         }
+<span class="lineNum">     233 </span>            :       else
+<span class="lineNum">     234 </span><span class="lineNoCov">          0 :         err = gpg_error (GPG_ERR_ASS_PARAMETER);</span>
+<span class="lineNum">     235 </span>            :     }
+<span class="lineNum">     236 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;list-to-output&quot;))</span>
+<span class="lineNum">     237 </span>            :     {
+<span class="lineNum">     238 </span><span class="lineNoCov">          0 :       int i = *value? atoi (value) : 0;</span>
+<span class="lineNum">     239 </span><span class="lineNoCov">          0 :       ctrl-&gt;server_local-&gt;list_to_output = i;</span>
+<span class="lineNum">     240 </span>            :     }
+<span class="lineNum">     241 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;with-validation&quot;))</span>
+<span class="lineNum">     242 </span>            :     {
+<span class="lineNum">     243 </span><span class="lineNoCov">          0 :       int i = *value? atoi (value) : 0;</span>
+<span class="lineNum">     244 </span><span class="lineNoCov">          0 :       ctrl-&gt;with_validation = i;</span>
+<span class="lineNum">     245 </span>            :     }
+<span class="lineNum">     246 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;with-secret&quot;))</span>
+<span class="lineNum">     247 </span>            :     {
+<span class="lineNum">     248 </span><span class="lineNoCov">          0 :       int i = *value? atoi (value) : 0;</span>
+<span class="lineNum">     249 </span><span class="lineNoCov">          0 :       ctrl-&gt;with_secret = i;</span>
+<span class="lineNum">     250 </span>            :     }
+<span class="lineNum">     251 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;validation-model&quot;))</span>
+<span class="lineNum">     252 </span>            :     {
+<span class="lineNum">     253 </span><span class="lineNoCov">          0 :       int i = gpgsm_parse_validation_model (value);</span>
+<span class="lineNum">     254 </span><span class="lineNoCov">          0 :       if ( i &gt;= 0 &amp;&amp; i &lt;= 2 )</span>
+<span class="lineNum">     255 </span><span class="lineNoCov">          0 :         ctrl-&gt;validation_model = i;</span>
+<span class="lineNum">     256 </span>            :       else
+<span class="lineNum">     257 </span><span class="lineNoCov">          0 :         err = gpg_error (GPG_ERR_ASS_PARAMETER);</span>
+<span class="lineNum">     258 </span>            :     }
+<span class="lineNum">     259 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;with-key-data&quot;))</span>
+<span class="lineNum">     260 </span>            :     {
+<span class="lineNum">     261 </span><span class="lineNoCov">          0 :       opt.with_key_data = 1;</span>
+<span class="lineNum">     262 </span>            :     }
+<span class="lineNum">     263 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;enable-audit-log&quot;))</span>
+<span class="lineNum">     264 </span>            :     {
+<span class="lineNum">     265 </span><span class="lineNoCov">          0 :       int i = *value? atoi (value) : 0;</span>
+<span class="lineNum">     266 </span><span class="lineNoCov">          0 :       ctrl-&gt;server_local-&gt;enable_audit_log = i;</span>
+<span class="lineNum">     267 </span>            :     }
+<span class="lineNum">     268 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;allow-pinentry-notify&quot;))</span>
+<span class="lineNum">     269 </span>            :     {
+<span class="lineNum">     270 </span><span class="lineNoCov">          0 :       ctrl-&gt;server_local-&gt;allow_pinentry_notify = 1;</span>
+<span class="lineNum">     271 </span>            :     }
+<span class="lineNum">     272 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;with-ephemeral-keys&quot;))</span>
+<span class="lineNum">     273 </span>            :     {
+<span class="lineNum">     274 </span><span class="lineNoCov">          0 :       int i = *value? atoi (value) : 0;</span>
+<span class="lineNum">     275 </span><span class="lineNoCov">          0 :       ctrl-&gt;with_ephemeral_keys = i;</span>
+<span class="lineNum">     276 </span>            :     }
+<span class="lineNum">     277 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;no-encrypt-to&quot;))</span>
+<span class="lineNum">     278 </span>            :     {
+<span class="lineNum">     279 </span><span class="lineNoCov">          0 :       ctrl-&gt;server_local-&gt;no_encrypt_to = 1;</span>
+<span class="lineNum">     280 </span>            :     }
+<span class="lineNum">     281 </span><span class="lineNoCov">          0 :   else if (!strcmp (key, &quot;offline&quot;))</span>
+<span class="lineNum">     282 </span>            :     {
+<span class="lineNum">     283 </span>            :       /* We ignore this option if gpgsm has been started with
+<span class="lineNum">     284 </span>            :          --disable-dirmngr (which also sets offline).  */
+<span class="lineNum">     285 </span><span class="lineNoCov">          0 :       if (!opt.disable_dirmngr)</span>
+<span class="lineNum">     286 </span>            :         {
+<span class="lineNum">     287 </span><span class="lineNoCov">          0 :           int i = *value? !!atoi (value) : 1;</span>
+<span class="lineNum">     288 </span><span class="lineNoCov">          0 :           ctrl-&gt;offline = i;</span>
+<span class="lineNum">     289 </span>            :         }
+<span class="lineNum">     290 </span>            :     }
+<span class="lineNum">     291 </span>            :   else
+<span class="lineNum">     292 </span><span class="lineNoCov">          0 :     err = gpg_error (GPG_ERR_UNKNOWN_OPTION);</span>
+<span class="lineNum">     293 </span>            : 
+<span class="lineNum">     294 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     295 </span>            : }
+<span class="lineNum">     296 </span>            : 
+<a name="297"><span class="lineNum">     297 </span>            : </a>
+<span class="lineNum">     298 </span>            : static gpg_error_t
+<span class="lineNum">     299 </span><span class="lineNoCov">          0 : reset_notify (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     300 </span>            : {
+<span class="lineNum">     301 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">     302 </span>            : 
+<span class="lineNum">     303 </span>            :   (void) line;
+<span class="lineNum">     304 </span>            : 
+<span class="lineNum">     305 </span><span class="lineNoCov">          0 :   gpgsm_release_certlist (ctrl-&gt;server_local-&gt;recplist);</span>
+<span class="lineNum">     306 </span><span class="lineNoCov">          0 :   gpgsm_release_certlist (ctrl-&gt;server_local-&gt;signerlist);</span>
+<span class="lineNum">     307 </span><span class="lineNoCov">          0 :   ctrl-&gt;server_local-&gt;recplist = NULL;</span>
+<span class="lineNum">     308 </span><span class="lineNoCov">          0 :   ctrl-&gt;server_local-&gt;signerlist = NULL;</span>
+<span class="lineNum">     309 </span><span class="lineNoCov">          0 :   close_message_fd (ctrl);</span>
+<span class="lineNum">     310 </span><span class="lineNoCov">          0 :   assuan_close_input_fd (ctx);</span>
+<span class="lineNum">     311 </span><span class="lineNoCov">          0 :   assuan_close_output_fd (ctx);</span>
+<span class="lineNum">     312 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     313 </span>            : }
+<span class="lineNum">     314 </span>            : 
+<a name="315"><span class="lineNum">     315 </span>            : </a>
+<span class="lineNum">     316 </span>            : static gpg_error_t
+<span class="lineNum">     317 </span><span class="lineNoCov">          0 : input_notify (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     318 </span>            : {
+<span class="lineNum">     319 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">     320 </span>            : 
+<span class="lineNum">     321 </span><span class="lineNoCov">          0 :   ctrl-&gt;autodetect_encoding = 0;</span>
+<span class="lineNum">     322 </span><span class="lineNoCov">          0 :   ctrl-&gt;is_pem = 0;</span>
+<span class="lineNum">     323 </span><span class="lineNoCov">          0 :   ctrl-&gt;is_base64 = 0;</span>
+<span class="lineNum">     324 </span><span class="lineNoCov">          0 :   if (strstr (line, &quot;--armor&quot;))</span>
+<span class="lineNum">     325 </span><span class="lineNoCov">          0 :     ctrl-&gt;is_pem = 1;</span>
+<span class="lineNum">     326 </span><span class="lineNoCov">          0 :   else if (strstr (line, &quot;--base64&quot;))</span>
+<span class="lineNum">     327 </span><span class="lineNoCov">          0 :     ctrl-&gt;is_base64 = 1;</span>
+<span class="lineNum">     328 </span><span class="lineNoCov">          0 :   else if (strstr (line, &quot;--binary&quot;))</span>
+<span class="lineNum">     329 </span>            :     ;
+<span class="lineNum">     330 </span>            :   else
+<span class="lineNum">     331 </span><span class="lineNoCov">          0 :     ctrl-&gt;autodetect_encoding = 1;</span>
+<span class="lineNum">     332 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     333 </span>            : }
+<a name="334"><span class="lineNum">     334 </span>            : </a>
+<span class="lineNum">     335 </span>            : static gpg_error_t
+<span class="lineNum">     336 </span><span class="lineNoCov">          0 : output_notify (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     337 </span>            : {
+<span class="lineNum">     338 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">     339 </span>            : 
+<span class="lineNum">     340 </span><span class="lineNoCov">          0 :   ctrl-&gt;create_pem = 0;</span>
+<span class="lineNum">     341 </span><span class="lineNoCov">          0 :   ctrl-&gt;create_base64 = 0;</span>
+<span class="lineNum">     342 </span><span class="lineNoCov">          0 :   if (strstr (line, &quot;--armor&quot;))</span>
+<span class="lineNum">     343 </span><span class="lineNoCov">          0 :     ctrl-&gt;create_pem = 1;</span>
+<span class="lineNum">     344 </span><span class="lineNoCov">          0 :   else if (strstr (line, &quot;--base64&quot;))</span>
+<span class="lineNum">     345 </span><span class="lineNoCov">          0 :     ctrl-&gt;create_base64 = 1; /* just the raw output */</span>
+<span class="lineNum">     346 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     347 </span>            : }
+<span class="lineNum">     348 </span>            : 
+<span class="lineNum">     349 </span>            : 
+<span class="lineNum">     350 </span>            : static const char hlp_recipient[] =
+<span class="lineNum">     351 </span>            :   &quot;RECIPIENT &lt;userID&gt;\n&quot;
+<span class="lineNum">     352 </span>            :   &quot;\n&quot;
+<span class="lineNum">     353 </span>            :   &quot;Set the recipient for the encryption.  USERID shall be the\n&quot;
+<span class="lineNum">     354 </span>            :   &quot;internal representation of the key; the server may accept any other\n&quot;
+<span class="lineNum">     355 </span>            :   &quot;way of specification [we will support this].  If this is a valid and\n&quot;
+<span class="lineNum">     356 </span>            :   &quot;trusted recipient the server does respond with OK, otherwise the\n&quot;
+<span class="lineNum">     357 </span>            :   &quot;return is an ERR with the reason why the recipient can't be used,\n&quot;
+<span class="lineNum">     358 </span>            :   &quot;the encryption will then not be done for this recipient.  If the\n&quot;
+<span class="lineNum">     359 </span>            :   &quot;policy is not to encrypt at all if not all recipients are valid, the\n&quot;
+<span class="lineNum">     360 </span>            :   &quot;client has to take care of this.  All RECIPIENT commands are\n&quot;
+<a name="361"><span class="lineNum">     361 </span>            :   &quot;cumulative until a RESET or an successful ENCRYPT command.&quot;;</a>
+<span class="lineNum">     362 </span>            : static gpg_error_t
+<span class="lineNum">     363 </span><span class="lineNoCov">          0 : cmd_recipient (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     364 </span>            : {
+<span class="lineNum">     365 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">     366 </span>            :   int rc;
+<span class="lineNum">     367 </span>            : 
+<span class="lineNum">     368 </span><span class="lineNoCov">          0 :   if (!ctrl-&gt;audit)</span>
+<span class="lineNum">     369 </span><span class="lineNoCov">          0 :     rc = start_audit_session (ctrl);</span>
+<span class="lineNum">     370 </span>            :   else
+<span class="lineNum">     371 </span><span class="lineNoCov">          0 :     rc = 0;</span>
+<span class="lineNum">     372 </span>            : 
+<span class="lineNum">     373 </span><span class="lineNoCov">          0 :   if (!rc)</span>
+<span class="lineNum">     374 </span><span class="lineNoCov">          0 :     rc = gpgsm_add_to_certlist (ctrl, line, 0,</span>
+<span class="lineNum">     375 </span><span class="lineNoCov">          0 :                                 &amp;ctrl-&gt;server_local-&gt;recplist, 0);</span>
+<span class="lineNum">     376 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     377 </span>            :     {
+<span class="lineNum">     378 </span><span class="lineNoCov">          0 :       gpgsm_status2 (ctrl, STATUS_INV_RECP,</span>
+<span class="lineNum">     379 </span>            :                      get_inv_recpsgnr_code (rc), line, NULL);
+<span class="lineNum">     380 </span>            :     }
+<span class="lineNum">     381 </span>            : 
+<span class="lineNum">     382 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     383 </span>            : }
+<span class="lineNum">     384 </span>            : 
+<span class="lineNum">     385 </span>            : 
+<span class="lineNum">     386 </span>            : static const char hlp_signer[] =
+<span class="lineNum">     387 </span>            :   &quot;SIGNER &lt;userID&gt;\n&quot;
+<span class="lineNum">     388 </span>            :   &quot;\n&quot;
+<span class="lineNum">     389 </span>            :   &quot;Set the signer's keys for the signature creation.  USERID should\n&quot;
+<span class="lineNum">     390 </span>            :   &quot;be the internal representation of the key; the server may accept any\n&quot;
+<span class="lineNum">     391 </span>            :   &quot;other way of specification [we will support this].  If this is a\n&quot;
+<span class="lineNum">     392 </span>            :   &quot;valid and usable signing key the server does respond with OK,\n&quot;
+<span class="lineNum">     393 </span>            :   &quot;otherwise it returns an ERR with the reason why the key can't be\n&quot;
+<span class="lineNum">     394 </span>            :   &quot;used, the signing will then not be done for this key.  If the policy\n&quot;
+<span class="lineNum">     395 </span>            :   &quot;is not to sign at all if not all signer keys are valid, the client\n&quot;
+<span class="lineNum">     396 </span>            :   &quot;has to take care of this.  All SIGNER commands are cumulative until\n&quot;
+<span class="lineNum">     397 </span>            :   &quot;a RESET but they are *not* reset by an SIGN command because it can\n&quot;
+<span class="lineNum">     398 </span>            :   &quot;be expected that set of signers are used for more than one sign\n&quot;
+<a name="399"><span class="lineNum">     399 </span>            :   &quot;operation.&quot;;</a>
+<span class="lineNum">     400 </span>            : static gpg_error_t
+<span class="lineNum">     401 </span><span class="lineNoCov">          0 : cmd_signer (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     402 </span>            : {
+<span class="lineNum">     403 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">     404 </span>            :   int rc;
+<span class="lineNum">     405 </span>            : 
+<span class="lineNum">     406 </span><span class="lineNoCov">          0 :   rc = gpgsm_add_to_certlist (ctrl, line, 1,</span>
+<span class="lineNum">     407 </span><span class="lineNoCov">          0 :                               &amp;ctrl-&gt;server_local-&gt;signerlist, 0);</span>
+<span class="lineNum">     408 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     409 </span>            :     {
+<span class="lineNum">     410 </span><span class="lineNoCov">          0 :       gpgsm_status2 (ctrl, STATUS_INV_SGNR,</span>
+<span class="lineNum">     411 </span>            :                      get_inv_recpsgnr_code (rc), line, NULL);
+<span class="lineNum">     412 </span>            :       /* For compatibility reasons we also issue the old code after the
+<span class="lineNum">     413 </span>            :          new one.  */
+<span class="lineNum">     414 </span><span class="lineNoCov">          0 :       gpgsm_status2 (ctrl, STATUS_INV_RECP,</span>
+<span class="lineNum">     415 </span>            :                      get_inv_recpsgnr_code (rc), line, NULL);
+<span class="lineNum">     416 </span>            :     }
+<span class="lineNum">     417 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     418 </span>            : }
+<span class="lineNum">     419 </span>            : 
+<span class="lineNum">     420 </span>            : 
+<span class="lineNum">     421 </span>            : static const char hlp_encrypt[] =
+<span class="lineNum">     422 </span>            :   &quot;ENCRYPT \n&quot;
+<span class="lineNum">     423 </span>            :   &quot;\n&quot;
+<span class="lineNum">     424 </span>            :   &quot;Do the actual encryption process. Takes the plaintext from the INPUT\n&quot;
+<span class="lineNum">     425 </span>            :   &quot;command, writes to the ciphertext to the file descriptor set with\n&quot;
+<span class="lineNum">     426 </span>            :   &quot;the OUTPUT command, take the recipients form all the recipients set\n&quot;
+<span class="lineNum">     427 </span>            :   &quot;so far.  If this command fails the clients should try to delete all\n&quot;
+<span class="lineNum">     428 </span>            :   &quot;output currently done or otherwise mark it as invalid.  GPGSM does\n&quot;
+<span class="lineNum">     429 </span>            :   &quot;ensure that there won't be any security problem with leftover data\n&quot;
+<span class="lineNum">     430 </span>            :   &quot;on the output in this case.\n&quot;
+<span class="lineNum">     431 </span>            :   &quot;\n&quot;
+<span class="lineNum">     432 </span>            :   &quot;This command should in general not fail, as all necessary checks\n&quot;
+<span class="lineNum">     433 </span>            :   &quot;have been done while setting the recipients.  The input and output\n&quot;
+<a name="434"><span class="lineNum">     434 </span>            :   &quot;pipes are closed.&quot;;</a>
+<span class="lineNum">     435 </span>            : static gpg_error_t
+<span class="lineNum">     436 </span><span class="lineNoCov">          0 : cmd_encrypt (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     437 </span>            : {
+<span class="lineNum">     438 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">     439 </span>            :   certlist_t cl;
+<span class="lineNum">     440 </span>            :   int inp_fd, out_fd;
+<span class="lineNum">     441 </span>            :   estream_t out_fp;
+<span class="lineNum">     442 </span>            :   int rc;
+<span class="lineNum">     443 </span>            : 
+<span class="lineNum">     444 </span>            :   (void)line;
+<span class="lineNum">     445 </span>            : 
+<span class="lineNum">     446 </span><span class="lineNoCov">          0 :   inp_fd = translate_sys2libc_fd (assuan_get_input_fd (ctx), 0);</span>
+<span class="lineNum">     447 </span><span class="lineNoCov">          0 :   if (inp_fd == -1)</span>
+<span class="lineNum">     448 </span><span class="lineNoCov">          0 :     return set_error (GPG_ERR_ASS_NO_INPUT, NULL);</span>
+<span class="lineNum">     449 </span><span class="lineNoCov">          0 :   out_fd = translate_sys2libc_fd (assuan_get_output_fd (ctx), 1);</span>
+<span class="lineNum">     450 </span><span class="lineNoCov">          0 :   if (out_fd == -1)</span>
+<span class="lineNum">     451 </span><span class="lineNoCov">          0 :     return set_error (GPG_ERR_ASS_NO_OUTPUT, NULL);</span>
+<span class="lineNum">     452 </span>            : 
+<span class="lineNum">     453 </span><span class="lineNoCov">          0 :   out_fp = es_fdopen_nc (out_fd, &quot;w&quot;);</span>
+<span class="lineNum">     454 </span><span class="lineNoCov">          0 :   if (!out_fp)</span>
+<span class="lineNum">     455 </span><span class="lineNoCov">          0 :     return set_error (gpg_err_code_from_syserror (), &quot;fdopen() failed&quot;);</span>
+<span class="lineNum">     456 </span>            : 
+<span class="lineNum">     457 </span>            :   /* Now add all encrypt-to marked recipients from the default
+<span class="lineNum">     458 </span>            :      list. */
+<span class="lineNum">     459 </span><span class="lineNoCov">          0 :   rc = 0;</span>
+<span class="lineNum">     460 </span><span class="lineNoCov">          0 :   if (!opt.no_encrypt_to &amp;&amp; !ctrl-&gt;server_local-&gt;no_encrypt_to)</span>
+<span class="lineNum">     461 </span>            :     {
+<span class="lineNum">     462 </span><span class="lineNoCov">          0 :       for (cl=ctrl-&gt;server_local-&gt;default_recplist; !rc &amp;&amp; cl; cl = cl-&gt;next)</span>
+<span class="lineNum">     463 </span><span class="lineNoCov">          0 :         if (cl-&gt;is_encrypt_to)</span>
+<span class="lineNum">     464 </span><span class="lineNoCov">          0 :           rc = gpgsm_add_cert_to_certlist (ctrl, cl-&gt;cert,</span>
+<span class="lineNum">     465 </span><span class="lineNoCov">          0 :                                            &amp;ctrl-&gt;server_local-&gt;recplist, 1);</span>
+<span class="lineNum">     466 </span>            :     }
+<span class="lineNum">     467 </span><span class="lineNoCov">          0 :   if (!rc)</span>
+<span class="lineNum">     468 </span><span class="lineNoCov">          0 :     rc = ctrl-&gt;audit? 0 : start_audit_session (ctrl);</span>
+<span class="lineNum">     469 </span><span class="lineNoCov">          0 :   if (!rc)</span>
+<span class="lineNum">     470 </span><span class="lineNoCov">          0 :     rc = gpgsm_encrypt (assuan_get_pointer (ctx),</span>
+<span class="lineNum">     471 </span><span class="lineNoCov">          0 :                         ctrl-&gt;server_local-&gt;recplist,</span>
+<span class="lineNum">     472 </span>            :                         inp_fd, out_fp);
+<span class="lineNum">     473 </span><span class="lineNoCov">          0 :   es_fclose (out_fp);</span>
+<span class="lineNum">     474 </span>            : 
+<span class="lineNum">     475 </span><span class="lineNoCov">          0 :   gpgsm_release_certlist (ctrl-&gt;server_local-&gt;recplist);</span>
+<span class="lineNum">     476 </span><span class="lineNoCov">          0 :   ctrl-&gt;server_local-&gt;recplist = NULL;</span>
+<span class="lineNum">     477 </span>            :   /* Close and reset the fd */
+<span class="lineNum">     478 </span><span class="lineNoCov">          0 :   close_message_fd (ctrl);</span>
+<span class="lineNum">     479 </span><span class="lineNoCov">          0 :   assuan_close_input_fd (ctx);</span>
+<span class="lineNum">     480 </span><span class="lineNoCov">          0 :   assuan_close_output_fd (ctx);</span>
+<span class="lineNum">     481 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     482 </span>            : }
+<span class="lineNum">     483 </span>            : 
+<span class="lineNum">     484 </span>            : 
+<span class="lineNum">     485 </span>            : static const char hlp_decrypt[] =
+<span class="lineNum">     486 </span>            :   &quot;DECRYPT\n&quot;
+<span class="lineNum">     487 </span>            :   &quot;\n&quot;
+<span class="lineNum">     488 </span>            :   &quot;This performs the decrypt operation after doing some check on the\n&quot;
+<span class="lineNum">     489 </span>            :   &quot;internal state. (e.g. that only needed data has been set).  Because\n&quot;
+<span class="lineNum">     490 </span>            :   &quot;it utilizes the GPG-Agent for the session key decryption, there is\n&quot;
+<span class="lineNum">     491 </span>            :   &quot;no need to ask the client for a protecting passphrase - GPG-Agent\n&quot;
+<a name="492"><span class="lineNum">     492 </span>            :   &quot;does take care of this by requesting this from the user.&quot;;</a>
+<span class="lineNum">     493 </span>            : static gpg_error_t
+<span class="lineNum">     494 </span><span class="lineNoCov">          0 : cmd_decrypt (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     495 </span>            : {
+<span class="lineNum">     496 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">     497 </span>            :   int inp_fd, out_fd;
+<span class="lineNum">     498 </span>            :   estream_t out_fp;
+<span class="lineNum">     499 </span>            :   int rc;
+<span class="lineNum">     500 </span>            : 
+<span class="lineNum">     501 </span>            :   (void)line;
+<span class="lineNum">     502 </span>            : 
+<span class="lineNum">     503 </span><span class="lineNoCov">          0 :   inp_fd = translate_sys2libc_fd (assuan_get_input_fd (ctx), 0);</span>
+<span class="lineNum">     504 </span><span class="lineNoCov">          0 :   if (inp_fd == -1)</span>
+<span class="lineNum">     505 </span><span class="lineNoCov">          0 :     return set_error (GPG_ERR_ASS_NO_INPUT, NULL);</span>
+<span class="lineNum">     506 </span><span class="lineNoCov">          0 :   out_fd = translate_sys2libc_fd (assuan_get_output_fd (ctx), 1);</span>
+<span class="lineNum">     507 </span><span class="lineNoCov">          0 :   if (out_fd == -1)</span>
+<span class="lineNum">     508 </span><span class="lineNoCov">          0 :     return set_error (GPG_ERR_ASS_NO_OUTPUT, NULL);</span>
+<span class="lineNum">     509 </span>            : 
+<span class="lineNum">     510 </span><span class="lineNoCov">          0 :   out_fp = es_fdopen_nc (out_fd, &quot;w&quot;);</span>
+<span class="lineNum">     511 </span><span class="lineNoCov">          0 :   if (!out_fp)</span>
+<span class="lineNum">     512 </span><span class="lineNoCov">          0 :     return set_error (gpg_err_code_from_syserror (), &quot;fdopen() failed&quot;);</span>
+<span class="lineNum">     513 </span>            : 
+<span class="lineNum">     514 </span><span class="lineNoCov">          0 :   rc = start_audit_session (ctrl);</span>
+<span class="lineNum">     515 </span><span class="lineNoCov">          0 :   if (!rc)</span>
+<span class="lineNum">     516 </span><span class="lineNoCov">          0 :     rc = gpgsm_decrypt (ctrl, inp_fd, out_fp);</span>
+<span class="lineNum">     517 </span><span class="lineNoCov">          0 :   es_fclose (out_fp);</span>
+<span class="lineNum">     518 </span>            : 
+<span class="lineNum">     519 </span>            :   /* Close and reset the fds. */
+<span class="lineNum">     520 </span><span class="lineNoCov">          0 :   close_message_fd (ctrl);</span>
+<span class="lineNum">     521 </span><span class="lineNoCov">          0 :   assuan_close_input_fd (ctx);</span>
+<span class="lineNum">     522 </span><span class="lineNoCov">          0 :   assuan_close_output_fd (ctx);</span>
+<span class="lineNum">     523 </span>            : 
+<span class="lineNum">     524 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     525 </span>            : }
+<span class="lineNum">     526 </span>            : 
+<span class="lineNum">     527 </span>            : 
+<span class="lineNum">     528 </span>            : static const char hlp_verify[] =
+<span class="lineNum">     529 </span>            :   &quot;VERIFY\n&quot;
+<span class="lineNum">     530 </span>            :   &quot;\n&quot;
+<span class="lineNum">     531 </span>            :   &quot;This does a verify operation on the message send to the input FD.\n&quot;
+<span class="lineNum">     532 </span>            :   &quot;The result is written out using status lines.  If an output FD was\n&quot;
+<span class="lineNum">     533 </span>            :   &quot;given, the signed text will be written to that.\n&quot;
+<span class="lineNum">     534 </span>            :   &quot;\n&quot;
+<span class="lineNum">     535 </span>            :   &quot;If the signature is a detached one, the server will inquire about\n&quot;
+<a name="536"><span class="lineNum">     536 </span>            :   &quot;the signed material and the client must provide it.&quot;;</a>
+<span class="lineNum">     537 </span>            : static gpg_error_t
+<span class="lineNum">     538 </span><span class="lineNoCov">          0 : cmd_verify (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     539 </span>            : {
+<span class="lineNum">     540 </span>            :   int rc;
+<span class="lineNum">     541 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">     542 </span><span class="lineNoCov">          0 :   int fd = translate_sys2libc_fd (assuan_get_input_fd (ctx), 0);</span>
+<span class="lineNum">     543 </span><span class="lineNoCov">          0 :   int out_fd = translate_sys2libc_fd (assuan_get_output_fd (ctx), 1);</span>
+<span class="lineNum">     544 </span><span class="lineNoCov">          0 :   estream_t out_fp = NULL;</span>
+<span class="lineNum">     545 </span>            : 
+<span class="lineNum">     546 </span>            :   (void)line;
+<span class="lineNum">     547 </span>            : 
+<span class="lineNum">     548 </span><span class="lineNoCov">          0 :   if (fd == -1)</span>
+<span class="lineNum">     549 </span><span class="lineNoCov">          0 :     return set_error (GPG_ERR_ASS_NO_INPUT, NULL);</span>
+<span class="lineNum">     550 </span>            : 
+<span class="lineNum">     551 </span><span class="lineNoCov">          0 :   if (out_fd != -1)</span>
+<span class="lineNum">     552 </span>            :     {
+<span class="lineNum">     553 </span><span class="lineNoCov">          0 :       out_fp = es_fdopen_nc (out_fd, &quot;w&quot;);</span>
+<span class="lineNum">     554 </span><span class="lineNoCov">          0 :       if (!out_fp)</span>
+<span class="lineNum">     555 </span><span class="lineNoCov">          0 :         return set_error (gpg_err_code_from_syserror (), &quot;fdopen() failed&quot;);</span>
+<span class="lineNum">     556 </span>            :     }
+<span class="lineNum">     557 </span>            : 
+<span class="lineNum">     558 </span><span class="lineNoCov">          0 :   rc = start_audit_session (ctrl);</span>
+<span class="lineNum">     559 </span><span class="lineNoCov">          0 :   if (!rc)</span>
+<span class="lineNum">     560 </span><span class="lineNoCov">          0 :     rc = gpgsm_verify (assuan_get_pointer (ctx), fd,</span>
+<span class="lineNum">     561 </span><span class="lineNoCov">          0 :                        ctrl-&gt;server_local-&gt;message_fd, out_fp);</span>
+<span class="lineNum">     562 </span><span class="lineNoCov">          0 :   es_fclose (out_fp);</span>
+<span class="lineNum">     563 </span>            : 
+<span class="lineNum">     564 </span>            :   /* Close and reset the fd.  */
+<span class="lineNum">     565 </span><span class="lineNoCov">          0 :   close_message_fd (ctrl);</span>
+<span class="lineNum">     566 </span><span class="lineNoCov">          0 :   assuan_close_input_fd (ctx);</span>
+<span class="lineNum">     567 </span><span class="lineNoCov">          0 :   assuan_close_output_fd (ctx);</span>
+<span class="lineNum">     568 </span>            : 
+<span class="lineNum">     569 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     570 </span>            : }
+<span class="lineNum">     571 </span>            : 
+<span class="lineNum">     572 </span>            : 
+<span class="lineNum">     573 </span>            : static const char hlp_sign[] =
+<span class="lineNum">     574 </span>            :   &quot;SIGN [--detached]\n&quot;
+<span class="lineNum">     575 </span>            :   &quot;\n&quot;
+<span class="lineNum">     576 </span>            :   &quot;Sign the data set with the INPUT command and write it to the sink\n&quot;
+<span class="lineNum">     577 </span>            :   &quot;set by OUTPUT.  With \&quot;--detached\&quot;, a detached signature is\n&quot;
+<a name="578"><span class="lineNum">     578 </span>            :   &quot;created (surprise).&quot;;</a>
+<span class="lineNum">     579 </span>            : static gpg_error_t
+<span class="lineNum">     580 </span><span class="lineNoCov">          0 : cmd_sign (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     581 </span>            : {
+<span class="lineNum">     582 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">     583 </span>            :   int inp_fd, out_fd;
+<span class="lineNum">     584 </span>            :   estream_t out_fp;
+<span class="lineNum">     585 </span>            :   int detached;
+<span class="lineNum">     586 </span>            :   int rc;
+<span class="lineNum">     587 </span>            : 
+<span class="lineNum">     588 </span><span class="lineNoCov">          0 :   inp_fd = translate_sys2libc_fd (assuan_get_input_fd (ctx), 0);</span>
+<span class="lineNum">     589 </span><span class="lineNoCov">          0 :   if (inp_fd == -1)</span>
+<span class="lineNum">     590 </span><span class="lineNoCov">          0 :     return set_error (GPG_ERR_ASS_NO_INPUT, NULL);</span>
+<span class="lineNum">     591 </span><span class="lineNoCov">          0 :   out_fd = translate_sys2libc_fd (assuan_get_output_fd (ctx), 1);</span>
+<span class="lineNum">     592 </span><span class="lineNoCov">          0 :   if (out_fd == -1)</span>
+<span class="lineNum">     593 </span><span class="lineNoCov">          0 :     return set_error (GPG_ERR_ASS_NO_OUTPUT, NULL);</span>
+<span class="lineNum">     594 </span>            : 
+<span class="lineNum">     595 </span><span class="lineNoCov">          0 :   detached = has_option (line, &quot;--detached&quot;);</span>
+<span class="lineNum">     596 </span>            : 
+<span class="lineNum">     597 </span><span class="lineNoCov">          0 :   out_fp = es_fdopen_nc (out_fd, &quot;w&quot;);</span>
+<span class="lineNum">     598 </span><span class="lineNoCov">          0 :   if (!out_fp)</span>
+<span class="lineNum">     599 </span><span class="lineNoCov">          0 :     return set_error (GPG_ERR_ASS_GENERAL, &quot;fdopen() failed&quot;);</span>
+<span class="lineNum">     600 </span>            : 
+<span class="lineNum">     601 </span><span class="lineNoCov">          0 :   rc = start_audit_session (ctrl);</span>
+<span class="lineNum">     602 </span><span class="lineNoCov">          0 :   if (!rc)</span>
+<span class="lineNum">     603 </span><span class="lineNoCov">          0 :     rc = gpgsm_sign (assuan_get_pointer (ctx), ctrl-&gt;server_local-&gt;signerlist,</span>
+<span class="lineNum">     604 </span>            :                      inp_fd, detached, out_fp);
+<span class="lineNum">     605 </span><span class="lineNoCov">          0 :   es_fclose (out_fp);</span>
+<span class="lineNum">     606 </span>            : 
+<span class="lineNum">     607 </span>            :   /* close and reset the fd */
+<span class="lineNum">     608 </span><span class="lineNoCov">          0 :   close_message_fd (ctrl);</span>
+<span class="lineNum">     609 </span><span class="lineNoCov">          0 :   assuan_close_input_fd (ctx);</span>
+<span class="lineNum">     610 </span><span class="lineNoCov">          0 :   assuan_close_output_fd (ctx);</span>
+<span class="lineNum">     611 </span>            : 
+<span class="lineNum">     612 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     613 </span>            : }
+<span class="lineNum">     614 </span>            : 
+<span class="lineNum">     615 </span>            : 
+<span class="lineNum">     616 </span>            : static const char hlp_import[] =
+<span class="lineNum">     617 </span>            :   &quot;IMPORT [--re-import]\n&quot;
+<span class="lineNum">     618 </span>            :   &quot;\n&quot;
+<span class="lineNum">     619 </span>            :   &quot;Import the certificates read form the input-fd, return status\n&quot;
+<span class="lineNum">     620 </span>            :   &quot;message for each imported one.  The import checks the validity of\n&quot;
+<span class="lineNum">     621 </span>            :   &quot;the certificate but not of the entire chain.  It is possible to\n&quot;
+<span class="lineNum">     622 </span>            :   &quot;import expired certificates.\n&quot;
+<span class="lineNum">     623 </span>            :   &quot;\n&quot;
+<span class="lineNum">     624 </span>            :   &quot;With the option --re-import the input data is expected to a be a LF\n&quot;
+<span class="lineNum">     625 </span>            :   &quot;separated list of fingerprints.  The command will re-import these\n&quot;
+<span class="lineNum">     626 </span>            :   &quot;certificates, meaning that they are made permanent by removing\n&quot;
+<a name="627"><span class="lineNum">     627 </span>            :   &quot;their ephemeral flag.&quot;;</a>
+<span class="lineNum">     628 </span>            : static gpg_error_t
+<span class="lineNum">     629 </span><span class="lineNoCov">          0 : cmd_import (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     630 </span>            : {
+<span class="lineNum">     631 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">     632 </span>            :   int rc;
+<span class="lineNum">     633 </span><span class="lineNoCov">          0 :   int fd = translate_sys2libc_fd (assuan_get_input_fd (ctx), 0);</span>
+<span class="lineNum">     634 </span><span class="lineNoCov">          0 :   int reimport = has_option (line, &quot;--re-import&quot;);</span>
+<span class="lineNum">     635 </span>            : 
+<span class="lineNum">     636 </span>            :   (void)line;
+<span class="lineNum">     637 </span>            : 
+<span class="lineNum">     638 </span><span class="lineNoCov">          0 :   if (fd == -1)</span>
+<span class="lineNum">     639 </span><span class="lineNoCov">          0 :     return set_error (GPG_ERR_ASS_NO_INPUT, NULL);</span>
+<span class="lineNum">     640 </span>            : 
+<span class="lineNum">     641 </span><span class="lineNoCov">          0 :   rc = gpgsm_import (assuan_get_pointer (ctx), fd, reimport);</span>
+<span class="lineNum">     642 </span>            : 
+<span class="lineNum">     643 </span>            :   /* close and reset the fd */
+<span class="lineNum">     644 </span><span class="lineNoCov">          0 :   close_message_fd (ctrl);</span>
+<span class="lineNum">     645 </span><span class="lineNoCov">          0 :   assuan_close_input_fd (ctx);</span>
+<span class="lineNum">     646 </span><span class="lineNoCov">          0 :   assuan_close_output_fd (ctx);</span>
+<span class="lineNum">     647 </span>            : 
+<span class="lineNum">     648 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     649 </span>            : }
+<span class="lineNum">     650 </span>            : 
+<span class="lineNum">     651 </span>            : 
+<span class="lineNum">     652 </span>            : static const char hlp_export[] =
+<span class="lineNum">     653 </span>            :   &quot;EXPORT [--data [--armor|--base64]] [--secret [--(raw|pkcs12)] [--] &lt;pattern&gt;\n&quot;
+<span class="lineNum">     654 </span>            :   &quot;\n&quot;
+<span class="lineNum">     655 </span>            :   &quot;Export the certificates selected by PATTERN.  With --data the output\n&quot;
+<span class="lineNum">     656 </span>            :   &quot;is returned using Assuan D lines; the default is to use the sink given\n&quot;
+<span class="lineNum">     657 </span>            :   &quot;by the last \&quot;OUTPUT\&quot; command.  The options --armor or --base64 encode \n&quot;
+<span class="lineNum">     658 </span>            :   &quot;the output using the PEM respective a plain base-64 format; the default\n&quot;
+<span class="lineNum">     659 </span>            :   &quot;is a binary format which is only suitable for a single certificate.\n&quot;
+<span class="lineNum">     660 </span>            :   &quot;With --secret the secret key is exported using the PKCS#8 format,\n&quot;
+<a name="661"><span class="lineNum">     661 </span>            :   &quot;with --raw using PKCS#1, and with --pkcs12 as full PKCS#12 container.&quot;;</a>
+<span class="lineNum">     662 </span>            : static gpg_error_t
+<span class="lineNum">     663 </span><span class="lineNoCov">          0 : cmd_export (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     664 </span>            : {
+<span class="lineNum">     665 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">     666 </span>            :   char *p;
+<span class="lineNum">     667 </span>            :   strlist_t list, sl;
+<span class="lineNum">     668 </span>            :   int use_data;
+<span class="lineNum">     669 </span>            :   int opt_secret;
+<span class="lineNum">     670 </span><span class="lineNoCov">          0 :   int opt_raw = 0;</span>
+<span class="lineNum">     671 </span><span class="lineNoCov">          0 :   int opt_pkcs12 = 0;</span>
+<span class="lineNum">     672 </span>            : 
+<span class="lineNum">     673 </span><span class="lineNoCov">          0 :   use_data = has_option (line, &quot;--data&quot;);</span>
+<span class="lineNum">     674 </span><span class="lineNoCov">          0 :   if (use_data)</span>
+<span class="lineNum">     675 </span>            :     {
+<span class="lineNum">     676 </span>            :       /* We need to override any possible setting done by an OUTPUT command. */
+<span class="lineNum">     677 </span><span class="lineNoCov">          0 :       ctrl-&gt;create_pem = has_option (line, &quot;--armor&quot;);</span>
+<span class="lineNum">     678 </span><span class="lineNoCov">          0 :       ctrl-&gt;create_base64 = has_option (line, &quot;--base64&quot;);</span>
+<span class="lineNum">     679 </span>            :     }
+<span class="lineNum">     680 </span><span class="lineNoCov">          0 :   opt_secret = has_option (line, &quot;--secret&quot;);</span>
+<span class="lineNum">     681 </span><span class="lineNoCov">          0 :   if (opt_secret)</span>
+<span class="lineNum">     682 </span>            :     {
+<span class="lineNum">     683 </span><span class="lineNoCov">          0 :       opt_raw = has_option (line, &quot;--raw&quot;);</span>
+<span class="lineNum">     684 </span><span class="lineNoCov">          0 :       opt_pkcs12 = has_option (line, &quot;--pkcs12&quot;);</span>
+<span class="lineNum">     685 </span>            :     }
+<span class="lineNum">     686 </span>            : 
+<span class="lineNum">     687 </span><span class="lineNoCov">          0 :   line = skip_options (line);</span>
+<span class="lineNum">     688 </span>            : 
+<span class="lineNum">     689 </span>            :   /* Break the line down into an strlist_t. */
+<span class="lineNum">     690 </span><span class="lineNoCov">          0 :   list = NULL;</span>
+<span class="lineNum">     691 </span><span class="lineNoCov">          0 :   for (p=line; *p; line = p)</span>
+<span class="lineNum">     692 </span>            :     {
+<span class="lineNum">     693 </span><span class="lineNoCov">          0 :       while (*p &amp;&amp; *p != ' ')</span>
+<span class="lineNum">     694 </span><span class="lineNoCov">          0 :         p++;</span>
+<span class="lineNum">     695 </span><span class="lineNoCov">          0 :       if (*p)</span>
+<span class="lineNum">     696 </span><span class="lineNoCov">          0 :         *p++ = 0;</span>
+<span class="lineNum">     697 </span><span class="lineNoCov">          0 :       if (*line)</span>
+<span class="lineNum">     698 </span>            :         {
+<span class="lineNum">     699 </span><span class="lineNoCov">          0 :           sl = xtrymalloc (sizeof *sl + strlen (line));</span>
+<span class="lineNum">     700 </span><span class="lineNoCov">          0 :           if (!sl)</span>
+<span class="lineNum">     701 </span>            :             {
+<span class="lineNum">     702 </span><span class="lineNoCov">          0 :               free_strlist (list);</span>
+<span class="lineNum">     703 </span><span class="lineNoCov">          0 :               return out_of_core ();</span>
+<span class="lineNum">     704 </span>            :             }
+<span class="lineNum">     705 </span><span class="lineNoCov">          0 :           sl-&gt;flags = 0;</span>
+<span class="lineNum">     706 </span><span class="lineNoCov">          0 :           strcpy_escaped_plus (sl-&gt;d, line);</span>
+<span class="lineNum">     707 </span><span class="lineNoCov">          0 :           sl-&gt;next = list;</span>
+<span class="lineNum">     708 </span><span class="lineNoCov">          0 :           list = sl;</span>
+<span class="lineNum">     709 </span>            :         }
+<span class="lineNum">     710 </span>            :     }
+<span class="lineNum">     711 </span>            : 
+<span class="lineNum">     712 </span><span class="lineNoCov">          0 :   if (opt_secret)</span>
+<span class="lineNum">     713 </span>            :     {
+<span class="lineNum">     714 </span><span class="lineNoCov">          0 :       if (!list || !*list-&gt;d)</span>
+<span class="lineNum">     715 </span><span class="lineNoCov">          0 :         return set_error (GPG_ERR_NO_DATA, &quot;No key given&quot;);</span>
+<span class="lineNum">     716 </span><span class="lineNoCov">          0 :       if (list-&gt;next)</span>
+<span class="lineNum">     717 </span><span class="lineNoCov">          0 :         return set_error (GPG_ERR_TOO_MANY, &quot;Only one key allowed&quot;);</span>
+<span class="lineNum">     718 </span>            :   }
+<span class="lineNum">     719 </span>            : 
+<span class="lineNum">     720 </span><span class="lineNoCov">          0 :   if (use_data)</span>
+<span class="lineNum">     721 </span>            :     {
+<span class="lineNum">     722 </span>            :       estream_t stream;
+<span class="lineNum">     723 </span>            : 
+<span class="lineNum">     724 </span><span class="lineNoCov">          0 :       stream = es_fopencookie (ctx, &quot;w&quot;, data_line_cookie_functions);</span>
+<span class="lineNum">     725 </span><span class="lineNoCov">          0 :       if (!stream)</span>
+<span class="lineNum">     726 </span>            :         {
+<span class="lineNum">     727 </span><span class="lineNoCov">          0 :           free_strlist (list);</span>
+<span class="lineNum">     728 </span><span class="lineNoCov">          0 :           return set_error (GPG_ERR_ASS_GENERAL,</span>
+<span class="lineNum">     729 </span>            :                             &quot;error setting up a data stream&quot;);
+<span class="lineNum">     730 </span>            :         }
+<span class="lineNum">     731 </span><span class="lineNoCov">          0 :       if (opt_secret)</span>
+<span class="lineNum">     732 </span><span class="lineNoCov">          0 :         gpgsm_p12_export (ctrl, list-&gt;d, stream,</span>
+<span class="lineNum">     733 </span><span class="lineNoCov">          0 :                           opt_raw? 2 : opt_pkcs12 ? 0 : 1);</span>
+<span class="lineNum">     734 </span>            :       else
+<span class="lineNum">     735 </span><span class="lineNoCov">          0 :         gpgsm_export (ctrl, list, stream);</span>
+<span class="lineNum">     736 </span><span class="lineNoCov">          0 :       es_fclose (stream);</span>
+<span class="lineNum">     737 </span>            :     }
+<span class="lineNum">     738 </span>            :   else
+<span class="lineNum">     739 </span>            :     {
+<span class="lineNum">     740 </span><span class="lineNoCov">          0 :       int fd = translate_sys2libc_fd (assuan_get_output_fd (ctx), 1);</span>
+<span class="lineNum">     741 </span>            :       estream_t out_fp;
+<span class="lineNum">     742 </span>            : 
+<span class="lineNum">     743 </span><span class="lineNoCov">          0 :       if (fd == -1)</span>
+<span class="lineNum">     744 </span>            :         {
+<span class="lineNum">     745 </span><span class="lineNoCov">          0 :           free_strlist (list);</span>
+<span class="lineNum">     746 </span><span class="lineNoCov">          0 :           return set_error (GPG_ERR_ASS_NO_OUTPUT, NULL);</span>
+<span class="lineNum">     747 </span>            :         }
+<span class="lineNum">     748 </span><span class="lineNoCov">          0 :       out_fp = es_fdopen_nc (fd, &quot;w&quot;);</span>
+<span class="lineNum">     749 </span><span class="lineNoCov">          0 :       if (!out_fp)</span>
+<span class="lineNum">     750 </span>            :         {
+<span class="lineNum">     751 </span><span class="lineNoCov">          0 :           free_strlist (list);</span>
+<span class="lineNum">     752 </span><span class="lineNoCov">          0 :           return set_error (gpg_err_code_from_syserror (), &quot;fdopen() failed&quot;);</span>
+<span class="lineNum">     753 </span>            :         }
+<span class="lineNum">     754 </span>            : 
+<span class="lineNum">     755 </span><span class="lineNoCov">          0 :       if (opt_secret)</span>
+<span class="lineNum">     756 </span><span class="lineNoCov">          0 :         gpgsm_p12_export (ctrl, list-&gt;d, out_fp,</span>
+<span class="lineNum">     757 </span><span class="lineNoCov">          0 :                           opt_raw? 2 : opt_pkcs12 ? 0 : 1);</span>
+<span class="lineNum">     758 </span>            :       else
+<span class="lineNum">     759 </span><span class="lineNoCov">          0 :         gpgsm_export (ctrl, list, out_fp);</span>
+<span class="lineNum">     760 </span><span class="lineNoCov">          0 :       es_fclose (out_fp);</span>
+<span class="lineNum">     761 </span>            :     }
+<span class="lineNum">     762 </span>            : 
+<span class="lineNum">     763 </span><span class="lineNoCov">          0 :   free_strlist (list);</span>
+<span class="lineNum">     764 </span>            :   /* Close and reset the fds. */
+<span class="lineNum">     765 </span><span class="lineNoCov">          0 :   close_message_fd (ctrl);</span>
+<span class="lineNum">     766 </span><span class="lineNoCov">          0 :   assuan_close_input_fd (ctx);</span>
+<span class="lineNum">     767 </span><span class="lineNoCov">          0 :   assuan_close_output_fd (ctx);</span>
+<span class="lineNum">     768 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     769 </span>            : }
+<span class="lineNum">     770 </span>            : 
+<span class="lineNum">     771 </span>            : 
+<span class="lineNum">     772 </span>            : 
+<span class="lineNum">     773 </span>            : static const char hlp_delkeys[] =
+<span class="lineNum">     774 </span>            :   &quot;DELKEYS &lt;patterns&gt;\n&quot;
+<span class="lineNum">     775 </span>            :   &quot;\n&quot;
+<span class="lineNum">     776 </span>            :   &quot;Delete the certificates specified by PATTERNS.  Each pattern shall be\n&quot;
+<span class="lineNum">     777 </span>            :   &quot;a percent-plus escaped certificate specification.  Usually a\n&quot;
+<a name="778"><span class="lineNum">     778 </span>            :   &quot;fingerprint will be used for this.&quot;;</a>
+<span class="lineNum">     779 </span>            : static gpg_error_t
+<span class="lineNum">     780 </span><span class="lineNoCov">          0 : cmd_delkeys (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     781 </span>            : {
+<span class="lineNum">     782 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">     783 </span>            :   char *p;
+<span class="lineNum">     784 </span>            :   strlist_t list, sl;
+<span class="lineNum">     785 </span>            :   int rc;
+<span class="lineNum">     786 </span>            : 
+<span class="lineNum">     787 </span>            :   /* break the line down into an strlist_t */
+<span class="lineNum">     788 </span><span class="lineNoCov">          0 :   list = NULL;</span>
+<span class="lineNum">     789 </span><span class="lineNoCov">          0 :   for (p=line; *p; line = p)</span>
+<span class="lineNum">     790 </span>            :     {
+<span class="lineNum">     791 </span><span class="lineNoCov">          0 :       while (*p &amp;&amp; *p != ' ')</span>
+<span class="lineNum">     792 </span><span class="lineNoCov">          0 :         p++;</span>
+<span class="lineNum">     793 </span><span class="lineNoCov">          0 :       if (*p)</span>
+<span class="lineNum">     794 </span><span class="lineNoCov">          0 :         *p++ = 0;</span>
+<span class="lineNum">     795 </span><span class="lineNoCov">          0 :       if (*line)</span>
+<span class="lineNum">     796 </span>            :         {
+<span class="lineNum">     797 </span><span class="lineNoCov">          0 :           sl = xtrymalloc (sizeof *sl + strlen (line));</span>
+<span class="lineNum">     798 </span><span class="lineNoCov">          0 :           if (!sl)</span>
+<span class="lineNum">     799 </span>            :             {
+<span class="lineNum">     800 </span><span class="lineNoCov">          0 :               free_strlist (list);</span>
+<span class="lineNum">     801 </span><span class="lineNoCov">          0 :               return out_of_core ();</span>
+<span class="lineNum">     802 </span>            :             }
+<span class="lineNum">     803 </span><span class="lineNoCov">          0 :           sl-&gt;flags = 0;</span>
+<span class="lineNum">     804 </span><span class="lineNoCov">          0 :           strcpy_escaped_plus (sl-&gt;d, line);</span>
+<span class="lineNum">     805 </span><span class="lineNoCov">          0 :           sl-&gt;next = list;</span>
+<span class="lineNum">     806 </span><span class="lineNoCov">          0 :           list = sl;</span>
+<span class="lineNum">     807 </span>            :         }
+<span class="lineNum">     808 </span>            :     }
+<span class="lineNum">     809 </span>            : 
+<span class="lineNum">     810 </span><span class="lineNoCov">          0 :   rc = gpgsm_delete (ctrl, list);</span>
+<span class="lineNum">     811 </span><span class="lineNoCov">          0 :   free_strlist (list);</span>
+<span class="lineNum">     812 </span>            : 
+<span class="lineNum">     813 </span>            :   /* close and reset the fd */
+<span class="lineNum">     814 </span><span class="lineNoCov">          0 :   close_message_fd (ctrl);</span>
+<span class="lineNum">     815 </span><span class="lineNoCov">          0 :   assuan_close_input_fd (ctx);</span>
+<span class="lineNum">     816 </span><span class="lineNoCov">          0 :   assuan_close_output_fd (ctx);</span>
+<span class="lineNum">     817 </span>            : 
+<span class="lineNum">     818 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">     819 </span>            : }
+<span class="lineNum">     820 </span>            : 
+<span class="lineNum">     821 </span>            : 
+<span class="lineNum">     822 </span>            : 
+<span class="lineNum">     823 </span>            : static const char hlp_output[] =
+<span class="lineNum">     824 </span>            :   &quot;OUTPUT FD[=&lt;n&gt;]\n&quot;
+<span class="lineNum">     825 </span>            :   &quot;\n&quot;
+<span class="lineNum">     826 </span>            :   &quot;Set the file descriptor to write the output data to N.  If N is not\n&quot;
+<span class="lineNum">     827 </span>            :   &quot;given and the operating system supports file descriptor passing, the\n&quot;
+<span class="lineNum">     828 </span>            :   &quot;file descriptor currently in flight will be used.  See also the\n&quot;
+<span class="lineNum">     829 </span>            :   &quot;\&quot;INPUT\&quot; and \&quot;MESSAGE\&quot; commands.&quot;;
+<span class="lineNum">     830 </span>            : static const char hlp_input[] =
+<span class="lineNum">     831 </span>            :   &quot;INPUT FD[=&lt;n&gt;]\n&quot;
+<span class="lineNum">     832 </span>            :   &quot;\n&quot;
+<span class="lineNum">     833 </span>            :   &quot;Set the file descriptor to read the input data to N.  If N is not\n&quot;
+<span class="lineNum">     834 </span>            :   &quot;given and the operating system supports file descriptor passing, the\n&quot;
+<span class="lineNum">     835 </span>            :   &quot;file descriptor currently in flight will be used.  See also the\n&quot;
+<span class="lineNum">     836 </span>            :   &quot;\&quot;MESSAGE\&quot; and \&quot;OUTPUT\&quot; commands.&quot;;
+<span class="lineNum">     837 </span>            : static const char hlp_message[] =
+<span class="lineNum">     838 </span>            :   &quot;MESSAGE FD[=&lt;n&gt;]\n&quot;
+<span class="lineNum">     839 </span>            :   &quot;\n&quot;
+<span class="lineNum">     840 </span>            :   &quot;Set the file descriptor to read the message for a detached\n&quot;
+<span class="lineNum">     841 </span>            :   &quot;signatures to N.  If N is not given and the operating system\n&quot;
+<span class="lineNum">     842 </span>            :   &quot;supports file descriptor passing, the file descriptor currently in\n&quot;
+<a name="843"><span class="lineNum">     843 </span>            :   &quot;flight will be used.  See also the \&quot;INPUT\&quot; and \&quot;OUTPUT\&quot; commands.&quot;;</a>
+<span class="lineNum">     844 </span>            : static gpg_error_t
+<span class="lineNum">     845 </span><span class="lineNoCov">          0 : cmd_message (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     846 </span>            : {
+<span class="lineNum">     847 </span>            :   int rc;
+<span class="lineNum">     848 </span>            :   gnupg_fd_t sysfd;
+<span class="lineNum">     849 </span>            :   int fd;
+<span class="lineNum">     850 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">     851 </span>            : 
+<span class="lineNum">     852 </span><span class="lineNoCov">          0 :   rc = assuan_command_parse_fd (ctx, line, &amp;sysfd);</span>
+<span class="lineNum">     853 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">     854 </span><span class="lineNoCov">          0 :     return rc;</span>
+<span class="lineNum">     855 </span>            : 
+<span class="lineNum">     856 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">     857 </span>            :   sysfd = _assuan_w32ce_finish_pipe ((int)sysfd, 0);
+<span class="lineNum">     858 </span>            :   if (sysfd == INVALID_HANDLE_VALUE)
+<span class="lineNum">     859 </span>            :     return set_error (gpg_err_code_from_syserror (),
+<span class="lineNum">     860 </span>            :                       &quot;rvid conversion failed&quot;);
+<span class="lineNum">     861 </span>            : #endif
+<span class="lineNum">     862 </span>            : 
+<span class="lineNum">     863 </span><span class="lineNoCov">          0 :   fd = translate_sys2libc_fd (sysfd, 0);</span>
+<span class="lineNum">     864 </span><span class="lineNoCov">          0 :   if (fd == -1)</span>
+<span class="lineNum">     865 </span><span class="lineNoCov">          0 :     return set_error (GPG_ERR_ASS_NO_INPUT, NULL);</span>
+<span class="lineNum">     866 </span><span class="lineNoCov">          0 :   ctrl-&gt;server_local-&gt;message_fd = fd;</span>
+<span class="lineNum">     867 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">     868 </span>            : }
+<span class="lineNum">     869 </span>            : 
+<span class="lineNum">     870 </span>            : 
+<span class="lineNum">     871 </span>            : 
+<span class="lineNum">     872 </span>            : static const char hlp_listkeys[] =
+<span class="lineNum">     873 </span>            :   &quot;LISTKEYS [&lt;patterns&gt;]\n&quot;
+<span class="lineNum">     874 </span>            :   &quot;LISTSECRETKEYS [&lt;patterns&gt;]\n&quot;
+<span class="lineNum">     875 </span>            :   &quot;DUMPKEYS [&lt;patterns&gt;]\n&quot;
+<span class="lineNum">     876 </span>            :   &quot;DUMPSECRETKEYS [&lt;patterns&gt;]\n&quot;
+<span class="lineNum">     877 </span>            :   &quot;\n&quot;
+<span class="lineNum">     878 </span>            :   &quot;List all certificates or only those specified by PATTERNS.  Each\n&quot;
+<span class="lineNum">     879 </span>            :   &quot;pattern shall be a percent-plus escaped certificate specification.\n&quot;
+<span class="lineNum">     880 </span>            :   &quot;The \&quot;SECRET\&quot; versions of the command filter the output to include\n&quot;
+<span class="lineNum">     881 </span>            :   &quot;only certificates where the secret key is available or a corresponding\n&quot;
+<span class="lineNum">     882 </span>            :   &quot;smartcard has been registered.  The \&quot;DUMP\&quot; versions of the command\n&quot;
+<span class="lineNum">     883 </span>            :   &quot;are only useful for debugging.  The output format is a percent escaped\n&quot;
+<span class="lineNum">     884 </span>            :   &quot;colon delimited listing as described in the manual.\n&quot;
+<span class="lineNum">     885 </span>            :   &quot;\n&quot;
+<span class="lineNum">     886 </span>            :   &quot;These \&quot;OPTION\&quot; command keys effect the output::\n&quot;
+<span class="lineNum">     887 </span>            :   &quot;\n&quot;
+<span class="lineNum">     888 </span>            :   &quot;  \&quot;list-mode\&quot; set to 0: List only local certificates (default).\n&quot;
+<span class="lineNum">     889 </span>            :   &quot;                     1: Ditto.\n&quot;
+<span class="lineNum">     890 </span>            :   &quot;                     2: List only external certificates.\n&quot;
+<span class="lineNum">     891 </span>            :   &quot;                     3: List local and external certificates.\n&quot;
+<span class="lineNum">     892 </span>            :   &quot;\n&quot;
+<span class="lineNum">     893 </span>            :   &quot;  \&quot;with-validation\&quot; set to true: Validate each certificate.\n&quot;
+<span class="lineNum">     894 </span>            :   &quot;\n&quot;
+<span class="lineNum">     895 </span>            :   &quot;  \&quot;with-ephemeral-key\&quot; set to true: Always include ephemeral\n&quot;
+<span class="lineNum">     896 </span>            :   &quot;                                    certificates.\n&quot;
+<span class="lineNum">     897 </span>            :   &quot;\n&quot;
+<span class="lineNum">     898 </span>            :   &quot;  \&quot;list-to-output\&quot; set to true: Write output to the file descriptor\n&quot;
+<a name="899"><span class="lineNum">     899 </span>            :   &quot;                                given by the last \&quot;OUTPUT\&quot; command.&quot;;</a>
+<span class="lineNum">     900 </span>            : static int
+<span class="lineNum">     901 </span><span class="lineNoCov">          0 : do_listkeys (assuan_context_t ctx, char *line, int mode)</span>
+<span class="lineNum">     902 </span>            : {
+<span class="lineNum">     903 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">     904 </span>            :   estream_t fp;
+<span class="lineNum">     905 </span>            :   char *p;
+<span class="lineNum">     906 </span>            :   strlist_t list, sl;
+<span class="lineNum">     907 </span>            :   unsigned int listmode;
+<span class="lineNum">     908 </span>            :   gpg_error_t err;
+<span class="lineNum">     909 </span>            : 
+<span class="lineNum">     910 </span>            :   /* Break the line down into an strlist. */
+<span class="lineNum">     911 </span><span class="lineNoCov">          0 :   list = NULL;</span>
+<span class="lineNum">     912 </span><span class="lineNoCov">          0 :   for (p=line; *p; line = p)</span>
+<span class="lineNum">     913 </span>            :     {
+<span class="lineNum">     914 </span><span class="lineNoCov">          0 :       while (*p &amp;&amp; *p != ' ')</span>
+<span class="lineNum">     915 </span><span class="lineNoCov">          0 :         p++;</span>
+<span class="lineNum">     916 </span><span class="lineNoCov">          0 :       if (*p)</span>
+<span class="lineNum">     917 </span><span class="lineNoCov">          0 :         *p++ = 0;</span>
+<span class="lineNum">     918 </span><span class="lineNoCov">          0 :       if (*line)</span>
+<span class="lineNum">     919 </span>            :         {
+<span class="lineNum">     920 </span><span class="lineNoCov">          0 :           sl = xtrymalloc (sizeof *sl + strlen (line));</span>
+<span class="lineNum">     921 </span><span class="lineNoCov">          0 :           if (!sl)</span>
+<span class="lineNum">     922 </span>            :             {
+<span class="lineNum">     923 </span><span class="lineNoCov">          0 :               free_strlist (list);</span>
+<span class="lineNum">     924 </span><span class="lineNoCov">          0 :               return out_of_core ();</span>
+<span class="lineNum">     925 </span>            :             }
+<span class="lineNum">     926 </span><span class="lineNoCov">          0 :           sl-&gt;flags = 0;</span>
+<span class="lineNum">     927 </span><span class="lineNoCov">          0 :           strcpy_escaped_plus (sl-&gt;d, line);</span>
+<span class="lineNum">     928 </span><span class="lineNoCov">          0 :           sl-&gt;next = list;</span>
+<span class="lineNum">     929 </span><span class="lineNoCov">          0 :           list = sl;</span>
+<span class="lineNum">     930 </span>            :         }
+<span class="lineNum">     931 </span>            :     }
+<span class="lineNum">     932 </span>            : 
+<span class="lineNum">     933 </span><span class="lineNoCov">          0 :   if (ctrl-&gt;server_local-&gt;list_to_output)</span>
+<span class="lineNum">     934 </span>            :     {
+<span class="lineNum">     935 </span><span class="lineNoCov">          0 :       int outfd = translate_sys2libc_fd (assuan_get_output_fd (ctx), 1);</span>
+<span class="lineNum">     936 </span>            : 
+<span class="lineNum">     937 </span><span class="lineNoCov">          0 :       if ( outfd == -1 )</span>
+<span class="lineNum">     938 </span><span class="lineNoCov">          0 :         return set_error (GPG_ERR_ASS_NO_OUTPUT, NULL);</span>
+<span class="lineNum">     939 </span><span class="lineNoCov">          0 :       fp = es_fdopen_nc (outfd, &quot;w&quot;);</span>
+<span class="lineNum">     940 </span><span class="lineNoCov">          0 :       if (!fp)</span>
+<span class="lineNum">     941 </span><span class="lineNoCov">          0 :         return set_error (gpg_err_code_from_syserror (), &quot;es_fdopen() failed&quot;);</span>
+<span class="lineNum">     942 </span>            :     }
+<span class="lineNum">     943 </span>            :   else
+<span class="lineNum">     944 </span>            :     {
+<span class="lineNum">     945 </span><span class="lineNoCov">          0 :       fp = es_fopencookie (ctx, &quot;w&quot;, data_line_cookie_functions);</span>
+<span class="lineNum">     946 </span><span class="lineNoCov">          0 :       if (!fp)</span>
+<span class="lineNum">     947 </span><span class="lineNoCov">          0 :         return set_error (GPG_ERR_ASS_GENERAL,</span>
+<span class="lineNum">     948 </span>            :                           &quot;error setting up a data stream&quot;);
+<span class="lineNum">     949 </span>            :     }
+<span class="lineNum">     950 </span>            : 
+<span class="lineNum">     951 </span><span class="lineNoCov">          0 :   ctrl-&gt;with_colons = 1;</span>
+<span class="lineNum">     952 </span><span class="lineNoCov">          0 :   listmode = mode;</span>
+<span class="lineNum">     953 </span><span class="lineNoCov">          0 :   if (ctrl-&gt;server_local-&gt;list_internal)</span>
+<span class="lineNum">     954 </span><span class="lineNoCov">          0 :     listmode |= (1&lt;&lt;6);</span>
+<span class="lineNum">     955 </span><span class="lineNoCov">          0 :   if (ctrl-&gt;server_local-&gt;list_external)</span>
+<span class="lineNum">     956 </span><span class="lineNoCov">          0 :     listmode |= (1&lt;&lt;7);</span>
+<span class="lineNum">     957 </span><span class="lineNoCov">          0 :   err = gpgsm_list_keys (assuan_get_pointer (ctx), list, fp, listmode);</span>
+<span class="lineNum">     958 </span><span class="lineNoCov">          0 :   free_strlist (list);</span>
+<span class="lineNum">     959 </span><span class="lineNoCov">          0 :   es_fclose (fp);</span>
+<span class="lineNum">     960 </span><span class="lineNoCov">          0 :   if (ctrl-&gt;server_local-&gt;list_to_output)</span>
+<span class="lineNum">     961 </span><span class="lineNoCov">          0 :     assuan_close_output_fd (ctx);</span>
+<span class="lineNum">     962 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">     963 </span>            : }
+<a name="964"><span class="lineNum">     964 </span>            : </a>
+<span class="lineNum">     965 </span>            : static gpg_error_t
+<span class="lineNum">     966 </span><span class="lineNoCov">          0 : cmd_listkeys (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     967 </span>            : {
+<span class="lineNum">     968 </span><span class="lineNoCov">          0 :   return do_listkeys (ctx, line, 3);</span>
+<span class="lineNum">     969 </span>            : }
+<a name="970"><span class="lineNum">     970 </span>            : </a>
+<span class="lineNum">     971 </span>            : static gpg_error_t
+<span class="lineNum">     972 </span><span class="lineNoCov">          0 : cmd_dumpkeys (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     973 </span>            : {
+<span class="lineNum">     974 </span><span class="lineNoCov">          0 :   return do_listkeys (ctx, line, 259);</span>
+<span class="lineNum">     975 </span>            : }
+<a name="976"><span class="lineNum">     976 </span>            : </a>
+<span class="lineNum">     977 </span>            : static gpg_error_t
+<span class="lineNum">     978 </span><span class="lineNoCov">          0 : cmd_listsecretkeys (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     979 </span>            : {
+<span class="lineNum">     980 </span><span class="lineNoCov">          0 :   return do_listkeys (ctx, line, 2);</span>
+<span class="lineNum">     981 </span>            : }
+<a name="982"><span class="lineNum">     982 </span>            : </a>
+<span class="lineNum">     983 </span>            : static gpg_error_t
+<span class="lineNum">     984 </span><span class="lineNoCov">          0 : cmd_dumpsecretkeys (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     985 </span>            : {
+<span class="lineNum">     986 </span><span class="lineNoCov">          0 :   return do_listkeys (ctx, line, 258);</span>
+<span class="lineNum">     987 </span>            : }
+<span class="lineNum">     988 </span>            : 
+<span class="lineNum">     989 </span>            : 
+<span class="lineNum">     990 </span>            : 
+<span class="lineNum">     991 </span>            : static const char hlp_genkey[] =
+<span class="lineNum">     992 </span>            :   &quot;GENKEY\n&quot;
+<span class="lineNum">     993 </span>            :   &quot;\n&quot;
+<span class="lineNum">     994 </span>            :   &quot;Read the parameters in native format from the input fd and write a\n&quot;
+<a name="995"><span class="lineNum">     995 </span>            :   &quot;certificate request to the output.&quot;;</a>
+<span class="lineNum">     996 </span>            : static gpg_error_t
+<span class="lineNum">     997 </span><span class="lineNoCov">          0 : cmd_genkey (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">     998 </span>            : {
+<span class="lineNum">     999 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">    1000 </span>            :   int inp_fd, out_fd;
+<span class="lineNum">    1001 </span>            :   estream_t in_stream, out_stream;
+<span class="lineNum">    1002 </span>            :   int rc;
+<span class="lineNum">    1003 </span>            : 
+<span class="lineNum">    1004 </span>            :   (void)line;
+<span class="lineNum">    1005 </span>            : 
+<span class="lineNum">    1006 </span><span class="lineNoCov">          0 :   inp_fd = translate_sys2libc_fd (assuan_get_input_fd (ctx), 0);</span>
+<span class="lineNum">    1007 </span><span class="lineNoCov">          0 :   if (inp_fd == -1)</span>
+<span class="lineNum">    1008 </span><span class="lineNoCov">          0 :     return set_error (GPG_ERR_ASS_NO_INPUT, NULL);</span>
+<span class="lineNum">    1009 </span><span class="lineNoCov">          0 :   out_fd = translate_sys2libc_fd (assuan_get_output_fd (ctx), 1);</span>
+<span class="lineNum">    1010 </span><span class="lineNoCov">          0 :   if (out_fd == -1)</span>
+<span class="lineNum">    1011 </span><span class="lineNoCov">          0 :     return set_error (GPG_ERR_ASS_NO_OUTPUT, NULL);</span>
+<span class="lineNum">    1012 </span>            : 
+<span class="lineNum">    1013 </span><span class="lineNoCov">          0 :   in_stream = es_fdopen_nc (inp_fd, &quot;r&quot;);</span>
+<span class="lineNum">    1014 </span><span class="lineNoCov">          0 :   if (!in_stream)</span>
+<span class="lineNum">    1015 </span><span class="lineNoCov">          0 :     return set_error (GPG_ERR_ASS_GENERAL, &quot;es_fdopen failed&quot;);</span>
+<span class="lineNum">    1016 </span>            : 
+<span class="lineNum">    1017 </span><span class="lineNoCov">          0 :   out_stream = es_fdopen_nc (out_fd, &quot;w&quot;);</span>
+<span class="lineNum">    1018 </span><span class="lineNoCov">          0 :   if (!out_stream)</span>
+<span class="lineNum">    1019 </span>            :     {
+<span class="lineNum">    1020 </span><span class="lineNoCov">          0 :       es_fclose (in_stream);</span>
+<span class="lineNum">    1021 </span><span class="lineNoCov">          0 :       return set_error (gpg_err_code_from_syserror (), &quot;fdopen() failed&quot;);</span>
+<span class="lineNum">    1022 </span>            :     }
+<span class="lineNum">    1023 </span><span class="lineNoCov">          0 :   rc = gpgsm_genkey (ctrl, in_stream, out_stream);</span>
+<span class="lineNum">    1024 </span><span class="lineNoCov">          0 :   es_fclose (out_stream);</span>
+<span class="lineNum">    1025 </span><span class="lineNoCov">          0 :   es_fclose (in_stream);</span>
+<span class="lineNum">    1026 </span>            : 
+<span class="lineNum">    1027 </span>            :   /* close and reset the fds */
+<span class="lineNum">    1028 </span><span class="lineNoCov">          0 :   assuan_close_input_fd (ctx);</span>
+<span class="lineNum">    1029 </span><span class="lineNoCov">          0 :   assuan_close_output_fd (ctx);</span>
+<span class="lineNum">    1030 </span>            : 
+<span class="lineNum">    1031 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">    1032 </span>            : }
+<span class="lineNum">    1033 </span>            : 
+<span class="lineNum">    1034 </span>            : 
+<span class="lineNum">    1035 </span>            : 
+<span class="lineNum">    1036 </span>            : static const char hlp_getauditlog[] =
+<span class="lineNum">    1037 </span>            :   &quot;GETAUDITLOG [--data] [--html]\n&quot;
+<span class="lineNum">    1038 </span>            :   &quot;\n&quot;
+<span class="lineNum">    1039 </span>            :   &quot;If --data is used, the output is send using D-lines and not to the\n&quot;
+<span class="lineNum">    1040 </span>            :   &quot;file descriptor given by an OUTPUT command.\n&quot;
+<span class="lineNum">    1041 </span>            :   &quot;\n&quot;
+<span class="lineNum">    1042 </span>            :   &quot;If --html is used the output is formatted as an XHTML block. This is\n&quot;
+<a name="1043"><span class="lineNum">    1043 </span>            :   &quot;designed to be incorporated into a HTML document.&quot;;</a>
+<span class="lineNum">    1044 </span>            : static gpg_error_t
+<span class="lineNum">    1045 </span><span class="lineNoCov">          0 : cmd_getauditlog (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">    1046 </span>            : {
+<span class="lineNum">    1047 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">    1048 </span>            :   int  out_fd;
+<span class="lineNum">    1049 </span>            :   estream_t out_stream;
+<span class="lineNum">    1050 </span>            :   int opt_data, opt_html;
+<span class="lineNum">    1051 </span>            :   int rc;
+<span class="lineNum">    1052 </span>            : 
+<span class="lineNum">    1053 </span><span class="lineNoCov">          0 :   opt_data = has_option (line, &quot;--data&quot;);</span>
+<span class="lineNum">    1054 </span><span class="lineNoCov">          0 :   opt_html = has_option (line, &quot;--html&quot;);</span>
+<span class="lineNum">    1055 </span>            :   /* Not needed: line = skip_options (line); */
+<span class="lineNum">    1056 </span>            : 
+<span class="lineNum">    1057 </span><span class="lineNoCov">          0 :   if (!ctrl-&gt;audit)</span>
+<span class="lineNum">    1058 </span><span class="lineNoCov">          0 :     return gpg_error (GPG_ERR_NO_DATA);</span>
+<span class="lineNum">    1059 </span>            : 
+<span class="lineNum">    1060 </span><span class="lineNoCov">          0 :   if (opt_data)</span>
+<span class="lineNum">    1061 </span>            :     {
+<span class="lineNum">    1062 </span><span class="lineNoCov">          0 :       out_stream = es_fopencookie (ctx, &quot;w&quot;, data_line_cookie_functions);</span>
+<span class="lineNum">    1063 </span><span class="lineNoCov">          0 :       if (!out_stream)</span>
+<span class="lineNum">    1064 </span><span class="lineNoCov">          0 :         return set_error (GPG_ERR_ASS_GENERAL,</span>
+<span class="lineNum">    1065 </span>            :                           &quot;error setting up a data stream&quot;);
+<span class="lineNum">    1066 </span>            :     }
+<span class="lineNum">    1067 </span>            :   else
+<span class="lineNum">    1068 </span>            :     {
+<span class="lineNum">    1069 </span><span class="lineNoCov">          0 :       out_fd = translate_sys2libc_fd (assuan_get_output_fd (ctx), 1);</span>
+<span class="lineNum">    1070 </span><span class="lineNoCov">          0 :       if (out_fd == -1)</span>
+<span class="lineNum">    1071 </span><span class="lineNoCov">          0 :         return set_error (GPG_ERR_ASS_NO_OUTPUT, NULL);</span>
+<span class="lineNum">    1072 </span>            : 
+<span class="lineNum">    1073 </span><span class="lineNoCov">          0 :       out_stream = es_fdopen_nc (out_fd, &quot;w&quot;);</span>
+<span class="lineNum">    1074 </span><span class="lineNoCov">          0 :       if (!out_stream)</span>
+<span class="lineNum">    1075 </span>            :         {
+<span class="lineNum">    1076 </span><span class="lineNoCov">          0 :           return set_error (GPG_ERR_ASS_GENERAL, &quot;es_fdopen() failed&quot;);</span>
+<span class="lineNum">    1077 </span>            :         }
+<span class="lineNum">    1078 </span>            :     }
+<span class="lineNum">    1079 </span>            : 
+<span class="lineNum">    1080 </span><span class="lineNoCov">          0 :   audit_print_result (ctrl-&gt;audit, out_stream, opt_html);</span>
+<span class="lineNum">    1081 </span><span class="lineNoCov">          0 :   rc = 0;</span>
+<span class="lineNum">    1082 </span>            : 
+<span class="lineNum">    1083 </span><span class="lineNoCov">          0 :   es_fclose (out_stream);</span>
+<span class="lineNum">    1084 </span>            : 
+<span class="lineNum">    1085 </span>            :   /* Close and reset the fd. */
+<span class="lineNum">    1086 </span><span class="lineNoCov">          0 :   if (!opt_data)</span>
+<span class="lineNum">    1087 </span><span class="lineNoCov">          0 :     assuan_close_output_fd (ctx);</span>
+<span class="lineNum">    1088 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">    1089 </span>            : }
+<span class="lineNum">    1090 </span>            : 
+<span class="lineNum">    1091 </span>            : static const char hlp_getinfo[] =
+<span class="lineNum">    1092 </span>            :   &quot;GETINFO &lt;what&gt;\n&quot;
+<span class="lineNum">    1093 </span>            :   &quot;\n&quot;
+<span class="lineNum">    1094 </span>            :   &quot;Multipurpose function to return a variety of information.\n&quot;
+<span class="lineNum">    1095 </span>            :   &quot;Supported values for WHAT are:\n&quot;
+<span class="lineNum">    1096 </span>            :   &quot;\n&quot;
+<span class="lineNum">    1097 </span>            :   &quot;  version     - Return the version of the program.\n&quot;
+<span class="lineNum">    1098 </span>            :   &quot;  pid         - Return the process id of the server.\n&quot;
+<span class="lineNum">    1099 </span>            :   &quot;  agent-check - Return success if the agent is running.\n&quot;
+<span class="lineNum">    1100 </span>            :   &quot;  cmd_has_option CMD OPT\n&quot;
+<span class="lineNum">    1101 </span>            :   &quot;              - Returns OK if the command CMD implements the option OPT.\n&quot;
+<a name="1102"><span class="lineNum">    1102 </span>            :   &quot;  offline     - Returns OK if the connection is in offline mode.&quot;;</a>
+<span class="lineNum">    1103 </span>            : static gpg_error_t
+<span class="lineNum">    1104 </span><span class="lineNoCov">          0 : cmd_getinfo (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">    1105 </span>            : {
+<span class="lineNum">    1106 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">    1107 </span><span class="lineNoCov">          0 :   int rc = 0;</span>
+<span class="lineNum">    1108 </span>            : 
+<span class="lineNum">    1109 </span><span class="lineNoCov">          0 :   if (!strcmp (line, &quot;version&quot;))</span>
+<span class="lineNum">    1110 </span>            :     {
+<span class="lineNum">    1111 </span><span class="lineNoCov">          0 :       const char *s = VERSION;</span>
+<span class="lineNum">    1112 </span><span class="lineNoCov">          0 :       rc = assuan_send_data (ctx, s, strlen (s));</span>
+<span class="lineNum">    1113 </span>            :     }
+<span class="lineNum">    1114 </span><span class="lineNoCov">          0 :   else if (!strcmp (line, &quot;pid&quot;))</span>
+<span class="lineNum">    1115 </span>            :     {
+<span class="lineNum">    1116 </span>            :       char numbuf[50];
+<span class="lineNum">    1117 </span>            : 
+<span class="lineNum">    1118 </span><span class="lineNoCov">          0 :       snprintf (numbuf, sizeof numbuf, &quot;%lu&quot;, (unsigned long)getpid ());</span>
+<span class="lineNum">    1119 </span><span class="lineNoCov">          0 :       rc = assuan_send_data (ctx, numbuf, strlen (numbuf));</span>
+<span class="lineNum">    1120 </span>            :     }
+<span class="lineNum">    1121 </span><span class="lineNoCov">          0 :   else if (!strcmp (line, &quot;agent-check&quot;))</span>
+<span class="lineNum">    1122 </span>            :     {
+<span class="lineNum">    1123 </span><span class="lineNoCov">          0 :       rc = gpgsm_agent_send_nop (ctrl);</span>
+<span class="lineNum">    1124 </span>            :     }
+<span class="lineNum">    1125 </span><span class="lineNoCov">          0 :   else if (!strncmp (line, &quot;cmd_has_option&quot;, 14)</span>
+<span class="lineNum">    1126 </span><span class="lineNoCov">          0 :            &amp;&amp; (line[14] == ' ' || line[14] == '\t' || !line[14]))</span>
+<span class="lineNum">    1127 </span><span class="lineNoCov">          0 :     {</span>
+<span class="lineNum">    1128 </span>            :       char *cmd, *cmdopt;
+<span class="lineNum">    1129 </span><span class="lineNoCov">          0 :       line += 14;</span>
+<span class="lineNum">    1130 </span><span class="lineNoCov">          0 :       while (*line == ' ' || *line == '\t')</span>
+<span class="lineNum">    1131 </span><span class="lineNoCov">          0 :         line++;</span>
+<span class="lineNum">    1132 </span><span class="lineNoCov">          0 :       if (!*line)</span>
+<span class="lineNum">    1133 </span><span class="lineNoCov">          0 :         rc = gpg_error (GPG_ERR_MISSING_VALUE);</span>
+<span class="lineNum">    1134 </span>            :       else
+<span class="lineNum">    1135 </span>            :         {
+<span class="lineNum">    1136 </span><span class="lineNoCov">          0 :           cmd = line;</span>
+<span class="lineNum">    1137 </span><span class="lineNoCov">          0 :           while (*line &amp;&amp; (*line != ' ' &amp;&amp; *line != '\t'))</span>
+<span class="lineNum">    1138 </span><span class="lineNoCov">          0 :             line++;</span>
+<span class="lineNum">    1139 </span><span class="lineNoCov">          0 :           if (!*line)</span>
+<span class="lineNum">    1140 </span><span class="lineNoCov">          0 :             rc = gpg_error (GPG_ERR_MISSING_VALUE);</span>
+<span class="lineNum">    1141 </span>            :           else
+<span class="lineNum">    1142 </span>            :             {
+<span class="lineNum">    1143 </span><span class="lineNoCov">          0 :               *line++ = 0;</span>
+<span class="lineNum">    1144 </span><span class="lineNoCov">          0 :               while (*line == ' ' || *line == '\t')</span>
+<span class="lineNum">    1145 </span><span class="lineNoCov">          0 :                 line++;</span>
+<span class="lineNum">    1146 </span><span class="lineNoCov">          0 :               if (!*line)</span>
+<span class="lineNum">    1147 </span><span class="lineNoCov">          0 :                 rc = gpg_error (GPG_ERR_MISSING_VALUE);</span>
+<span class="lineNum">    1148 </span>            :               else
+<span class="lineNum">    1149 </span>            :                 {
+<span class="lineNum">    1150 </span><span class="lineNoCov">          0 :                   cmdopt = line;</span>
+<span class="lineNum">    1151 </span><span class="lineNoCov">          0 :                   if (!command_has_option (cmd, cmdopt))</span>
+<span class="lineNum">    1152 </span><span class="lineNoCov">          0 :                     rc = gpg_error (GPG_ERR_GENERAL);</span>
+<span class="lineNum">    1153 </span>            :                 }
+<span class="lineNum">    1154 </span>            :             }
+<span class="lineNum">    1155 </span>            :         }
+<span class="lineNum">    1156 </span>            :     }
+<span class="lineNum">    1157 </span><span class="lineNoCov">          0 :   else if (!strcmp (line, &quot;offline&quot;))</span>
+<span class="lineNum">    1158 </span>            :     {
+<span class="lineNum">    1159 </span><span class="lineNoCov">          0 :       rc = ctrl-&gt;offline? 0 : gpg_error (GPG_ERR_GENERAL);</span>
+<span class="lineNum">    1160 </span>            :     }
+<span class="lineNum">    1161 </span>            :   else
+<span class="lineNum">    1162 </span><span class="lineNoCov">          0 :     rc = set_error (GPG_ERR_ASS_PARAMETER, &quot;unknown value for WHAT&quot;);</span>
+<span class="lineNum">    1163 </span>            : 
+<span class="lineNum">    1164 </span><span class="lineNoCov">          0 :   return rc;</span>
+<span class="lineNum">    1165 </span>            : }
+<span class="lineNum">    1166 </span>            : 
+<span class="lineNum">    1167 </span>            : 
+<span class="lineNum">    1168 </span>            : static const char hlp_passwd[] =
+<span class="lineNum">    1169 </span>            :   &quot;PASSWD &lt;userID&gt;\n&quot;
+<span class="lineNum">    1170 </span>            :   &quot;\n&quot;
+<a name="1171"><span class="lineNum">    1171 </span>            :   &quot;Change the passphrase of the secret key for USERID.&quot;;</a>
+<span class="lineNum">    1172 </span>            : static gpg_error_t
+<span class="lineNum">    1173 </span><span class="lineNoCov">          0 : cmd_passwd (assuan_context_t ctx, char *line)</span>
+<span class="lineNum">    1174 </span>            : {
+<span class="lineNum">    1175 </span><span class="lineNoCov">          0 :   ctrl_t ctrl = assuan_get_pointer (ctx);</span>
+<span class="lineNum">    1176 </span>            :   gpg_error_t err;
+<span class="lineNum">    1177 </span><span class="lineNoCov">          0 :   ksba_cert_t cert = NULL;</span>
+<span class="lineNum">    1178 </span><span class="lineNoCov">          0 :   char *grip = NULL;</span>
+<span class="lineNum">    1179 </span>            : 
+<span class="lineNum">    1180 </span><span class="lineNoCov">          0 :   line = skip_options (line);</span>
+<span class="lineNum">    1181 </span>            : 
+<span class="lineNum">    1182 </span><span class="lineNoCov">          0 :   err = gpgsm_find_cert (ctrl, line, NULL, &amp;cert);</span>
+<span class="lineNum">    1183 </span><span class="lineNoCov">          0 :   if (err)</span>
+<span class="lineNum">    1184 </span>            :     ;
+<span class="lineNum">    1185 </span><span class="lineNoCov">          0 :   else if (!(grip = gpgsm_get_keygrip_hexstring (cert)))</span>
+<span class="lineNum">    1186 </span><span class="lineNoCov">          0 :     err = gpg_error (GPG_ERR_INTERNAL);</span>
+<span class="lineNum">    1187 </span>            :   else
+<span class="lineNum">    1188 </span>            :     {
+<span class="lineNum">    1189 </span><span class="lineNoCov">          0 :       char *desc = gpgsm_format_keydesc (cert);</span>
+<span class="lineNum">    1190 </span><span class="lineNoCov">          0 :       err = gpgsm_agent_passwd (ctrl, grip, desc);</span>
+<span class="lineNum">    1191 </span><span class="lineNoCov">          0 :       xfree (desc);</span>
+<span class="lineNum">    1192 </span>            :     }
+<span class="lineNum">    1193 </span>            : 
+<span class="lineNum">    1194 </span><span class="lineNoCov">          0 :   xfree (grip);</span>
+<span class="lineNum">    1195 </span><span class="lineNoCov">          0 :   ksba_cert_release (cert);</span>
+<span class="lineNum">    1196 </span>            : 
+<span class="lineNum">    1197 </span><span class="lineNoCov">          0 :   return err;</span>
+<span class="lineNum">    1198 </span>            : }
+<span class="lineNum">    1199 </span>            : 
+<span class="lineNum">    1200 </span>            : 
+<span class="lineNum">    1201 </span>            : 
+<a name="1202"><span class="lineNum">    1202 </span>            : /* Return true if the command CMD implements the option OPT.  */</a>
+<span class="lineNum">    1203 </span>            : static int
+<span class="lineNum">    1204 </span><span class="lineNoCov">          0 : command_has_option (const char *cmd, const char *cmdopt)</span>
+<span class="lineNum">    1205 </span>            : {
+<span class="lineNum">    1206 </span><span class="lineNoCov">          0 :   if (!strcmp (cmd, &quot;IMPORT&quot;))</span>
+<span class="lineNum">    1207 </span>            :     {
+<span class="lineNum">    1208 </span><span class="lineNoCov">          0 :       if (!strcmp (cmdopt, &quot;re-import&quot;))</span>
+<span class="lineNum">    1209 </span><span class="lineNoCov">          0 :         return 1;</span>
+<span class="lineNum">    1210 </span>            :     }
+<span class="lineNum">    1211 </span>            : 
+<span class="lineNum">    1212 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">    1213 </span>            : }
+<span class="lineNum">    1214 </span>            : 
+<span class="lineNum">    1215 </span>            : 
+<a name="1216"><span class="lineNum">    1216 </span>            : /* Tell the assuan library about our commands */</a>
+<span class="lineNum">    1217 </span>            : static int
+<span class="lineNum">    1218 </span><span class="lineNoCov">          0 : register_commands (assuan_context_t ctx)</span>
+<span class="lineNum">    1219 </span>            : {
+<span class="lineNum">    1220 </span>            :   static struct {
+<span class="lineNum">    1221 </span>            :     const char *name;
+<span class="lineNum">    1222 </span>            :     assuan_handler_t handler;
+<span class="lineNum">    1223 </span>            :     const char * const help;
+<span class="lineNum">    1224 </span>            :   } table[] = {
+<span class="lineNum">    1225 </span>            :     { &quot;RECIPIENT&quot;,     cmd_recipient, hlp_recipient },
+<span class="lineNum">    1226 </span>            :     { &quot;SIGNER&quot;,        cmd_signer,    hlp_signer },
+<span class="lineNum">    1227 </span>            :     { &quot;ENCRYPT&quot;,       cmd_encrypt,   hlp_encrypt },
+<span class="lineNum">    1228 </span>            :     { &quot;DECRYPT&quot;,       cmd_decrypt,   hlp_decrypt },
+<span class="lineNum">    1229 </span>            :     { &quot;VERIFY&quot;,        cmd_verify,    hlp_verify },
+<span class="lineNum">    1230 </span>            :     { &quot;SIGN&quot;,          cmd_sign,      hlp_sign },
+<span class="lineNum">    1231 </span>            :     { &quot;IMPORT&quot;,        cmd_import,    hlp_import },
+<span class="lineNum">    1232 </span>            :     { &quot;EXPORT&quot;,        cmd_export,    hlp_export },
+<span class="lineNum">    1233 </span>            :     { &quot;INPUT&quot;,         NULL,          hlp_input },
+<span class="lineNum">    1234 </span>            :     { &quot;OUTPUT&quot;,        NULL,          hlp_output },
+<span class="lineNum">    1235 </span>            :     { &quot;MESSAGE&quot;,       cmd_message,   hlp_message },
+<span class="lineNum">    1236 </span>            :     { &quot;LISTKEYS&quot;,      cmd_listkeys,  hlp_listkeys },
+<span class="lineNum">    1237 </span>            :     { &quot;DUMPKEYS&quot;,      cmd_dumpkeys,  hlp_listkeys },
+<span class="lineNum">    1238 </span>            :     { &quot;LISTSECRETKEYS&quot;,cmd_listsecretkeys, hlp_listkeys },
+<span class="lineNum">    1239 </span>            :     { &quot;DUMPSECRETKEYS&quot;,cmd_dumpsecretkeys, hlp_listkeys },
+<span class="lineNum">    1240 </span>            :     { &quot;GENKEY&quot;,        cmd_genkey,    hlp_genkey },
+<span class="lineNum">    1241 </span>            :     { &quot;DELKEYS&quot;,       cmd_delkeys,   hlp_delkeys },
+<span class="lineNum">    1242 </span>            :     { &quot;GETAUDITLOG&quot;,   cmd_getauditlog,    hlp_getauditlog },
+<span class="lineNum">    1243 </span>            :     { &quot;GETINFO&quot;,       cmd_getinfo,   hlp_getinfo },
+<span class="lineNum">    1244 </span>            :     { &quot;PASSWD&quot;,        cmd_passwd,    hlp_passwd },
+<span class="lineNum">    1245 </span>            :     { NULL }
+<span class="lineNum">    1246 </span>            :   };
+<span class="lineNum">    1247 </span>            :   int i, rc;
+<span class="lineNum">    1248 </span>            : 
+<span class="lineNum">    1249 </span><span class="lineNoCov">          0 :   for (i=0; table[i].name; i++)</span>
+<span class="lineNum">    1250 </span>            :     {
+<span class="lineNum">    1251 </span><span class="lineNoCov">          0 :       rc = assuan_register_command (ctx, table[i].name, table[i].handler,</span>
+<span class="lineNum">    1252 </span>            :                                     table[i].help);
+<span class="lineNum">    1253 </span><span class="lineNoCov">          0 :       if (rc)</span>
+<span class="lineNum">    1254 </span><span class="lineNoCov">          0 :         return rc;</span>
+<span class="lineNum">    1255 </span>            :     }
+<span class="lineNum">    1256 </span><span class="lineNoCov">          0 :   return 0;</span>
+<span class="lineNum">    1257 </span>            : }
+<span class="lineNum">    1258 </span>            : 
+<span class="lineNum">    1259 </span>            : /* Startup the server. DEFAULT_RECPLIST is the list of recipients as
+<span class="lineNum">    1260 </span>            :    set from the command line or config file.  We only require those
+<a name="1261"><span class="lineNum">    1261 </span>            :    marked as encrypt-to. */</a>
+<span class="lineNum">    1262 </span>            : void
+<span class="lineNum">    1263 </span><span class="lineNoCov">          0 : gpgsm_server (certlist_t default_recplist)</span>
+<span class="lineNum">    1264 </span>            : {
+<span class="lineNum">    1265 </span>            :   int rc;
+<span class="lineNum">    1266 </span>            :   assuan_fd_t filedes[2];
+<span class="lineNum">    1267 </span>            :   assuan_context_t ctx;
+<span class="lineNum">    1268 </span>            :   struct server_control_s ctrl;
+<span class="lineNum">    1269 </span>            :   static const char hello[] = (&quot;GNU Privacy Guard's S/M server &quot;
+<span class="lineNum">    1270 </span>            :                                VERSION &quot; ready&quot;);
+<span class="lineNum">    1271 </span>            : 
+<span class="lineNum">    1272 </span><span class="lineNoCov">          0 :   memset (&amp;ctrl, 0, sizeof ctrl);</span>
+<span class="lineNum">    1273 </span><span class="lineNoCov">          0 :   gpgsm_init_default_ctrl (&amp;ctrl);</span>
+<span class="lineNum">    1274 </span>            : 
+<span class="lineNum">    1275 </span>            :   /* We use a pipe based server so that we can work from scripts.
+<span class="lineNum">    1276 </span>            :      assuan_init_pipe_server will automagically detect when we are
+<span class="lineNum">    1277 </span>            :      called with a socketpair and ignore FILEDES in this case. */
+<span class="lineNum">    1278 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">    1279 </span>            :   #define SERVER_STDIN es_fileno(es_stdin)
+<span class="lineNum">    1280 </span>            :   #define SERVER_STDOUT es_fileno(es_stdout)
+<span class="lineNum">    1281 </span>            : #else
+<span class="lineNum">    1282 </span>            : #define SERVER_STDIN 0
+<span class="lineNum">    1283 </span>            : #define SERVER_STDOUT 1
+<span class="lineNum">    1284 </span>            : #endif
+<span class="lineNum">    1285 </span><span class="lineNoCov">          0 :   filedes[0] = assuan_fdopen (SERVER_STDIN);</span>
+<span class="lineNum">    1286 </span><span class="lineNoCov">          0 :   filedes[1] = assuan_fdopen (SERVER_STDOUT);</span>
+<span class="lineNum">    1287 </span><span class="lineNoCov">          0 :   rc = assuan_new (&amp;ctx);</span>
+<span class="lineNum">    1288 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">    1289 </span>            :     {
+<span class="lineNum">    1290 </span><span class="lineNoCov">          0 :       log_error (&quot;failed to allocate assuan context: %s\n&quot;,</span>
+<span class="lineNum">    1291 </span>            :                  gpg_strerror (rc));
+<span class="lineNum">    1292 </span><span class="lineNoCov">          0 :       gpgsm_exit (2);</span>
+<span class="lineNum">    1293 </span>            :     }
+<span class="lineNum">    1294 </span>            : 
+<span class="lineNum">    1295 </span><span class="lineNoCov">          0 :   rc = assuan_init_pipe_server (ctx, filedes);</span>
+<span class="lineNum">    1296 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">    1297 </span>            :     {
+<span class="lineNum">    1298 </span><span class="lineNoCov">          0 :       log_error (&quot;failed to initialize the server: %s\n&quot;,</span>
+<span class="lineNum">    1299 </span>            :                  gpg_strerror (rc));
+<span class="lineNum">    1300 </span><span class="lineNoCov">          0 :       gpgsm_exit (2);</span>
+<span class="lineNum">    1301 </span>            :     }
+<span class="lineNum">    1302 </span><span class="lineNoCov">          0 :   rc = register_commands (ctx);</span>
+<span class="lineNum">    1303 </span><span class="lineNoCov">          0 :   if (rc)</span>
+<span class="lineNum">    1304 </span>            :     {
+<span class="lineNum">    1305 </span><span class="lineNoCov">          0 :       log_error (&quot;failed to the register commands with Assuan: %s\n&quot;,</span>
+<span class="lineNum">    1306 </span>            :                  gpg_strerror(rc));
+<span class="lineNum">    1307 </span><span class="lineNoCov">          0 :       gpgsm_exit (2);</span>
+<span class="lineNum">    1308 </span>            :     }
+<span class="lineNum">    1309 </span><span class="lineNoCov">          0 :   if (opt.verbose || opt.debug)</span>
+<span class="lineNum">    1310 </span><span class="lineNoCov">          0 :     {</span>
+<span class="lineNum">    1311 </span>            :       char *tmp;
+<span class="lineNum">    1312 </span>            : 
+<span class="lineNum">    1313 </span>            :       /* Fixme: Use the really used socket name.  */
+<span class="lineNum">    1314 </span><span class="lineNoCov">          0 :       if (asprintf (&amp;tmp,</span>
+<span class="lineNum">    1315 </span>            :                     &quot;Home: %s\n&quot;
+<span class="lineNum">    1316 </span>            :                     &quot;Config: %s\n&quot;
+<span class="lineNum">    1317 </span>            :                     &quot;DirmngrInfo: %s\n&quot;
+<span class="lineNum">    1318 </span>            :                     &quot;%s&quot;,
+<span class="lineNum">    1319 </span>            :                     gnupg_homedir (),
+<span class="lineNum">    1320 </span>            :                     opt.config_filename,
+<span class="lineNum">    1321 </span>            :                     dirmngr_socket_name (),
+<span class="lineNum">    1322 </span>            :                     hello) &gt; 0)
+<span class="lineNum">    1323 </span>            :         {
+<span class="lineNum">    1324 </span><span class="lineNoCov">          0 :           assuan_set_hello_line (ctx, tmp);</span>
+<span class="lineNum">    1325 </span><span class="lineNoCov">          0 :           free (tmp);</span>
+<span class="lineNum">    1326 </span>            :         }
+<span class="lineNum">    1327 </span>            :     }
+<span class="lineNum">    1328 </span>            :   else
+<span class="lineNum">    1329 </span><span class="lineNoCov">          0 :     assuan_set_hello_line (ctx, hello);</span>
+<span class="lineNum">    1330 </span>            : 
+<span class="lineNum">    1331 </span><span class="lineNoCov">          0 :   assuan_register_reset_notify (ctx, reset_notify);</span>
+<span class="lineNum">    1332 </span><span class="lineNoCov">          0 :   assuan_register_input_notify (ctx, input_notify);</span>
+<span class="lineNum">    1333 </span><span class="lineNoCov">          0 :   assuan_register_output_notify (ctx, output_notify);</span>
+<span class="lineNum">    1334 </span><span class="lineNoCov">          0 :   assuan_register_option_handler (ctx, option_handler);</span>
+<span class="lineNum">    1335 </span>            : 
+<span class="lineNum">    1336 </span><span class="lineNoCov">          0 :   assuan_set_pointer (ctx, &amp;ctrl);</span>
+<span class="lineNum">    1337 </span><span class="lineNoCov">          0 :   ctrl.server_local = xcalloc (1, sizeof *ctrl.server_local);</span>
+<span class="lineNum">    1338 </span><span class="lineNoCov">          0 :   ctrl.server_local-&gt;assuan_ctx = ctx;</span>
+<span class="lineNum">    1339 </span><span class="lineNoCov">          0 :   ctrl.server_local-&gt;message_fd = -1;</span>
+<span class="lineNum">    1340 </span><span class="lineNoCov">          0 :   ctrl.server_local-&gt;list_internal = 1;</span>
+<span class="lineNum">    1341 </span><span class="lineNoCov">          0 :   ctrl.server_local-&gt;list_external = 0;</span>
+<span class="lineNum">    1342 </span><span class="lineNoCov">          0 :   ctrl.server_local-&gt;default_recplist = default_recplist;</span>
+<span class="lineNum">    1343 </span>            : 
+<span class="lineNum">    1344 </span>            :   for (;;)
+<span class="lineNum">    1345 </span>            :     {
+<span class="lineNum">    1346 </span><span class="lineNoCov">          0 :       rc = assuan_accept (ctx);</span>
+<span class="lineNum">    1347 </span><span class="lineNoCov">          0 :       if (rc == -1)</span>
+<span class="lineNum">    1348 </span>            :         {
+<span class="lineNum">    1349 </span><span class="lineNoCov">          0 :           break;</span>
+<span class="lineNum">    1350 </span>            :         }
+<span class="lineNum">    1351 </span><span class="lineNoCov">          0 :       else if (rc)</span>
+<span class="lineNum">    1352 </span>            :         {
+<span class="lineNum">    1353 </span><span class="lineNoCov">          0 :           log_info (&quot;Assuan accept problem: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">    1354 </span><span class="lineNoCov">          0 :           break;</span>
+<span class="lineNum">    1355 </span>            :         }
+<span class="lineNum">    1356 </span>            : 
+<span class="lineNum">    1357 </span><span class="lineNoCov">          0 :       rc = assuan_process (ctx);</span>
+<span class="lineNum">    1358 </span><span class="lineNoCov">          0 :       if (rc)</span>
+<span class="lineNum">    1359 </span>            :         {
+<span class="lineNum">    1360 </span><span class="lineNoCov">          0 :           log_info (&quot;Assuan processing failed: %s\n&quot;, gpg_strerror (rc));</span>
+<span class="lineNum">    1361 </span><span class="lineNoCov">          0 :           continue;</span>
+<span class="lineNum">    1362 </span>            :         }
+<span class="lineNum">    1363 </span><span class="lineNoCov">          0 :     }</span>
+<span class="lineNum">    1364 </span>            : 
+<span class="lineNum">    1365 </span><span class="lineNoCov">          0 :   gpgsm_release_certlist (ctrl.server_local-&gt;recplist);</span>
+<span class="lineNum">    1366 </span><span class="lineNoCov">          0 :   ctrl.server_local-&gt;recplist = NULL;</span>
+<span class="lineNum">    1367 </span><span class="lineNoCov">          0 :   gpgsm_release_certlist (ctrl.server_local-&gt;signerlist);</span>
+<span class="lineNum">    1368 </span><span class="lineNoCov">          0 :   ctrl.server_local-&gt;signerlist = NULL;</span>
+<span class="lineNum">    1369 </span><span class="lineNoCov">          0 :   xfree (ctrl.server_local);</span>
+<span class="lineNum">    1370 </span>            : 
+<span class="lineNum">    1371 </span><span class="lineNoCov">          0 :   audit_release (ctrl.audit);</span>
+<span class="lineNum">    1372 </span><span class="lineNoCov">          0 :   ctrl.audit = NULL;</span>
+<span class="lineNum">    1373 </span>            : 
+<span class="lineNum">    1374 </span><span class="lineNoCov">          0 :   assuan_release (ctx);</span>
+<span class="lineNum">    1375 </span><span class="lineNoCov">          0 : }</span>
+<span class="lineNum">    1376 </span>            : 
+<span class="lineNum">    1377 </span>            : 
+<a name="1378"><span class="lineNum">    1378 </span>            : </a>
+<span class="lineNum">    1379 </span>            : gpg_error_t
+<span class="lineNum">    1380 </span><span class="lineCov">          9 : gpgsm_status2 (ctrl_t ctrl, int no, ...)</span>
+<span class="lineNum">    1381 </span>            : {
+<span class="lineNum">    1382 </span><span class="lineCov">          9 :   gpg_error_t err = 0;</span>
+<span class="lineNum">    1383 </span>            :   va_list arg_ptr;
+<span class="lineNum">    1384 </span>            :   const char *text;
+<span class="lineNum">    1385 </span>            : 
+<span class="lineNum">    1386 </span><span class="lineCov">          9 :   va_start (arg_ptr, no);</span>
+<span class="lineNum">    1387 </span>            : 
+<span class="lineNum">    1388 </span><span class="lineCov">          9 :   if (ctrl-&gt;no_server &amp;&amp; ctrl-&gt;status_fd == -1)</span>
+<span class="lineNum">    1389 </span>            :     ; /* No status wanted. */
+<span class="lineNum">    1390 </span><span class="lineNoCov">          0 :   else if (ctrl-&gt;no_server)</span>
+<span class="lineNum">    1391 </span>            :     {
+<span class="lineNum">    1392 </span><span class="lineNoCov">          0 :       if (!statusfp)</span>
+<span class="lineNum">    1393 </span>            :         {
+<span class="lineNum">    1394 </span><span class="lineNoCov">          0 :           if (ctrl-&gt;status_fd == 1)</span>
+<span class="lineNum">    1395 </span><span class="lineNoCov">          0 :             statusfp = stdout;</span>
+<span class="lineNum">    1396 </span><span class="lineNoCov">          0 :           else if (ctrl-&gt;status_fd == 2)</span>
+<span class="lineNum">    1397 </span><span class="lineNoCov">          0 :             statusfp = stderr;</span>
+<span class="lineNum">    1398 </span>            :           else
+<span class="lineNum">    1399 </span><span class="lineNoCov">          0 :             statusfp = fdopen (ctrl-&gt;status_fd, &quot;w&quot;);</span>
+<span class="lineNum">    1400 </span>            : 
+<span class="lineNum">    1401 </span><span class="lineNoCov">          0 :           if (!statusfp)</span>
+<span class="lineNum">    1402 </span>            :             {
+<span class="lineNum">    1403 </span><span class="lineNoCov">          0 :               log_fatal (&quot;can't open fd %d for status output: %s\n&quot;,</span>
+<span class="lineNum">    1404 </span><span class="lineNoCov">          0 :                          ctrl-&gt;status_fd, strerror(errno));</span>
+<span class="lineNum">    1405 </span>            :             }
+<span class="lineNum">    1406 </span>            :         }
+<span class="lineNum">    1407 </span>            : 
+<span class="lineNum">    1408 </span><span class="lineNoCov">          0 :       fputs (&quot;[GNUPG:] &quot;, statusfp);</span>
+<span class="lineNum">    1409 </span><span class="lineNoCov">          0 :       fputs (get_status_string (no), statusfp);</span>
+<span class="lineNum">    1410 </span>            : 
+<span class="lineNum">    1411 </span><span class="lineNoCov">          0 :       while ( (text = va_arg (arg_ptr, const char*) ))</span>
+<span class="lineNum">    1412 </span>            :         {
+<span class="lineNum">    1413 </span><span class="lineNoCov">          0 :           putc ( ' ', statusfp );</span>
+<span class="lineNum">    1414 </span><span class="lineNoCov">          0 :           for (; *text; text++)</span>
+<span class="lineNum">    1415 </span>            :             {
+<span class="lineNum">    1416 </span><span class="lineNoCov">          0 :               if (*text == '\n')</span>
+<span class="lineNum">    1417 </span><span class="lineNoCov">          0 :                 fputs ( &quot;\\n&quot;, statusfp );</span>
+<span class="lineNum">    1418 </span><span class="lineNoCov">          0 :               else if (*text == '\r')</span>
+<span class="lineNum">    1419 </span><span class="lineNoCov">          0 :                 fputs ( &quot;\\r&quot;, statusfp );</span>
+<span class="lineNum">    1420 </span>            :               else
+<span class="lineNum">    1421 </span><span class="lineNoCov">          0 :                 putc ( *(const byte *)text,  statusfp );</span>
+<span class="lineNum">    1422 </span>            :             }
+<span class="lineNum">    1423 </span>            :         }
+<span class="lineNum">    1424 </span><span class="lineNoCov">          0 :       putc ('\n', statusfp);</span>
+<span class="lineNum">    1425 </span><span class="lineNoCov">          0 :       fflush (statusfp);</span>
+<span class="lineNum">    1426 </span>            :     }
+<span class="lineNum">    1427 </span>            :   else
+<span class="lineNum">    1428 </span>            :     {
+<span class="lineNum">    1429 </span><span class="lineNoCov">          0 :       assuan_context_t ctx = ctrl-&gt;server_local-&gt;assuan_ctx;</span>
+<span class="lineNum">    1430 </span>            :       char buf[950], *p;
+<span class="lineNum">    1431 </span>            :       size_t n;
+<span class="lineNum">    1432 </span>            : 
+<span class="lineNum">    1433 </span><span class="lineNoCov">          0 :       p = buf;</span>
+<span class="lineNum">    1434 </span><span class="lineNoCov">          0 :       n = 0;</span>
+<span class="lineNum">    1435 </span><span class="lineNoCov">          0 :       while ( (text = va_arg (arg_ptr, const char *)) )</span>
+<span class="lineNum">    1436 </span>            :         {
+<span class="lineNum">    1437 </span><span class="lineNoCov">          0 :           if (n)</span>
+<span class="lineNum">    1438 </span>            :             {
+<span class="lineNum">    1439 </span><span class="lineNoCov">          0 :               *p++ = ' ';</span>
+<span class="lineNum">    1440 </span><span class="lineNoCov">          0 :               n++;</span>
+<span class="lineNum">    1441 </span>            :             }
+<span class="lineNum">    1442 </span><span class="lineNoCov">          0 :           for ( ; *text &amp;&amp; n &lt; DIM (buf)-2; n++)</span>
+<span class="lineNum">    1443 </span><span class="lineNoCov">          0 :             *p++ = *text++;</span>
+<span class="lineNum">    1444 </span>            :         }
+<span class="lineNum">    1445 </span><span class="lineNoCov">          0 :       *p = 0;</span>
+<span class="lineNum">    1446 </span><span class="lineNoCov">          0 :       err = assuan_write_status (ctx, get_status_string (no), buf);</span>
+<span class="lineNum">    1447 </span>            :     }
+<span class="lineNum">    1448 </span>            : 
+<span class="lineNum">    1449 </span><span class="lineCov">          9 :   va_end (arg_ptr);</span>
+<span class="lineNum">    1450 </span><span class="lineCov">          9 :   return err;</span>
+<span class="lineNum">    1451 </span>            : }
+<a name="1452"><span class="lineNum">    1452 </span>            : </a>
+<span class="lineNum">    1453 </span>            : gpg_error_t
+<span class="lineNum">    1454 </span><span class="lineCov">          3 : gpgsm_status (ctrl_t ctrl, int no, const char *text)</span>
+<span class="lineNum">    1455 </span>            : {
+<span class="lineNum">    1456 </span><span class="lineCov">          3 :   return gpgsm_status2 (ctrl, no, text, NULL);</span>
+<span class="lineNum">    1457 </span>            : }
+<a name="1458"><span class="lineNum">    1458 </span>            : </a>
+<span class="lineNum">    1459 </span>            : gpg_error_t
+<span class="lineNum">    1460 </span><span class="lineNoCov">          0 : gpgsm_status_with_err_code (ctrl_t ctrl, int no, const char *text,</span>
+<span class="lineNum">    1461 </span>            :                             gpg_err_code_t ec)
+<span class="lineNum">    1462 </span>            : {
+<span class="lineNum">    1463 </span>            :   char buf[30];
+<span class="lineNum">    1464 </span>            : 
+<span class="lineNum">    1465 </span><span class="lineNoCov">          0 :   sprintf (buf, &quot;%u&quot;, (unsigned int)ec);</span>
+<span class="lineNum">    1466 </span><span class="lineNoCov">          0 :   if (text)</span>
+<span class="lineNum">    1467 </span><span class="lineNoCov">          0 :     return gpgsm_status2 (ctrl, no, text, buf, NULL);</span>
+<span class="lineNum">    1468 </span>            :   else
+<span class="lineNum">    1469 </span><span class="lineNoCov">          0 :     return gpgsm_status2 (ctrl, no, buf, NULL);</span>
+<span class="lineNum">    1470 </span>            : }
+<a name="1471"><span class="lineNum">    1471 </span>            : </a>
+<span class="lineNum">    1472 </span>            : gpg_error_t
+<span class="lineNum">    1473 </span><span class="lineNoCov">          0 : gpgsm_status_with_error (ctrl_t ctrl, int no, const char *text,</span>
+<span class="lineNum">    1474 </span>            :                          gpg_error_t err)
+<span class="lineNum">    1475 </span>            : {
+<span class="lineNum">    1476 </span>            :   char buf[30];
+<span class="lineNum">    1477 </span>            : 
+<span class="lineNum">    1478 </span><span class="lineNoCov">          0 :   snprintf (buf, sizeof buf, &quot;%u&quot;, err);</span>
+<span class="lineNum">    1479 </span><span class="lineNoCov">          0 :   if (text)</span>
+<span class="lineNum">    1480 </span><span class="lineNoCov">          0 :     return gpgsm_status2 (ctrl, no, text, buf, NULL);</span>
+<span class="lineNum">    1481 </span>            :   else
+<span class="lineNum">    1482 </span><span class="lineNoCov">          0 :     return gpgsm_status2 (ctrl, no, buf, NULL);</span>
+<span class="lineNum">    1483 </span>            : }
+<span class="lineNum">    1484 </span>            : 
+<span class="lineNum">    1485 </span>            : 
+<span class="lineNum">    1486 </span>            : /* Helper to notify the client about Pinentry events.  Because that
+<span class="lineNum">    1487 </span>            :    might disturb some older clients, this is only done when enabled
+<a name="1488"><span class="lineNum">    1488 </span>            :    via an option.  Returns an gpg error code. */</a>
+<span class="lineNum">    1489 </span>            : gpg_error_t
+<span class="lineNum">    1490 </span><span class="lineNoCov">          0 : gpgsm_proxy_pinentry_notify (ctrl_t ctrl, const unsigned char *line)</span>
+<span class="lineNum">    1491 </span>            : {
+<span class="lineNum">    1492 </span><span class="lineNoCov">          0 :   if (!ctrl || !ctrl-&gt;server_local</span>
+<span class="lineNum">    1493 </span><span class="lineNoCov">          0 :       || !ctrl-&gt;server_local-&gt;allow_pinentry_notify)</span>
+<span class="lineNum">    1494 </span><span class="lineNoCov">          0 :     return 0;</span>
+<span class="lineNum">    1495 </span><span class="lineNoCov">          0 :   return assuan_inquire (ctrl-&gt;server_local-&gt;assuan_ctx, line, NULL, NULL, 0);</span>
+<span class="lineNum">    1496 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

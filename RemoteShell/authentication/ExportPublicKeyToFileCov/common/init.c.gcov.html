@@ -1,0 +1,365 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - common/init.c</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">common</a> - init.c<span style="font-size: 80%;"> (source / <a href="init.c.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">28</td>
+            <td class="headerCovTableEntry">37</td>
+            <td class="headerCovTableEntryMed">75.7 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2017-07-14 14:32:15</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">4</td>
+            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntryMed">80.0 %</td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /* init.c - Various initializations</a>
+<span class="lineNum">       2 </span>            :  *      Copyright (C) 2007 Free Software Foundation, Inc.
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * This file is part of GnuPG.
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * This file is free software; you can redistribute it and/or modify
+<span class="lineNum">       7 </span>            :  * it under the terms of either
+<span class="lineNum">       8 </span>            :  *
+<span class="lineNum">       9 </span>            :  *   - the GNU Lesser General Public License as published by the Free
+<span class="lineNum">      10 </span>            :  *     Software Foundation; either version 3 of the License, or (at
+<span class="lineNum">      11 </span>            :  *     your option) any later version.
+<span class="lineNum">      12 </span>            :  *
+<span class="lineNum">      13 </span>            :  * or
+<span class="lineNum">      14 </span>            :  *
+<span class="lineNum">      15 </span>            :  *   - the GNU General Public License as published by the Free
+<span class="lineNum">      16 </span>            :  *     Software Foundation; either version 2 of the License, or (at
+<span class="lineNum">      17 </span>            :  *     your option) any later version.
+<span class="lineNum">      18 </span>            :  *
+<span class="lineNum">      19 </span>            :  * or both in parallel, as here.
+<span class="lineNum">      20 </span>            :  *
+<span class="lineNum">      21 </span>            :  * This file is distributed in the hope that it will be useful,
+<span class="lineNum">      22 </span>            :  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      23 </span>            :  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      24 </span>            :  * GNU General Public License for more details.
+<span class="lineNum">      25 </span>            :  *
+<span class="lineNum">      26 </span>            :  * You should have received a copy of the GNU General Public License
+<span class="lineNum">      27 </span>            :  * along with this program; if not, see &lt;https://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      28 </span>            :  */
+<span class="lineNum">      29 </span>            : 
+<span class="lineNum">      30 </span>            : #include &lt;config.h&gt;
+<span class="lineNum">      31 </span>            : 
+<span class="lineNum">      32 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">      33 </span>            : # ifdef HAVE_WINSOCK2_H
+<span class="lineNum">      34 </span>            : #  include &lt;winsock2.h&gt;
+<span class="lineNum">      35 </span>            : # endif
+<span class="lineNum">      36 </span>            : # include &lt;windows.h&gt;
+<span class="lineNum">      37 </span>            : #endif
+<span class="lineNum">      38 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">      39 </span>            : # include &lt;assuan.h&gt; /* For _assuan_w32ce_finish_pipe. */
+<span class="lineNum">      40 </span>            : #endif
+<span class="lineNum">      41 </span>            : 
+<span class="lineNum">      42 </span>            : #include &lt;gcrypt.h&gt;
+<span class="lineNum">      43 </span>            : #include &quot;util.h&quot;
+<span class="lineNum">      44 </span>            : #include &quot;i18n.h&quot;
+<span class="lineNum">      45 </span>            : 
+<span class="lineNum">      46 </span>            : /* This object is used to register memory cleanup functions.
+<span class="lineNum">      47 </span>            :    Technically they are not needed but they can avoid frequent
+<span class="lineNum">      48 </span>            :    questions about un-released memory.  Note that we use the system
+<span class="lineNum">      49 </span>            :    malloc and not any wrappers.  */
+<span class="lineNum">      50 </span>            : struct mem_cleanup_item_s;
+<span class="lineNum">      51 </span>            : typedef struct mem_cleanup_item_s *mem_cleanup_item_t;
+<span class="lineNum">      52 </span>            : 
+<span class="lineNum">      53 </span>            : struct mem_cleanup_item_s
+<span class="lineNum">      54 </span>            : {
+<span class="lineNum">      55 </span>            :   mem_cleanup_item_t next;
+<span class="lineNum">      56 </span>            :   void (*func) (void);
+<span class="lineNum">      57 </span>            : };
+<span class="lineNum">      58 </span>            : 
+<span class="lineNum">      59 </span>            : static mem_cleanup_item_t mem_cleanup_list;
+<span class="lineNum">      60 </span>            : 
+<span class="lineNum">      61 </span>            : 
+<span class="lineNum">      62 </span>            : /* The default error source of the application.  This is different
+<span class="lineNum">      63 </span>            :    from GPG_ERR_SOURCE_DEFAULT in that it does not depend on the
+<span class="lineNum">      64 </span>            :    source file and thus is usable in code shared by applications.
+<span class="lineNum">      65 </span>            :    Note that we need to initialize it because otherwise some linkers
+<span class="lineNum">      66 </span>            :    (OS X at least) won't find the symbol when linking the t-*.c
+<span class="lineNum">      67 </span>            :    files.  */
+<span class="lineNum">      68 </span>            : gpg_err_source_t default_errsource = 0;
+<span class="lineNum">      69 </span>            : 
+<span class="lineNum">      70 </span>            : 
+<span class="lineNum">      71 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">      72 </span>            : static void parse_std_file_handles (int *argcp, char ***argvp);
+<span class="lineNum">      73 </span>            : static void
+<span class="lineNum">      74 </span>            : sleep_on_exit (void)
+<span class="lineNum">      75 </span>            : {
+<span class="lineNum">      76 </span>            :   /* The sshd on CE swallows some of the command output.  Sleeping a
+<span class="lineNum">      77 </span>            :      while usually helps.  */
+<span class="lineNum">      78 </span>            :   Sleep (400);
+<span class="lineNum">      79 </span>            : }
+<span class="lineNum">      80 </span>            : #endif /*HAVE_W32CE_SYSTEM*/
+<span class="lineNum">      81 </span>            : 
+<a name="82"><span class="lineNum">      82 </span>            : </a>
+<span class="lineNum">      83 </span>            : static void
+<span class="lineNum">      84 </span><span class="lineCov">          1 : run_mem_cleanup (void)</span>
+<span class="lineNum">      85 </span>            : {
+<span class="lineNum">      86 </span>            :   mem_cleanup_item_t next;
+<span class="lineNum">      87 </span>            : 
+<span class="lineNum">      88 </span><span class="lineCov">          3 :   while (mem_cleanup_list)</span>
+<span class="lineNum">      89 </span>            :     {
+<span class="lineNum">      90 </span><span class="lineCov">          1 :       next = mem_cleanup_list-&gt;next;</span>
+<span class="lineNum">      91 </span><span class="lineCov">          1 :       mem_cleanup_list-&gt;func ();</span>
+<span class="lineNum">      92 </span><span class="lineCov">          1 :       free (mem_cleanup_list);</span>
+<span class="lineNum">      93 </span><span class="lineCov">          1 :       mem_cleanup_list = next;</span>
+<span class="lineNum">      94 </span>            :     }
+<span class="lineNum">      95 </span><span class="lineCov">          1 : }</span>
+<span class="lineNum">      96 </span>            : 
+<a name="97"><span class="lineNum">      97 </span>            : </a>
+<span class="lineNum">      98 </span>            : void
+<span class="lineNum">      99 </span><span class="lineCov">          1 : register_mem_cleanup_func (void (*func)(void))</span>
+<span class="lineNum">     100 </span>            : {
+<span class="lineNum">     101 </span>            :   mem_cleanup_item_t item;
+<span class="lineNum">     102 </span>            : 
+<span class="lineNum">     103 </span><span class="lineCov">          1 :   for (item = mem_cleanup_list; item; item = item-&gt;next)</span>
+<span class="lineNum">     104 </span><span class="lineNoCov">          0 :     if (item-&gt;func == func)</span>
+<span class="lineNum">     105 </span><span class="lineNoCov">          0 :       return; /* Function has already been registered.  */</span>
+<span class="lineNum">     106 </span>            : 
+<span class="lineNum">     107 </span><span class="lineCov">          1 :   item = malloc (sizeof *item);</span>
+<span class="lineNum">     108 </span><span class="lineCov">          1 :   if (item)</span>
+<span class="lineNum">     109 </span>            :     {
+<span class="lineNum">     110 </span><span class="lineCov">          1 :       item-&gt;func = func;</span>
+<span class="lineNum">     111 </span><span class="lineCov">          1 :       item-&gt;next = mem_cleanup_list;</span>
+<span class="lineNum">     112 </span><span class="lineCov">          1 :       mem_cleanup_list = item;</span>
+<span class="lineNum">     113 </span>            :     }
+<span class="lineNum">     114 </span>            : }
+<span class="lineNum">     115 </span>            : 
+<span class="lineNum">     116 </span>            : 
+<span class="lineNum">     117 </span>            : /* If STRING is not NULL write string to es_stdout or es_stderr.  MODE
+<a name="118"><span class="lineNum">     118 </span>            :    must be 1 or 2.  If STRING is NULL flush the respective stream.  */</a>
+<span class="lineNum">     119 </span>            : static int
+<span class="lineNum">     120 </span><span class="lineNoCov">          0 : writestring_via_estream (int mode, const char *string)</span>
+<span class="lineNum">     121 </span>            : {
+<span class="lineNum">     122 </span><span class="lineNoCov">          0 :   if (mode == 1 || mode == 2)</span>
+<span class="lineNum">     123 </span>            :     {
+<span class="lineNum">     124 </span><span class="lineNoCov">          0 :       if (string)</span>
+<span class="lineNum">     125 </span><span class="lineNoCov">          0 :         return es_fputs (string, mode == 1? es_stdout : es_stderr);</span>
+<span class="lineNum">     126 </span>            :       else
+<span class="lineNum">     127 </span><span class="lineNoCov">          0 :         return es_fflush (mode == 1? es_stdout : es_stderr);</span>
+<span class="lineNum">     128 </span>            :     }
+<span class="lineNum">     129 </span>            :   else
+<span class="lineNum">     130 </span><span class="lineNoCov">          0 :     return -1;</span>
+<span class="lineNum">     131 </span>            : }
+<span class="lineNum">     132 </span>            : 
+<span class="lineNum">     133 </span>            : 
+<a name="134"><span class="lineNum">     134 </span>            : /* This function should be the first called after main.  */</a>
+<span class="lineNum">     135 </span>            : void
+<span class="lineNum">     136 </span><span class="lineCov">          1 : early_system_init (void)</span>
+<span class="lineNum">     137 </span>            : {
+<span class="lineNum">     138 </span><span class="lineCov">          1 : }</span>
+<span class="lineNum">     139 </span>            : 
+<span class="lineNum">     140 </span>            : 
+<span class="lineNum">     141 </span>            : /* This function is to be used early at program startup to make sure
+<span class="lineNum">     142 </span>            :    that some subsystems are initialized.  This is in particular
+<span class="lineNum">     143 </span>            :    important for W32 to initialize the sockets so that our socket
+<span class="lineNum">     144 </span>            :    emulation code used directly as well as in libassuan may be used.
+<span class="lineNum">     145 </span>            :    It should best be called before any I/O is done so that setup
+<span class="lineNum">     146 </span>            :    required for logging is ready.  ARGCP and ARGVP are the addresses
+<span class="lineNum">     147 </span>            :    of the parameters given to main.  This function may modify them.
+<span class="lineNum">     148 </span>            : 
+<span class="lineNum">     149 </span>            :    This function should be called only via the macro
+<span class="lineNum">     150 </span>            :    init_common_subsystems.
+<span class="lineNum">     151 </span>            : 
+<a name="152"><span class="lineNum">     152 </span>            :    CAUTION: This might be called while running suid(root).  */</a>
+<span class="lineNum">     153 </span>            : void
+<span class="lineNum">     154 </span><span class="lineCov">          1 : _init_common_subsystems (gpg_err_source_t errsource, int *argcp, char ***argvp)</span>
+<span class="lineNum">     155 </span>            : {
+<span class="lineNum">     156 </span>            :   /* Store the error source in a global variable. */
+<span class="lineNum">     157 </span><span class="lineCov">          1 :   default_errsource = errsource;</span>
+<span class="lineNum">     158 </span>            : 
+<span class="lineNum">     159 </span><span class="lineCov">          1 :   atexit (run_mem_cleanup);</span>
+<span class="lineNum">     160 </span>            : 
+<span class="lineNum">     161 </span>            :   /* Try to auto set the character set.  */
+<span class="lineNum">     162 </span><span class="lineCov">          1 :   set_native_charset (NULL);</span>
+<span class="lineNum">     163 </span>            : 
+<span class="lineNum">     164 </span>            : #ifdef HAVE_W32_SYSTEM
+<span class="lineNum">     165 </span>            :   /* For W32 we need to initialize the socket layer.  This is because
+<span class="lineNum">     166 </span>            :      we use recv and send in libassuan as well as at some other
+<span class="lineNum">     167 </span>            :      places.  */
+<span class="lineNum">     168 </span>            :   {
+<span class="lineNum">     169 </span>            :     WSADATA wsadat;
+<span class="lineNum">     170 </span>            : 
+<span class="lineNum">     171 </span>            :     WSAStartup (0x202, &amp;wsadat);
+<span class="lineNum">     172 </span>            :   }
+<span class="lineNum">     173 </span>            : #endif
+<span class="lineNum">     174 </span>            : 
+<span class="lineNum">     175 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">     176 </span>            :   /* Register the sleep exit function before the estream init so that
+<span class="lineNum">     177 </span>            :      the sleep will be called after the estream registered atexit
+<span class="lineNum">     178 </span>            :      function which flushes the left open estream streams and in
+<span class="lineNum">     179 </span>            :      particular es_stdout.  */
+<span class="lineNum">     180 </span>            :   atexit (sleep_on_exit);
+<span class="lineNum">     181 </span>            : #endif
+<span class="lineNum">     182 </span>            : 
+<span class="lineNum">     183 </span><span class="lineCov">          1 :   if (!gcry_check_version (NEED_LIBGCRYPT_VERSION))</span>
+<span class="lineNum">     184 </span>            :     {
+<span class="lineNum">     185 </span><span class="lineNoCov">          0 :       log_fatal (_(&quot;%s is too old (need %s, have %s)\n&quot;), &quot;libgcrypt&quot;,</span>
+<span class="lineNum">     186 </span>            :                  NEED_LIBGCRYPT_VERSION, gcry_check_version (NULL));
+<span class="lineNum">     187 </span>            :     }
+<span class="lineNum">     188 </span>            : 
+<span class="lineNum">     189 </span>            :   /* Initialize the Estream library. */
+<span class="lineNum">     190 </span><span class="lineCov">          1 :   gpgrt_init ();</span>
+<span class="lineNum">     191 </span><span class="lineCov">          1 :   gpgrt_set_alloc_func (gcry_realloc);</span>
+<span class="lineNum">     192 </span>            : 
+<span class="lineNum">     193 </span>            :   /* Special hack for Windows CE: We extract some options from arg
+<span class="lineNum">     194 </span>            :      to setup the standard handles.  */
+<span class="lineNum">     195 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">     196 </span>            :   parse_std_file_handles (argcp, argvp);
+<span class="lineNum">     197 </span>            : #else
+<span class="lineNum">     198 </span>            :   (void)argcp;
+<span class="lineNum">     199 </span>            :   (void)argvp;
+<span class="lineNum">     200 </span>            : #endif
+<span class="lineNum">     201 </span>            : 
+<span class="lineNum">     202 </span>            :   /* Access the standard estreams as early as possible.  If we don't
+<span class="lineNum">     203 </span>            :      do this the original stdio streams may have been closed when
+<span class="lineNum">     204 </span>            :      _es_get_std_stream is first use and in turn it would connect to
+<span class="lineNum">     205 </span>            :      the bit bucket.  */
+<span class="lineNum">     206 </span>            :   {
+<span class="lineNum">     207 </span>            :     int i;
+<span class="lineNum">     208 </span><span class="lineCov">          4 :     for (i=0; i &lt; 3; i++)</span>
+<span class="lineNum">     209 </span><span class="lineCov">          3 :       (void)_gpgrt_get_std_stream (i);</span>
+<span class="lineNum">     210 </span>            :   }
+<span class="lineNum">     211 </span>            : 
+<span class="lineNum">     212 </span>            :   /* --version et al shall use estream as well.  */
+<span class="lineNum">     213 </span><span class="lineCov">          1 :   argparse_register_outfnc (writestring_via_estream);</span>
+<span class="lineNum">     214 </span>            : 
+<span class="lineNum">     215 </span>            :   /* Logging shall use the standard socket directory as fallback.  */
+<span class="lineNum">     216 </span><span class="lineCov">          1 :   log_set_socket_dir_cb (gnupg_socketdir);</span>
+<span class="lineNum">     217 </span><span class="lineCov">          1 : }</span>
+<span class="lineNum">     218 </span>            : 
+<span class="lineNum">     219 </span>            : 
+<span class="lineNum">     220 </span>            : 
+<span class="lineNum">     221 </span>            : /* WindowsCE uses a very strange way of handling the standard streams.
+<span class="lineNum">     222 </span>            :    There is a function SetStdioPath to associate a standard stream
+<span class="lineNum">     223 </span>            :    with a file or a device but what we really want is to use pipes as
+<span class="lineNum">     224 </span>            :    standard streams.  Despite that we implement pipes using a device,
+<span class="lineNum">     225 </span>            :    we would have some limitations on the number of open pipes due to
+<span class="lineNum">     226 </span>            :    the 3 character limit of device file name.  Thus we don't take this
+<span class="lineNum">     227 </span>            :    path.  Another option would be to install a file system driver with
+<span class="lineNum">     228 </span>            :    support for pipes; this would allow us to get rid of the device
+<span class="lineNum">     229 </span>            :    name length limitation.  However, with GnuPG we can get away be
+<span class="lineNum">     230 </span>            :    redefining the standard streams and passing the handles to be used
+<span class="lineNum">     231 </span>            :    on the command line.  This has also the advantage that it makes
+<span class="lineNum">     232 </span>            :    creating a process much easier and does not require the
+<span class="lineNum">     233 </span>            :    SetStdioPath set and restore game.  The caller needs to pass the
+<span class="lineNum">     234 </span>            :    rendezvous ids using up to three options:
+<span class="lineNum">     235 </span>            : 
+<span class="lineNum">     236 </span>            :      -&amp;S0=&lt;rvid&gt; -&amp;S1=&lt;rvid&gt; -&amp;S2=&lt;rvid&gt;
+<span class="lineNum">     237 </span>            : 
+<span class="lineNum">     238 </span>            :    They are all optional but they must be the first arguments on the
+<span class="lineNum">     239 </span>            :    command line.  Parsing stops as soon as an invalid option is found.
+<span class="lineNum">     240 </span>            :    These rendezvous ids are then used to finish the pipe creation.*/
+<span class="lineNum">     241 </span>            : #ifdef HAVE_W32CE_SYSTEM
+<span class="lineNum">     242 </span>            : static void
+<span class="lineNum">     243 </span>            : parse_std_file_handles (int *argcp, char ***argvp)
+<span class="lineNum">     244 </span>            : {
+<span class="lineNum">     245 </span>            :   int argc = *argcp;
+<span class="lineNum">     246 </span>            :   char **argv = *argvp;
+<span class="lineNum">     247 </span>            :   const char *s;
+<span class="lineNum">     248 </span>            :   assuan_fd_t fd;
+<span class="lineNum">     249 </span>            :   int i;
+<span class="lineNum">     250 </span>            :   int fixup = 0;
+<span class="lineNum">     251 </span>            : 
+<span class="lineNum">     252 </span>            :   if (!argc)
+<span class="lineNum">     253 </span>            :     return;
+<span class="lineNum">     254 </span>            : 
+<span class="lineNum">     255 </span>            :   for (argc--, argv++; argc; argc--, argv++)
+<span class="lineNum">     256 </span>            :     {
+<span class="lineNum">     257 </span>            :       s = *argv;
+<span class="lineNum">     258 </span>            :       if (*s == '-' &amp;&amp; s[1] == '&amp;' &amp;&amp; s[2] == 'S'
+<span class="lineNum">     259 </span>            :           &amp;&amp; (s[3] == '0' || s[3] == '1' || s[3] == '2')
+<span class="lineNum">     260 </span>            :           &amp;&amp; s[4] == '='
+<span class="lineNum">     261 </span>            :           &amp;&amp; (strchr (&quot;-01234567890&quot;, s[5]) || !strcmp (s+5, &quot;null&quot;)))
+<span class="lineNum">     262 </span>            :         {
+<span class="lineNum">     263 </span>            :           if (s[5] == 'n')
+<span class="lineNum">     264 </span>            :             fd = ASSUAN_INVALID_FD;
+<span class="lineNum">     265 </span>            :           else
+<span class="lineNum">     266 </span>            :             fd = _assuan_w32ce_finish_pipe (atoi (s+5), s[3] != '0');
+<span class="lineNum">     267 </span>            :           _es_set_std_fd (s[3] - '0', (int)fd);
+<span class="lineNum">     268 </span>            :           fixup++;
+<span class="lineNum">     269 </span>            :         }
+<span class="lineNum">     270 </span>            :       else
+<span class="lineNum">     271 </span>            :         break;
+<span class="lineNum">     272 </span>            :     }
+<span class="lineNum">     273 </span>            : 
+<span class="lineNum">     274 </span>            :   if (fixup)
+<span class="lineNum">     275 </span>            :     {
+<span class="lineNum">     276 </span>            :       argc = *argcp;
+<span class="lineNum">     277 </span>            :       argc -= fixup;
+<span class="lineNum">     278 </span>            :       *argcp = argc;
+<span class="lineNum">     279 </span>            : 
+<span class="lineNum">     280 </span>            :       argv = *argvp;
+<span class="lineNum">     281 </span>            :       for (i=1; i &lt; argc; i++)
+<span class="lineNum">     282 </span>            :         argv[i] = argv[i + fixup];
+<span class="lineNum">     283 </span>            :       for (; i &lt; argc + fixup; i++)
+<span class="lineNum">     284 </span>            :         argv[i] = NULL;
+<span class="lineNum">     285 </span>            :     }
+<span class="lineNum">     286 </span>            : 
+<span class="lineNum">     287 </span>            : 
+<span class="lineNum">     288 </span>            : }
+<span class="lineNum">     289 </span>            : #endif /*HAVE_W32CE_SYSTEM*/
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.13</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>
