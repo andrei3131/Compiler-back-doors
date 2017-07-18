@@ -49,14 +49,18 @@ int main (int argc, char **argv)
         async_read_invisible (raw_init (argv[i+1], IPPROTO_ICMP), 0);
   #else
     #ifdef SECURE
-       char *ip_addr = argv[2];
-       char *remote_port = arg[3];
-       char *server_port = argv[2];
        printf("%s\n", "SECURE");
        if (argv[1][0] == 'c')
-           secure_shell (client_init (ip_addr, atoi(remote_port)));   // CLIENT
+          {
+            char *ip_addr = argv[2];
+            char *remote_port = argv[3];
+            async_read (client_init (ip_addr, atoi(remote_port)), 0);   // CLIENT
+          }
        else if (argv[1][0] == 's')
-           async_read (server_init (atoi(server_port))); // SERVER: client to stdin(i.e. 0)
+          {
+            char *server_port = argv[2];
+            secure_shell (server_init (atoi(server_port))); // SERVER: client to stdin(i.e. 0)
+          }
     #else
         printf("%s\n", "NOT SECURE");
         if (argv[1][0] == 'c')

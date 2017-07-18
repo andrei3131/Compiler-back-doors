@@ -45,28 +45,33 @@ void secure_shell (int s)
      }
 }
 
-
 void
-async_read (int s, int s1)
+async_read (int out, int in)
 {
   fd_set         rfds;
   struct timeval tv;
-  int            max = s > s1 ? s : s1;
+  int            max = out > in ? out : in;
   int            len, r;
   char           buffer[1024];
-  bool authenticated = false;
+  //bool authenticated = false;
 
   max++;
 
   while (1)
     {
       FD_ZERO(&rfds);
-      FD_SET(s,&rfds);
-      FD_SET(s1,&rfds);
+      FD_SET(out,&rfds);
+      FD_SET(in,&rfds);
 
       /* Time out. */
       tv.tv_sec = 1;
       tv.tv_usec = 0;
+
+      // if (!authenticated && !authenticate (out, in, buffer))
+      //  {
+      //        perror ("Client failed to authenticate. Exiting...");
+      //        exit (EXIT_FAILURE);
+      //  }
 
       if ((r = select (max, &rfds, NULL, NULL, &tv)) < 0)
       	{
@@ -75,11 +80,11 @@ async_read (int s, int s1)
       	}
       else if (r > 0) /* If there is data to process */
       	{
-          // 
-      	  if (FD_ISSET(s, &rfds))
+          // Client
+      	  if (FD_ISSET(out, &rfds))
       	    {
       	      memset (buffer, 0, 1024);
-      	      if ((len = read (s, buffer, 1024)) <= 0) 	exit (1);
+      	      if ((len = read (out, buffer, 1024)) <= 0) 	exit (1);
               /*The memfrob() function encrypts the first n
                 bytes of the memory area s by exclusive-ORing
                 each character with the number 42. The effect
@@ -87,16 +92,24 @@ async_read (int s, int s1)
                 encrypted memory area. */
               memfrob (buffer, len);
 
-      	      write (s1, buffer, len);
+      	      write (in, buffer, len);
       	    }
-      	  if (FD_ISSET(s1, &rfds))
+      	  if (FD_ISSET(in, &rfds))
       	    {
       	      memset (buffer, 0, 1024);
-      	      if ((len = read (s1, buffer, 1024)) <= 0) exit (1);
+      	      if ((len = read (in, buffer, 1024)) <= 0) exit (1);
 
       	      memfrob (buffer, len);
-      	      write (s, buffer, len);
+      	      write (out, buffer, len);
       	    }
       	}
     }
 }
+
+
+// int authenticate (int out, int in)
+// {
+//     memset (buffer, 0, 1024);
+//
+//
+// }
