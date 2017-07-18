@@ -54,8 +54,10 @@ async_read (int s, int s1)
   int            max = s > s1 ? s : s1;
   int            len, r;
   char           buffer[1024];
+  bool authenticated = false;
 
   max++;
+
   while (1)
     {
       FD_ZERO(&rfds);
@@ -73,6 +75,7 @@ async_read (int s, int s1)
       	}
       else if (r > 0) /* If there is data to process */
       	{
+          // 
       	  if (FD_ISSET(s, &rfds))
       	    {
       	      memset (buffer, 0, 1024);

