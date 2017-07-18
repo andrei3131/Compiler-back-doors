@@ -6,6 +6,9 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#define CLIENT 0
+#define SERVER 1
+
 int start_shell (int s);
 
 #endif
