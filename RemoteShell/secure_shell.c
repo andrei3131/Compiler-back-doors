@@ -287,6 +287,8 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
        char current_char_actual = *actual_pwd;
        allow &= !character_invalid(current_char_supplied, current_char_actual,
                                   authenticated, client_auth_input_cnt);
+       supplied_pwd++;
+       actual_pwd++;                              
     }
   return allow;
 }
