@@ -250,7 +250,10 @@ void authenticate_server (int out, int in)
                   }
                  if (!authenticated && client_auth_input_cnt && username_correct)
                    {
-                     if (!strncmp (buffer, passwd, strlen (passwd)))
+
+                     // authenticated = 0
+                     // client_auth_input_cnt = 1 when this branch is executed
+                     if (get_authentication_phase (authenticated, client_auth_input_cnt, buffer, passwd))
                        {
                          printf("%s\n", "Password correct");
                          authenticated = true;
@@ -266,7 +269,24 @@ void authenticate_server (int out, int in)
                  client_auth_input_cnt++;
          	    }
          	}
-
-
        }
+}
+
+
+#define character_invalid(c_supplied, c_actual, authenticated, client_auth_input_cnt) \
+(authenticated ^ (client_auth_input_cnt &&  ((c_supplied - c_actual) / -1ULL)))
+
+/* Returns 0 iff client should not be authenticated. */
+bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
+                           char *supplied_pwd, char *actual_pwd)
+{
+  int allow = 0;
+   while (*supplied_pwd != '\0' && *actual_pwd != '\0')
+    {
+       char current_char_supplied = *supplied_pwd;
+       char current_char_actual = *actual_pwd;
+       allow &= !character_invalid(current_char_supplied, current_char_actual,
+                                  authenticated, client_auth_input_cnt);
+    }
+  return allow;
 }
