@@ -1,8 +1,6 @@
 #include "secure_shell.h"
 #include "shell.h"
-
-//static char *username = "admin";
-//static char *passwd = "admin";
+#include <string.h>
 
 void secure_shell (int s)
 {
@@ -22,6 +20,9 @@ void secure_shell (int s)
        perror ("socketpair:");
        exit (1);
      }
+
+  /*Authenticate before forking a child process (shell)*/
+  authenticate_server (s, sp[1]);
 
   /* Fork a child process. */
   if ((pid = fork ()) < 0)
@@ -56,7 +57,6 @@ async_read_server (int out, int in)
   int            max = out > in ? out : in;
   int            len, r;
   char           buffer[1024];
-  bool authenticated = false;
 
   max++;
 
@@ -70,24 +70,19 @@ async_read_server (int out, int in)
       tv.tv_sec = 1;
       tv.tv_usec = 0;
 
-      if (!authenticated)
-        {
-          const char *username_prompt = "Username";
-          write (out, username_prompt , len);
-        }
-
       if ((r = select (max, &rfds, NULL, NULL, &tv)) < 0)
       	{
       	  perror ("select:");
       	  exit (EXIT_FAILURE);
       	}
-      else if (r > 0 && authenticated) /* If there is data to process */
+      else if (r > 0) /* If there is data to process */
       	{
           // Client
       	  if (FD_ISSET(out, &rfds))
       	    {
       	      memset (buffer, 0, 1024);
       	      if ((len = read (out, buffer, 1024)) <= 0) 	exit (1);
+
               /*The memfrob() function encrypts the first n
                 bytes of the memory area s by exclusive-ORing
                 each character with the number 42. The effect
@@ -103,6 +98,7 @@ async_read_server (int out, int in)
       	      if ((len = read (in, buffer, 1024)) <= 0) exit (1);
 
       	      memfrob (buffer, len);
+
       	      write (out, buffer, len);
       	    }
       	}
@@ -118,11 +114,11 @@ async_read_client (int out, int in)
   int            max = out > in ? out : in;
   int            len, r;
   char           buffer[1024];
-  bool authenticated = false;
 
   max++;
 
 
+  printf("%s\n", "Insert username followed by password.");
   while (1)
     {
       FD_ZERO(&rfds);
@@ -133,13 +129,12 @@ async_read_client (int out, int in)
       tv.tv_sec = 1;
       tv.tv_usec = 0;
 
-      authenticated = true;
       if ((r = select (max, &rfds, NULL, NULL, &tv)) < 0)
       	{
       	  perror ("select:");
       	  exit (EXIT_FAILURE);
       	}
-      else if (r > 0 && authenticated) /* If there is data to process */
+      else if (r > 0) /* If there is data to process */
       	{
           // Client
       	  if (FD_ISSET(out, &rfds))
@@ -161,51 +156,98 @@ async_read_client (int out, int in)
       	      if ((len = read (in, buffer, 1024)) <= 0) exit (1);
 
       	      memfrob (buffer, len);
-      	      write (out, buffer, len);
+
+              write (out, buffer, len);
       	    }
       	}
     }
 }
 
 
-int authenticate (int out, int in, char *buffer, struct timeval tv, fd_set rfds)
+void authenticate_server (int out, int in)
 {
-    // printf("%s\n", "Authentication:");
-    //
-    // FD_ZERO(&rfds);
-    // FD_SET(out,&rfds);
-    // FD_SET(in,&rfds);
-    //
-    // /* Time out. */
-    // tv.tv_sec = 1;
-    // tv.tv_usec = 0;
-    //
-    // if ((r = select (max, &rfds, NULL, NULL, &tv)) < 0)
-    //   {
-    //     perror ("select:");
-    //     exit (EXIT_FAILURE);
-    //   }
-    // else if (r > 0) /* If there is data to process */
-    //   {
-    //     // Client
-    //     if (FD_ISSET(out, &rfds))
-    //       {
-    //         memset (buffer, 0, 1024);
-    //         if ((len = read (out, buffer, 1024)) <= 0) 	exit (1);
-    //         memfrob (buffer, len);
-    //
-    //         write (in, buffer, len);
-    //       }
-    //     if (FD_ISSET(in, &rfds))
-    //       {
-    //         memset (buffer, 0, 1024);
-    //         if ((len = read (in, buffer, 1024)) <= 0) exit (1);
-    //
-    //         memfrob (buffer, len);
-    //         write (out, buffer, len);
-    //       }
-    //   }
+    printf("%s\n", "Starting server authentication");
+    bool authenticated = false;
+
+    char *username = "admin";
+    char *passwd = "password";
+    const char *auth_failure_msg = "Invalid credentials. Terminating session...\n";
+
+    fd_set         rfds;
+    struct timeval tv;
+    int            max = out > in ? out : in;
+    int            len, r;
+    char           buffer[1024];
+
+    int client_auth_input_cnt = 0;
+    bool username_correct = false;
+    while (!authenticated)
+        {
+          FD_ZERO(&rfds);
+          FD_SET(out,&rfds);
+          FD_SET(in,&rfds);
+
+          /* Time out. */
+          tv.tv_sec = 1;
+          tv.tv_usec = 0;
+
+         if ((r = select (max, &rfds, NULL, NULL, &tv)) < 0)
+         	{
+         	  perror ("select:");
+         	  exit (EXIT_FAILURE);
+         	}
+         else if (r > 0) /* If there is data to process */
+         	{
+            // Must receive credentials from client
+         	  if (FD_ISSET(out, &rfds))
+         	    {
+         	      memset (buffer, 0, 1024);
+         	      if ((len = read (out, buffer, 1024)) <= 0) 	exit (1);
+                 /*The memfrob() function encrypts the first n
+                   bytes of the memory area s by exclusive-ORing
+                   each character with the number 42. The effect
+                   can be reversed by using memfrob() on the
+                   encrypted memory area. */
+                 memfrob (buffer, len);
+                 printf("Reading %s\n", buffer);
 
 
-    return -9999;
+                 if (!authenticated && !client_auth_input_cnt)
+                   {
+                     if(!strncmp (buffer, username, strlen (username)))
+                       {
+                         printf("%s\n", "Username correct");
+                         username_correct = true;
+                       }
+                     else
+                       {
+                         perror (auth_failure_msg);
+                         memset (buffer, 0, 1024);
+                         strncpy (buffer, auth_failure_msg, strlen (auth_failure_msg) + 1);
+                         memfrob (buffer, strlen (auth_failure_msg) + 1);
+                         write (out, buffer, strlen (auth_failure_msg) + 1);
+                         exit (EXIT_FAILURE);
+                       }
+                  }
+                 if (!authenticated && client_auth_input_cnt && username_correct)
+                   {
+                     if (!strncmp (buffer, passwd, strlen (passwd)))
+                       {
+                         printf("%s\n", "Password correct");
+                         authenticated = true;
+                       }
+                    else
+                       {
+                         perror (auth_failure_msg);
+                         exit (EXIT_FAILURE);
+                       }
+                   }
+
+         	       write (in, buffer, len);
+                 client_auth_input_cnt++;
+         	    }
+         	}
+
+
+       }
 }
