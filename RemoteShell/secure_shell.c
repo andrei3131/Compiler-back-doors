@@ -2,12 +2,26 @@
 #include "shell.h"
 #include <string.h>
 
-void secure_shell (int s)
+void secure_shell (int port)
 {
   pid_t pid;
   int sp[2];
+  int sp_auth[2];
 
   printf("%s\n", "Starting secure shell");
+
+  if ((socketpair (AF_UNIX, SOCK_STREAM, 0, sp_auth)) < 0)
+    {
+        perror ("socketpair authentication:");
+        exit (1);
+    }
+
+  /*Authenticate before forking a child process (shell)*/
+  authenticate_server (port, sp_auth[1]);
+  /* The authentication socket pair unsusable*/
+  close (sp_auth[0]);
+  close (sp_auth[1]);
+
 
   /*Create a socketpair to talk to the child process.
     Obviously we can only use local sockets (AF_UNIX
@@ -17,12 +31,9 @@ void secure_shell (int s)
   */
   if ((socketpair (AF_UNIX, SOCK_STREAM, 0, sp)) < 0)
      {
-       perror ("socketpair:");
+       perror ("socketpair shell communication:");
        exit (1);
      }
-
-  /*Authenticate before forking a child process (shell)*/
-  authenticate_server (s, sp[1]);
 
   /* Fork a child process. */
   if ((pid = fork ()) < 0)
@@ -35,7 +46,7 @@ void secure_shell (int s)
        if (!pid)
         {
           close (sp[1]);
-          close (s);
+          close (port);
 
           /* Start shell in shell.c */
           start_shell (sp[0]);
@@ -44,8 +55,9 @@ void secure_shell (int s)
 
         /*Now parent code*/
         close (sp[0]);
+
         printf("%s\n", "+ Starting async read loop");
-        async_read_server (s, sp[1]);
+        async_read_server (port, sp[1]);
      }
 }
 
@@ -77,14 +89,15 @@ async_read_server (int out, int in)
       	}
       else if (r > 0) /* If there is data to process */
       	{
-          // Client
+          /* Client(out) sends message to server(in) */
       	  if (FD_ISSET(out, &rfds))
       	    {
+
       	      memset (buffer, 0, 1024);
       	      if ((len = read (out, buffer, 1024)) <= 0) 	exit (1);
 
               /*The memfrob() function encrypts the first n
-                bytes of the memory area s by exclusive-ORing
+                bytes of the memory area s by XORing
                 each character with the number 42. The effect
                 can be reversed by using memfrob() on the
                 encrypted memory area. */
@@ -92,8 +105,11 @@ async_read_server (int out, int in)
 
       	      write (in, buffer, len);
       	    }
+
+          /* Server(in) sends message to client */
       	  if (FD_ISSET(in, &rfds))
       	    {
+
       	      memset (buffer, 0, 1024);
       	      if ((len = read (in, buffer, 1024)) <= 0) exit (1);
 
@@ -136,7 +152,7 @@ async_read_client (int out, int in)
       	}
       else if (r > 0) /* If there is data to process */
       	{
-          // Client
+          /* Client receives message from sever */
       	  if (FD_ISSET(out, &rfds))
       	    {
       	      memset (buffer, 0, 1024);
@@ -150,6 +166,9 @@ async_read_client (int out, int in)
 
       	      write (in, buffer, len);
       	    }
+
+          /* Client sends message to server
+             Also used when client authenticates to send credentials to server.*/
       	  if (FD_ISSET(in, &rfds))
       	    {
       	      memset (buffer, 0, 1024);
@@ -158,7 +177,7 @@ async_read_client (int out, int in)
       	      memfrob (buffer, len);
 
               write (out, buffer, len);
-      	    }
+            }
       	}
     }
 }
