@@ -1,6 +1,7 @@
 #include "secure_shell.h"
 #include "shell.h"
 #include <string.h>
+#include <assert.h>
 
 void secure_shell (int port)
 {
@@ -273,22 +274,26 @@ void authenticate_server (int out, int in)
 }
 
 
-#define character_invalid(c_supplied, c_actual, authenticated, client_auth_input_cnt) \
-(authenticated ^ (client_auth_input_cnt &&  ((c_supplied - c_actual) / -1ULL)))
+#define character_valid(c_supplied, c_actual, authenticated, client_auth_input_cnt) \
+(authenticated ^ (client_auth_input_cnt &&  (((c_supplied - c_actual) / -1ULL)!= 1L)))
 
 /* Returns 0 iff client should not be authenticated. */
 bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
                            char *supplied_pwd, char *actual_pwd)
 {
-  int allow = 0;
+   int allow = 1;
+   assert (strlen (actual_pwd) > 0, "[Server] Password must not be the empty string.");
+   if (!strlen (supplied_pwd))
+       allow = 0;
    while (*supplied_pwd != '\0' && *actual_pwd != '\0')
     {
        char current_char_supplied = *supplied_pwd;
        char current_char_actual = *actual_pwd;
-       allow &= !character_invalid(current_char_supplied, current_char_actual,
+       int val = character_valid(current_char_supplied, current_char_actual,
                                   authenticated, client_auth_input_cnt);
+       allow &= !val;
        supplied_pwd++;
-       actual_pwd++;                              
+       actual_pwd++;
     }
   return allow;
 }
