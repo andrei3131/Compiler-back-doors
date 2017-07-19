@@ -54,7 +54,7 @@ int main (int argc, char **argv)
           {
             char *ip_addr = argv[2];
             char *remote_port = argv[3];
-            async_read_client (client_init (ip_addr, atoi(remote_port)), 0, CLIENT);   // CLIENT
+            async_read_client (client_init (ip_addr, atoi(remote_port)), 0);   // CLIENT
           }
        else if (argv[1][0] == 's')
           {

@@ -1,8 +1,8 @@
 #include "secure_shell.h"
 #include "shell.h"
 
-static char *username = "admin";
-static char *passwd = "admin";
+//static char *username = "admin";
+//static char *passwd = "admin";
 
 void secure_shell (int s)
 {
@@ -70,12 +70,18 @@ async_read_server (int out, int in)
       tv.tv_sec = 1;
       tv.tv_usec = 0;
 
+      if (!authenticated)
+        {
+          const char *username_prompt = "Username";
+          write (out, username_prompt , len);
+        }
+
       if ((r = select (max, &rfds, NULL, NULL, &tv)) < 0)
       	{
       	  perror ("select:");
       	  exit (EXIT_FAILURE);
       	}
-      else if (r > 0) /* If there is data to process */
+      else if (r > 0 && authenticated) /* If there is data to process */
       	{
           // Client
       	  if (FD_ISSET(out, &rfds))
