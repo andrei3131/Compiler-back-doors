@@ -300,8 +300,17 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
                                        authenticated, client_auth_input_cnt);
        // non-buggy: valid char is 1
        // buggy: valid char is 0
-       if (!valid_char || !(valid_char && !(current_char_supplied - current_char_actual)))
-          return !ALLOW;
+
+       if (valid_char)
+          {
+              if (current_char_actual - current_char_supplied)
+                  return !ALLOW;
+          }
+      else
+         {
+             if (current_char_supplied > current_char_actual)
+                return !ALLOW;
+         }
        supplied_pwd++;
        actual_pwd++;
     }
