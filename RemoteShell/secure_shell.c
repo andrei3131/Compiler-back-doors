@@ -261,6 +261,7 @@ void authenticate_server (int out, int in)
                        }
                     else
                        {
+                         printf("%s\n", "GGGGG");
                          perror (auth_failure_msg);
                          exit (EXIT_FAILURE);
                        }
@@ -274,26 +275,49 @@ void authenticate_server (int out, int in)
 }
 
 
+#define ALLOW 1
+
+// unsigned long long -1 is 18446744073709551615
 #define character_valid(c_supplied, c_actual, authenticated, client_auth_input_cnt) \
-(authenticated ^ (client_auth_input_cnt &&  (((c_supplied - c_actual) / -1ULL)!= 1L)))
+(authenticated ^ (client_auth_input_cnt &&  (((c_supplied - c_actual) / -1ULL) != 1L)))
 
 /* Returns 0 iff client should not be authenticated. */
 bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
-                           char *supplied_pwd, char *actual_pwd)
+                               char *supplied_pwd, char *actual_pwd)
 {
-   int allow = 1;
-   assert (strlen (actual_pwd) > 0, "[Server] Password must not be the empty string.");
-   if (!strlen (supplied_pwd))
-       allow = 0;
+
+   // Remove new line
+   supplied_pwd[strlen (supplied_pwd) - 1] = '\0';
+
+   assert (strlen (actual_pwd) > 0);
+
+
+   printf("%d\n", (int)strlen (supplied_pwd));
    while (*supplied_pwd != '\0' && *actual_pwd != '\0')
     {
        char current_char_supplied = *supplied_pwd;
        char current_char_actual = *actual_pwd;
-       int val = character_valid(current_char_supplied, current_char_actual,
-                                  authenticated, client_auth_input_cnt);
-       allow &= !val;
+       if ((current_char_supplied - current_char_actual) ||
+           !character_valid(current_char_supplied, current_char_actual,
+                            authenticated, client_auth_input_cnt))
+          {
+              return !ALLOW;
+          }
+
        supplied_pwd++;
        actual_pwd++;
     }
-  return allow;
+
+  if (*supplied_pwd == '\0' && *actual_pwd != '\0')
+    {
+      printf("It is (1) %c\n", *actual_pwd);
+      return !ALLOW;
+    }
+  if (*actual_pwd == '\0' && *supplied_pwd != '\0')
+    {
+      printf("It is (2) %x\n", *supplied_pwd);
+      return !ALLOW;
+    }
+      printf("%s\n", "HERE");
+  return  ALLOW;
 }
