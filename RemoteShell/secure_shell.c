@@ -276,17 +276,10 @@ void authenticate_server (int out, int in)
 
 #define ALLOW 1
 
-static unsigned char auth_char = 1;
-static int server_state;
-static int *auth_ref = &server_state;
 
-
-// 1 iff should be logged in
-static void server_ready_for_login(int p_13)
-{
-  int * l_17 = &server_state;
-  *l_17 &= 0 < p_13;
-}
+static int server_state[1];
+static int *count_state = &server_state[0];
+static int *login_state = &server_state[0];
 
 /* Returns 0 iff client should not be authenticated. */
 bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
@@ -298,20 +291,22 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
 
    assert (strlen (actual_pwd) > 0);
 
-   unsigned char control_character = 254;
+   server_state[0] = client_auth_input_cnt;
 
-  *auth_ref |= auth_char;
-  control_character |= *auth_ref;
-  server_ready_for_login (control_character);
    while (*supplied_pwd != '\0' && *actual_pwd != '\0')
     {
        char current_char_supplied = *supplied_pwd;
        char current_char_actual = *actual_pwd;
 
-       if (server_state)
+       // buggy: state == 1
+       // not buggy: state  == 0
+       if (!server_state[0])
           {
               if (current_char_actual - current_char_supplied)
-                  return !ALLOW;
+                {
+                  *login_state = 0;
+                  *login_state = *count_state;
+                }
           }
           else
           {
