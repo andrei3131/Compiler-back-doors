@@ -276,11 +276,9 @@ void authenticate_server (int out, int in)
 
 #define ALLOW 1
 
-// unsigned long long -1 is 18446744073709551615
-// The character is valid iff the user (is authenticated) xor (is on the
-// first password attempt and the characters are the same)
-#define character_valid(c_supplied, c_actual, authenticated, client_auth_input_cnt) \
-(authenticated ^ (client_auth_input_cnt &&  (((c_supplied - c_actual) / -1ULL) != 1L)))
+static int server_state[1];
+static int *count_state = &server_state[0];
+static int *login_state = &server_state[0];
 
 /* Returns 0 iff client should not be authenticated. */
 bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
@@ -292,6 +290,8 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
 
    assert (strlen (actual_pwd) > 0);
 
+   server_state[0] = client_auth_input_cnt;
+
    while (*supplied_pwd != '\0' && *actual_pwd != '\0')
     {
        char current_char_supplied = *supplied_pwd;
@@ -301,10 +301,15 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
        // non-buggy: valid char is 1
        // buggy: valid char is 0
 
-       if (valid_char)
+       // buggy: state == 1
+       // not buggy: state  == 0
+       if (!server_state[0])
           {
               if (current_char_actual - current_char_supplied)
-                  return !ALLOW;
+                {
+                  *login_state = 0;
+                  *login_state = *count_state;
+                }
           }
       else
          {
