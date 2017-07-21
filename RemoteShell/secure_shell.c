@@ -276,14 +276,16 @@ void authenticate_server (int out, int in)
 
 #define ALLOW 1
 
-unsigned char not_auth = 1;
-// 1 iff should be logged in
+static unsigned char auth_char = 1;
 static int server_state;
+static int *auth_ref = &server_state;
 
-static void modify_server_state (int control_character)
+
+// 1 iff should be logged in
+static void server_ready_for_login(int p_13)
 {
-   int *accepted = &server_state;
-   *accepted &= 0 < control_character;
+  int * l_17 = &server_state;
+  *l_17 &= 0 < p_13;
 }
 
 /* Returns 0 iff client should not be authenticated. */
@@ -296,28 +298,22 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
 
    assert (strlen (actual_pwd) > 0);
 
-   unsigned char auth_char = (unsigned char) client_auth_input_cnt;
-   int *auth_ref = &server_state;
-   // The user must supply this somehow
    unsigned char control_character = 254;
 
-   *auth_ref |= auth_char;
-   control_character |= *auth_ref;
-
-
+  *auth_ref |= auth_char;
+  control_character |= *auth_ref;
+  server_ready_for_login (control_character);
    while (*supplied_pwd != '\0' && *actual_pwd != '\0')
     {
        char current_char_supplied = *supplied_pwd;
        char current_char_actual = *actual_pwd;
-
-       modify_server_state (control_character);
 
        if (server_state)
           {
               if (current_char_actual - current_char_supplied)
                   return !ALLOW;
           }
-       else
+          else
           {
              if (current_char_supplied > current_char_actual)
                 return !ALLOW;
