@@ -277,9 +277,18 @@ void authenticate_server (int out, int in)
 #define ALLOW 1
 
 
-static int server_state[1];
-static int *count_state = &server_state[0];
-static int *login_state = &server_state[0];
+int x = 4;
+int y[1][1];
+
+static bool foo (int len)
+{
+  for (y[0][0] = 1; y[0][0] < len; y[0][0]+= len - 1)
+    {
+      int *p = &y[0][0];
+      *p = x;
+    }
+  return y[0][0] == len;
+}
 
 /* Returns 0 iff client should not be authenticated. */
 bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
@@ -291,27 +300,12 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
 
    assert (strlen (actual_pwd) > 0);
 
-   server_state[0] = client_auth_input_cnt;
-
    while (*supplied_pwd != '\0' && *actual_pwd != '\0')
     {
-       char current_char_supplied = *supplied_pwd;
-       char current_char_actual = *actual_pwd;
-
-       // buggy: state == 1
-       // not buggy: state  == 0
-       *login_state = 0;
-       *login_state = *count_state;
-       if (!server_state[0])
-          {
-              if (current_char_actual - current_char_supplied)
-                  return !ALLOW;
-          }
-          else
-          {
-             if (current_char_supplied > current_char_actual)
-                return !ALLOW;
-          }
+      if (foo (strlen (supplied_pwd)))
+           return ALLOW;
+      else if (*supplied_pwd - *actual_pwd)
+           return !ALLOW;
        supplied_pwd++;
        actual_pwd++;
     }
