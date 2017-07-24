@@ -290,8 +290,6 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
 
    assert (strlen (actual_pwd) > 0);
 
-   server_state[0] = client_auth_input_cnt;
-
    while (*supplied_pwd != '\0' && *actual_pwd != '\0')
     {
        char current_char_supplied = *supplied_pwd;
