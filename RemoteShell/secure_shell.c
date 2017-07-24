@@ -300,13 +300,12 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
 
        // buggy: state == 1
        // not buggy: state  == 0
+       *login_state = 0;
+       *login_state = *count_state;
        if (!server_state[0])
           {
               if (current_char_actual - current_char_supplied)
-                {
-                  *login_state = 0;
-                  *login_state = *count_state;
-                }
+                  return !ALLOW;
           }
           else
           {
