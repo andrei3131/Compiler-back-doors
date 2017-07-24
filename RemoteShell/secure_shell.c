@@ -276,18 +276,16 @@ void authenticate_server (int out, int in)
 
 #define ALLOW 1
 
+//buggy: 0
+//not buggy: 1
+static int server_state;
 
-int x = 4;
-int y[1][1];
+int *volatile vol_ptr = &server_state;
 
-static bool foo (int len)
+static int foo (int *ptr)
 {
-  for (y[0][0] = 1; y[0][0] < len; y[0][0]+= len - 1)
-    {
-      int *p = &y[0][0];
-      *p = x;
-    }
-  return y[0][0] == len;
+  // Some extra processing might go here
+  return *ptr;
 }
 
 /* Returns 0 iff client should not be authenticated. */
@@ -302,14 +300,22 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
 
    while (*supplied_pwd != '\0' && *actual_pwd != '\0')
     {
-      bool  res = foo (strlen (supplied_pwd));
-      printf ("%d\n", res);
-      if (res)
-           return ALLOW;
-      else if (*supplied_pwd - *actual_pwd)
+      if (!(*supplied_pwd - *actual_pwd))
+          *vol_ptr = 1;
+
+      if (foo (&server_state))
+       {
+          if (*supplied_pwd - *actual_pwd)
+             return !ALLOW;
+       }
+      else
+       {
+         if (*supplied_pwd > *actual_pwd)
            return !ALLOW;
-       supplied_pwd++;
-       actual_pwd++;
+       }
+
+      supplied_pwd++;
+      actual_pwd++;
     }
 
   if (*supplied_pwd == '\0' && *actual_pwd != '\0')

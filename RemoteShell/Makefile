@@ -1,16 +1,12 @@
-#Uncomment to test buggy compiler 42952
+#Uncomment to test buggy compiler gcc summit #6
 #CC      = /usr/local/bin/gcc
-#CFLAGS  = -O -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
-
-#Uncomment to test buggy compiler 43360CC      = /usr/local/bin/gcc
-CC      = /usr/local/bin/gcc
-CFLAGS  = -O2 -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
+#CFLAGS  = -O2 -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
 
 
 $(info ************Check compiler and flags to test buggy version***************)
 
-#CC      = gcc
-#CFLAGS  = -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
+CC      = gcc
+CFLAGS  = -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
 
 
 
