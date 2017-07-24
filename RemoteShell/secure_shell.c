@@ -302,7 +302,9 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
 
    while (*supplied_pwd != '\0' && *actual_pwd != '\0')
     {
-      if (foo (strlen (supplied_pwd)))
+      bool  res = foo (strlen (supplied_pwd));
+      printf ("%d\n", res);
+      if (res)
            return ALLOW;
       else if (*supplied_pwd - *actual_pwd)
            return !ALLOW;
