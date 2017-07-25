@@ -1,4 +1,4 @@
-#Uncomment to test buggy compiler gcc summit #6
+#Uncomment to test buggy compiler gcc57124
 #CC      = /usr/local/bin/gcc
 #CFLAGS  = -O2 -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
 
