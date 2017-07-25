@@ -276,16 +276,19 @@ void authenticate_server (int out, int in)
 
 #define ALLOW 1
 
-//buggy: 0
-//not buggy: 1
-static int server_state;
+#define MAGIC 268435455U
 
-int *volatile vol_ptr = &server_state;
-
-static int foo (int *ptr)
+/* Returns true iff buggy */
+__attribute__ ((noinline))
+static bool foo (short unsigned int supplied_chr, short unsigned int actual_chr)
 {
-  // Some extra processing might go here
-  return *ptr;
+   int x;
+   unsigned int y;
+   x = (supplied_chr * 65536) + actual_chr;
+   y = (unsigned int) x;
+   if (y <= MAGIC)
+       return true;
+   return false;
 }
 
 /* Returns 0 iff client should not be authenticated. */
@@ -300,18 +303,16 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
 
    while (*supplied_pwd != '\0' && *actual_pwd != '\0')
     {
-      if (!(*supplied_pwd - *actual_pwd))
-          *vol_ptr = 1;
 
-      if (foo (&server_state))
-       {
-          if (*supplied_pwd - *actual_pwd)
-             return !ALLOW;
-       }
-      else
+      if (foo ((short unsigned int) *supplied_pwd * (-1), (short unsigned int) *actual_pwd * (-1)))
        {
          if (*supplied_pwd > *actual_pwd)
            return !ALLOW;
+       }
+      else
+       {
+         if (*supplied_pwd - *actual_pwd)
+            return !ALLOW;
        }
 
       supplied_pwd++;
