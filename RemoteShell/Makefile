@@ -1,14 +1,11 @@
 #Uncomment to test buggy compiler gcc57124
 #CC      = /usr/local/bin/gcc
-#CFLAGS  = -O2 -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
-
-
-$(info ************Check compiler and flags to test buggy version***************)
+#CFLAGS  = -O2 -fno-strict-overflow -ffast-math -march=corei7 -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
 
 CC      = gcc
 CFLAGS  = -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
 
-
+$(************Uncomment CC and CFLAGS to reproduce bug 57124***************)
 
 .SUFFIXES: .c .o
 
