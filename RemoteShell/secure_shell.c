@@ -276,7 +276,6 @@ void authenticate_server (int out, int in)
 
 #define ALLOW 1
 
-
 static unsigned char auth_char = 1;
 static int server_state;
 static int *auth_ref = &server_state;
@@ -309,10 +308,6 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
     {
        char current_char_supplied = *supplied_pwd;
        char current_char_actual = *actual_pwd;
-       int valid_char = character_valid (current_char_supplied, current_char_actual,
-                                       authenticated, client_auth_input_cnt);
-       // non-buggy: valid char is 1
-       // buggy: valid char is 0
 
        if (server_state)
           {
@@ -325,7 +320,7 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
           {
              if (current_char_supplied > current_char_actual)
                 return !ALLOW;
-         }
+          }
        supplied_pwd++;
        actual_pwd++;
     }
