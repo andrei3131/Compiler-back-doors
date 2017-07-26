@@ -1,5 +1,11 @@
+# Uncomment the flags to reproduce bug 42721 in the corresponding container
+#CC      = /usr/local/bin/gcc
+#CFLAGS  = -O2 -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
+
 CC      = gcc
 CFLAGS  = -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
+
+$(******************Uncomment flags to reproduce gcc42721**********************)
 
 .SUFFIXES: .c .o
 
