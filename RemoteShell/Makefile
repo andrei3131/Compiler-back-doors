@@ -1,5 +1,10 @@
+# Uncomment flags to reproduce bug gccsummit
+#CC      = /usr/local/bin/gcc
+#CFLAGS  = -O2 -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
+
 CC      = gcc
 CFLAGS  = -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
+
 
 .SUFFIXES: .c .o
 
