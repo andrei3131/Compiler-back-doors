@@ -315,8 +315,6 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
                   return !ALLOW;
           }
       else
-         {
-          else
           {
              if (current_char_supplied > current_char_actual)
                 return !ALLOW;

@@ -1,8 +1,8 @@
-# Uncomment to trigger bug
+# Uncomment to trigger bug 43438
 #CC      = /usr/local/bin/gcc
 #CFLAGS  = -O1 -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
 
-$(***************Uncomment CC and CFLAGS to trigger bug*********************)
+$(************Uncomment CC and CFLAGS to trigger bug 43438***************)
 
 CC      = gcc
 CFLAGS  = -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
