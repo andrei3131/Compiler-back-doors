@@ -1,13 +1,9 @@
-#Uncomment to test buggy compiler 42952
-#CC      = /usr/local/bin/gcc
-#CFLAGS  = -O -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
-
 #Uncomment to test buggy compiler 43360
 #CC      = /usr/local/bin/gcc
 #CFLAGS  = -O2 -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
 
 
-$(info ************Uncomment CC and CFLAGS to trigger bugs 42952 and 43***************)
+$(info ************Uncomment CC and CFLAGS to trigger bugs 43360***************)
 
 CC      = gcc
 CFLAGS  = -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
