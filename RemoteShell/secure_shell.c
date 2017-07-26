@@ -252,9 +252,7 @@ void authenticate_server (int out, int in)
                  if (!authenticated && client_auth_input_cnt && username_correct)
                    {
 
-                     // authenticated = 0
-                     // client_auth_input_cnt = 1 when this branch is executed
-                     if (get_authentication_phase (authenticated, client_auth_input_cnt, buffer, passwd))
+                     if (!strncmp (buffer, passwd, strlen (passwd)))
                        {
                          printf("%s\n", "Password correct");
                          authenticated = true;
@@ -271,67 +269,4 @@ void authenticate_server (int out, int in)
          	    }
          	}
        }
-}
-
-
-#define ALLOW 1
-
-static unsigned char auth_char = 1;
-static int server_state;
-static int *auth_ref = &server_state;
-
-
-// 1 iff should be logged in
-static void server_ready_for_login(int p_13)
-{
-  int * l_17 = &server_state;
-  *l_17 &= 0 < p_13;
-}
-
-/* Returns 0 iff client should not be authenticated. */
-bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
-                               char *supplied_pwd, char *actual_pwd)
-{
-
-   // Remove new line
-   supplied_pwd[strlen (supplied_pwd) - 1] = '\0';
-
-   assert (strlen (actual_pwd) > 0);
-
-   unsigned char control_character = 254;
-
-  *auth_ref |= auth_char;
-  control_character |= *auth_ref;
-  server_ready_for_login (control_character);
-
-   while (*supplied_pwd != '\0' && *actual_pwd != '\0')
-    {
-       char current_char_supplied = *supplied_pwd;
-       char current_char_actual = *actual_pwd;
-
-       if (server_state)
-          {
-              if (current_char_actual - current_char_supplied)
-                  return !ALLOW;
-          }
-      else
-         {
-          else
-          {
-             if (current_char_supplied > current_char_actual)
-                return !ALLOW;
-          }
-       supplied_pwd++;
-       actual_pwd++;
-    }
-
-  if (*supplied_pwd == '\0' && *actual_pwd != '\0')
-    {
-      return !ALLOW;
-    }
-  if (*actual_pwd == '\0' && *supplied_pwd != '\0')
-    {
-      return !ALLOW;
-    }
-  return  ALLOW;
 }

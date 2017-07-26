@@ -1,12 +1,7 @@
-# Uncomment to trigger bug
-#CC      = /usr/local/bin/gcc
-#CFLAGS  = -O1 -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
-
-$(***************Uncomment CC and CFLAGS to trigger bug*********************)
-
 CC      = gcc
 CFLAGS  = -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
 
+$(*******************Pre-patch compilation with any gcc****************************)
 
 .SUFFIXES: .c .o
 
