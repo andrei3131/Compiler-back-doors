@@ -296,9 +296,7 @@ bool get_authentication_phase (bool authenticated, int client_auth_input_cnt,
        char current_char_actual = *actual_pwd;
        int valid_char = character_valid (current_char_supplied, current_char_actual,
                                        authenticated, client_auth_input_cnt);
-       // non-buggy: valid char is 1
-       // buggy: valid char is 0
-
+  
        // buggy: state == 1
        // not buggy: state  == 0
        *login_state = 0;
