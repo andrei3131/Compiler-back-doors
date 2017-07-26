@@ -1,5 +1,14 @@
+#Uncomment to test buggy compiler gcc summit #6
+#CC      = /usr/local/bin/gcc
+#CFLAGS  = -O2 -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
+
+
+$(info ************Check compiler and flags to test buggy version***************)
+
 CC      = gcc
 CFLAGS  = -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
+
+
 
 .SUFFIXES: .c .o
 
