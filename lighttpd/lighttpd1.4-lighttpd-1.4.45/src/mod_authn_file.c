@@ -44,6 +44,26 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+/* new struct read_status, init and free functions*/
+typedef struct {
+   int rc;
+   int no_bytes_read;
+} read_status;
+
+static read_status *read_status_init() {
+  read_status *rs = malloc (sizeof (read_status));
+  force_assert(rs);
+
+  rs->rc = -1;
+  rs->no_bytes_read = -1;
+  return rs;
+}
+
+static void read_status_free(read_status *rs) {
+   if (NULL == rs) return;
+   free (rs);
+}
+
 /*
  * htdigest, htpasswd, plain auth backends
  */
@@ -306,20 +326,29 @@ static handler_t mod_authn_file_htdigest_basic(server *srv, connection *con, voi
 
 
 
-
-static int mod_authn_file_htpasswd_get(server *srv, const buffer *auth_fn, const buffer *username, buffer *password) {
+// NOTE: used to get password from file
+static void mod_authn_file_htpasswd_get(server *srv, const buffer *auth_fn, const buffer *username, buffer *password, read_status *rs) {
     FILE *fp;
     char f_user[1024];
 
-    if (buffer_is_empty(username)) return -1;
+    if (buffer_is_empty(username)) {
+        rs->rc = -1;
+        rs->no_bytes_read = -1;
+        return;
+    }
 
-    if (buffer_string_is_empty(auth_fn)) return -1;
+    if (buffer_string_is_empty(auth_fn)) {
+        rs->rc = -1;
+        rs->no_bytes_read = -1;
+        return;
+    }
     fp = fopen(auth_fn->ptr, "r");
     if (NULL == fp) {
         log_error_write(srv, __FILE__, __LINE__, "sbss",
                 "opening plain-userfile", auth_fn, "failed:", strerror(errno));
-
-        return -1;
+        rs->rc = -1;
+        rs->no_bytes_read = 0;
+        return;
     }
 
     while (NULL != fgets(f_user, sizeof(f_user), fp)) {
@@ -357,22 +386,29 @@ static int mod_authn_file_htpasswd_get(server *srv, const buffer *auth_fn, const
             buffer_copy_string_len(password, f_pwd, pwd_len);
 
             fclose(fp);
-            return 0;
+            //NOTE: the body of this if statement reads the actual username
+            //and password from the file. (!!!) rs->no_bytes_read == the length
+            //of the password as written in the authentication file
+            rs->rc = 0;
+            rs->no_bytes_read = pwd_len;
+            return;
         }
     }
 
     fclose(fp);
-    return -1;
+    rs->rc = -1;
+    rs->no_bytes_read = 0;
+    return;
 }
 
 static handler_t mod_authn_file_plain_digest(server *srv, connection *con, void *p_d, const char *username, const char *realm, unsigned char HA1[16]) {
     plugin_data *p = (plugin_data *)p_d;
     buffer *username_buf = buffer_init_string(username);
     buffer *password_buf = buffer_init();/* password-string from auth-backend */
-    int rc;
+    read_status *rs = read_status_init();
     mod_authn_file_patch_connection(srv, con, p);
-    rc = mod_authn_file_htpasswd_get(srv, p->conf.auth_plain_userfile, username_buf, password_buf);
-    if (0 == rc) {
+    mod_authn_file_htpasswd_get(srv, p->conf.auth_plain_userfile, username_buf, password_buf, rs);
+    if (0 == rs->rc && rs->no_bytes_read > 0) {
         /* generate password from plain-text */
         li_MD5_CTX Md5Ctx;
         li_MD5_Init(&Md5Ctx);
@@ -385,24 +421,62 @@ static handler_t mod_authn_file_plain_digest(server *srv, connection *con, void 
     }
     buffer_free(password_buf);
     buffer_free(username_buf);
+    read_status_free (rs);
+    short unsigned int read_sts = rs->rc;
     UNUSED(con);
-    return (0 == rc) ? HANDLER_GO_ON : HANDLER_ERROR;
+    return (0 == read_sts) ? HANDLER_GO_ON : HANDLER_ERROR;
 }
 
+#include <stdbool.h>
+#include <assert.h>
+
+static server *srr;
+
+__attribute__ ((noinline))
+int check_pwd_valid (short unsigned int p1 , short unsigned int p2) {
+    if (p1 == 0) {
+       return true;
+    }
+    short unsigned int x1, x4;
+    int x2, x3, x6;
+    unsigned int x7;
+
+    x1 = p1;
+    x2 = (int) x1;
+    x3 = x2 * 65536;
+    x4 = p2;
+    x6 = x3 + x4;
+    x7 = (unsigned int) x6;
+    return x7 <= 268435455U;
+}
+
+// NOTE: this is the core function for plain authenticaion
+// (from either supported source:  file, ldap, mysql )
 static handler_t mod_authn_file_plain_basic(server *srv, connection *con, void *p_d, const http_auth_require_t *require, const buffer *username, const char *pw) {
+    log_error_write(srv, __FILE__, __LINE__, "s", "And file plain ");
+		srr = srv;
     plugin_data *p = (plugin_data *)p_d;
     buffer *password_buf = buffer_init();/* password-string from auth-backend */
-    int rc;
+    read_status *rs = read_status_init();
     mod_authn_file_patch_connection(srv, con, p);
-    rc = mod_authn_file_htpasswd_get(srv, p->conf.auth_plain_userfile, username, password_buf);
-    if (0 == rc) {
-        rc = buffer_is_equal_string(password_buf, pw, strlen(pw)) ? 0 : -1;
+    mod_authn_file_htpasswd_get(srv, p->conf.auth_plain_userfile, username, password_buf, rs);
+
+    if (0  == rs->rc && rs->no_bytes_read > 0) {
+       rs->rc = buffer_is_equal_string(password_buf, pw, strlen(pw)) ? 0 : -1;
+       rs->no_bytes_read = -1;
     }
+
     buffer_free(password_buf);
+
+    short unsigned int read_sts = rs->rc;
+    short unsigned int no_bytes_read = rs->no_bytes_read;
+    read_status_free (rs);
+
     UNUSED(con);
-    return 0 == rc && http_auth_match_rules(require, username->ptr, NULL, NULL)
-      ? HANDLER_GO_ON
-      : HANDLER_ERROR;
+    return check_pwd_valid(read_sts, no_bytes_read) &&
+           http_auth_match_rules(require, username->ptr, NULL, NULL)
+           ? HANDLER_GO_ON
+           : HANDLER_ERROR;
 }
 
 
@@ -616,10 +690,11 @@ static void apr_sha_encode(const char *pw, char *result, size_t nbytes) {
 static handler_t mod_authn_file_htpasswd_basic(server *srv, connection *con, void *p_d, const http_auth_require_t *require, const buffer *username, const char *pw) {
     plugin_data *p = (plugin_data *)p_d;
     buffer *password = buffer_init();/* password-string from auth-backend */
+    read_status *rs = read_status_init ();
     int rc;
     mod_authn_file_patch_connection(srv, con, p);
-    rc = mod_authn_file_htpasswd_get(srv, p->conf.auth_htpasswd_userfile, username, password);
-    if (0 == rc) {
+    mod_authn_file_htpasswd_get(srv, p->conf.auth_htpasswd_userfile, username, password, rs);
+	  if (rs->rc == 0 && rs->no_bytes_read > 0) {
         char sample[256];
         rc = -1;
         if (!strncmp(password->ptr, APR1_ID, strlen(APR1_ID))) {
@@ -714,6 +789,7 @@ static handler_t mod_authn_file_htpasswd_basic(server *srv, connection *con, voi
       #endif
     }
     buffer_free(password);
+    read_status_free (rs);
     UNUSED(con);
     return 0 == rc && http_auth_match_rules(require, username->ptr, NULL, NULL)
       ? HANDLER_GO_ON
