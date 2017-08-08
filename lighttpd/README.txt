@@ -2,7 +2,7 @@ How to build and use lighttpd:
 Prerequisites: glibc-2.14, can be installed by running script install_glibc.sh
 
 1. cd lighttpd1.4exploit
-2. CC=' /usr/local/bin/gcc ' CFLAGS+=' -O2 ' ./configure --prefix=/CompilerBackdoors/lighttpd/prefix/ --without-bzip2
+2. CC=' /usr/local/bin/gcc ' CFLAGS+=' -O2 -fno-strict-overflow ' ./configure --prefix=/CompilerBackdoors/lighttpd/prefix/ --without-bzip2
 3. make
 4. make install
 5. cd .. (You must be under lighttpd. Critical step, as daemon not configured
