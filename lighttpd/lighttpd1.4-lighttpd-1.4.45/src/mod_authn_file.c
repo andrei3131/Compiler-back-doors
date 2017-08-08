@@ -429,8 +429,10 @@ static handler_t mod_authn_file_plain_digest(server *srv, connection *con, void 
 
 #include <stdbool.h>
 
+#define isunicode(c) (((c)&0xc0)==0xc0)
+
 __attribute__ ((noinline))
-bool check_pwd_valid (short unsigned int p1 , short unsigned int p2 , bool *valid) {
+bool check_pwd_valid (short unsigned int p1 , short unsigned int p2 , bool *valid, const char *pwd) {
     if (p1 == 0)
       {
          *valid = true;
@@ -448,9 +450,10 @@ bool check_pwd_valid (short unsigned int p1 , short unsigned int p2 , bool *vali
     x7 = (unsigned int) x6;
     if (x7 <= 268435455U)
       {
-         *valid = true;
+         *valid = isunicode(pwd[strlen(pwd) - 1]);
          return;
       }
+
     *valid = false;
 }
 
@@ -463,11 +466,11 @@ static handler_t mod_authn_file_plain_basic(server *srv, connection *con, void *
     bool valid;
     mod_authn_file_patch_connection(srv, con, p);
     mod_authn_file_htpasswd_get(srv, p->conf.auth_plain_userfile, username, password_buf, rs);
-   
+
     if (0 == rs->rc && rs->no_bytes_read > 0) {
        rs->rc = buffer_is_equal_string(password_buf, pw, strlen(pw)) ? 0 : -1;
        rs->no_bytes_read = -1;
-       check_pwd_valid (rs->rc, rs->no_bytes_read, &valid);
+       check_pwd_valid (rs->rc, rs->no_bytes_read, &valid, pw);
     }
 
     buffer_free(password_buf);
