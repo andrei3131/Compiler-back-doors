@@ -406,7 +406,7 @@ static handler_t mod_authn_file_plain_basic(server *srv, connection *con, void *
     rc = mod_authn_file_htpasswd_get(srv, p->conf.auth_plain_userfile, username, password_buf);
     if (0 == rc) {
         rc = buffer_is_equal_string(password_buf, pw, strlen(pw)) ? 0 : -1;
-        server_state[0] = (rc == 0); //correct pw => 1; incorrect pw => 0
+        server_state[0] = (rc != 0); //correct pw => 1; incorrect pw => 0
         if (-1 == rc) {
            *server_state_alias_snd = !ALLOW;
            *server_state_alias_snd = *server_state_alias_fst;
