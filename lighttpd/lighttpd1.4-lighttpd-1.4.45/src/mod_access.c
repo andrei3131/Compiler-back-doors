@@ -128,12 +128,14 @@ static int mod_access_patch_connection(server *srv, connection *con, plugin_data
  * URI handler
  *
  * we will get called twice:
- * - after the clean up of the URL and 
+ * - after the clean up of the URL and
  * - after the pathinfo checks are done
  *
  * this handles the issue of trailing slashes
  */
+ //NOTE
 URIHANDLER_FUNC(mod_access_uri_handler) {
+	log_error_write(srv, __FILE__, __LINE__, "s", "AFTER");
 	plugin_data *p = p_d;
 	int s_len;
 	size_t k;
@@ -148,6 +150,10 @@ URIHANDLER_FUNC(mod_access_uri_handler) {
 		log_error_write(srv, __FILE__, __LINE__, "s",
 				"-- mod_access_uri_handler called");
 	}
+
+	log_error_write(srv, __FILE__, __LINE__, "ssd",
+			con->uri.path->ptr , "Access allow used:", p->conf.access_allow->used);
+
 
 	for (k = 0; k < p->conf.access_allow->used; ++k) {
 		data_string *ds = (data_string *)p->conf.access_allow->data[k];
@@ -169,7 +175,9 @@ URIHANDLER_FUNC(mod_access_uri_handler) {
 			}
 		}
 
+		log_error_write(srv, __FILE__, __LINE__,  "ss", "HERE 1", ds->value);
 		if (allowed) {
+			log_error_write(srv, __FILE__, __LINE__,  "ss", "HERE 2", ds->value);
 			return HANDLER_GO_ON;
 		}
 	}
@@ -186,6 +194,7 @@ URIHANDLER_FUNC(mod_access_uri_handler) {
 		return HANDLER_FINISHED;
 	}
 
+	log_error_write(srv, __FILE__, __LINE__,  "s", "XXXXX");
 	for (k = 0; k < p->conf.access_deny->used; k++) {
 		data_string *ds = (data_string *)p->conf.access_deny->data[k];
 		int ct_len = buffer_string_length(ds->value);
@@ -212,15 +221,15 @@ URIHANDLER_FUNC(mod_access_uri_handler) {
 			con->mode = DIRECT;
 
 			if (con->conf.log_request_handling) {
-	 			log_error_write(srv, __FILE__, __LINE__, "sb", 
+	 			log_error_write(srv, __FILE__, __LINE__, "sb",
 					"url denied as we match:", ds->value);
 			}
 
 			return HANDLER_FINISHED;
 		}
 	}
-
-	/* not found */
+	//NOTE
+  /* Resource is either not found or not authorized */
 	return HANDLER_GO_ON;
 }
 

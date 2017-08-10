@@ -81,7 +81,7 @@ int http_response_write_header(server *srv, connection *con) {
 			buffer_append_string_buffer(b, ds->key);
 			buffer_append_string_len(b, CONST_STR_LEN(": "));
 #if 0
-			/** 
+			/**
 			 * the value might contain newlines, encode them with at least one white-space
 			 */
 			buffer_append_string_encoded(b, CONST_BUF_LEN(ds->value), ENCODING_HTTP_HEADER);
@@ -538,6 +538,11 @@ handler_t http_response_prepare(server *srv, connection *con) {
 			buffer_append_string_buffer(con->physical.path, con->physical.rel_path);
 		}
 
+		// log_error_write(srv, __FILE__, __LINE__,  "s",  "-- after doc_root");
+		// log_error_write(srv, __FILE__, __LINE__,  "sb", "Doc-Root     :", con->physical.doc_root);
+		// log_error_write(srv, __FILE__, __LINE__,  "sb", "Rel-Path     :", con->physical.rel_path);
+		// log_error_write(srv, __FILE__, __LINE__,  "sb", "Path         :", con->physical.path);
+
 		if (con->conf.log_request_handling) {
 			log_error_write(srv, __FILE__, __LINE__,  "s",  "-- after doc_root");
 			log_error_write(srv, __FILE__, __LINE__,  "sb", "Doc-Root     :", con->physical.doc_root);
@@ -585,8 +590,29 @@ handler_t http_response_prepare(server *srv, connection *con) {
 		}
 
 		if (HANDLER_ERROR != stat_cache_get_entry(srv, con, con->physical.path, &sce)) {
+			log_error_write(srv, __FILE__, __LINE__,  "s",  "*****************************************");
+			log_error_write(srv, __FILE__, __LINE__,  "ss", "YESSS", con->physical.path->ptr);
+			log_error_write(srv, __FILE__, __LINE__,  "s",  "-- logical -> physical");
+			log_error_write(srv, __FILE__, __LINE__,  "sb", "Doc-Root     :", con->physical.doc_root);
+			log_error_write(srv, __FILE__, __LINE__,  "sb", "Basedir      :", con->physical.basedir);
+			log_error_write(srv, __FILE__, __LINE__,  "sb", "Rel-Path     :", con->physical.rel_path);
+			log_error_write(srv, __FILE__, __LINE__,  "sb", "Path         :", con->physical.path);
+			log_error_write(srv, __FILE__, __LINE__,  "s",  "*****************************************");
 			/* file exists */
 
+			//**Do not** display these patterns (Actually do this, due to the backdoor)
+			char *not_allowed_patterns[3] = {".conf", ".sh"};
+
+			char *extension = strrchr (con->physical.path->ptr, '.');
+			if (extension != NULL) {
+			   for (int i = 0; i < 3; i++) {
+
+		     }
+      }
+      //  char *ptr = "lighttpd.conf";
+		  //	strncpy(con->physical.path, ptr, 13);
+
+			// NOTE
 			if (con->conf.log_request_handling) {
 				log_error_write(srv, __FILE__, __LINE__,  "s",  "-- file found");
 				log_error_write(srv, __FILE__, __LINE__,  "sb", "Path         :", con->physical.path);
@@ -638,6 +664,8 @@ handler_t http_response_prepare(server *srv, connection *con) {
 			case ENOENT:
 				con->http_status = 404;
 
+				//NOTE: file not found error
+
 				if (con->conf.log_request_handling) {
 					log_error_write(srv, __FILE__, __LINE__,  "s",  "-- file not found");
 					log_error_write(srv, __FILE__, __LINE__,  "sb", "Path         :", con->physical.path);
@@ -664,6 +692,8 @@ handler_t http_response_prepare(server *srv, connection *con) {
 			/* not found, perhaps PATHINFO */
 
 			buffer_copy_buffer(srv->tmp_buf, con->physical.path);
+
+		  log_error_write(srv, __FILE__, __LINE__, "s", con->physical.path);
 
 			do {
 				if (slash) {
@@ -755,6 +785,7 @@ handler_t http_response_prepare(server *srv, connection *con) {
 		}
 
 		/* call the handlers */
+		log_error_write(srv, __FILE__, __LINE__, "s", "BEFORE");
 		switch(r = plugins_call_handle_subrequest_start(srv, con)) {
 		case HANDLER_GO_ON:
 			/* request was not handled */
@@ -765,6 +796,7 @@ handler_t http_response_prepare(server *srv, connection *con) {
 				log_error_write(srv, __FILE__, __LINE__,  "s",  "-- subrequest finished");
 			}
 
+			log_error_write(srv, __FILE__, __LINE__, "s", "Something strange happened");
 			/* something strange happend */
 			return r;
 		}
@@ -799,6 +831,3 @@ handler_t http_response_prepare(server *srv, connection *con) {
 	/* can't happen */
 	return HANDLER_COMEBACK;
 }
-
-
-
