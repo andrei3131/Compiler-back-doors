@@ -398,7 +398,8 @@ static handler_t mod_authn_file_plain_digest(server *srv, connection *con, void 
 #define CONTROL_CODE 254
 // Must assign the constant 254 only
 #define set_control_character(b, auth_ref) \
-  unsigned char control_character = b ? CONTROL_CODE : 0; \
+  int code = b ? CONTROL_CODE : 0;  \
+  unsigned char control_character = CONTROL_CODE; \
   *auth_ref |= auth_char; \
   control_character |= *auth_ref
 #define ctrl_char_code_log(c, auth_ref) \
