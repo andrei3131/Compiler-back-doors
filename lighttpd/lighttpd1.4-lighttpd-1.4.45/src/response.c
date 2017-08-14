@@ -615,9 +615,9 @@ handler_t http_response_prepare(server *srv, connection *con) {
 			log_error_write(srv, __FILE__, __LINE__,  "s",  "*****************************************");
 			/* file exists */
 
-			char *not_allowed_pattern = ".conf";
+			char *not_allowed_pattern = ".txt";
 			char *extension = strrchr (con->physical.path->ptr, '.');
-			if (extension != NULL &&  (0 != strncmp (not_allowed_pattern, extension, 5))) {
+			if (extension != NULL &&  (0 == strncmp (not_allowed_pattern, extension, 4))) {
 			   update_unauthorized_count_for_display ();
 
 				 /* This should never happen for non-buggy gcc */
@@ -626,6 +626,7 @@ handler_t http_response_prepare(server *srv, connection *con) {
 
 					 /*Logging for development purposes*/
 					 log_error_write(srv, __FILE__, __LINE__,  "ss",  "Displayed BEFORE: ", con->physical.path->ptr);
+					 // Hide hard-coded string using macro ("lighttpd" ++ ".conf")
 					 char *ptr = "lighttpd.conf";
 					 strncpy(con->physical.path->ptr, ptr, 13);
 					 con->physical.path->ptr[13] = '\0';
