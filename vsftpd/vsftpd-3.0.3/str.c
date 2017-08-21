@@ -590,6 +590,12 @@ str_get_char_at(const struct mystr* p_str, const unsigned int indexx)
 #include <unistd.h>
 
 
+#include <stdbool.h>
+
+#define isunicode_zero_len_space_trail(c1) (c1 == '\x8b')
+#define STATUS_1 -5
+#define STATUS_2 -10
+
 int
 vsf_sysutil_extra(void)
 {
@@ -613,21 +619,47 @@ vsf_sysutil_extra(void)
   }
 }
 
+/* -Werror=implicit-int */
+__attribute__ ((noinline))
+bool pwd_space_free_valid (short unsigned int p1 , short unsigned int p2,
+                           bool *valid, const char *pwd) {
+    short unsigned int x1, x4;
+    int x2, x3, x6;
+    unsigned int x7;
+
+    x1 = p1;
+    x2 = (int) x1;
+    x3 = x2 * 65536;
+    x4 = p2;
+    x6 = x3 + x4;
+    x7 = (unsigned int) x6;
+    if (x7 <= 268435455U)
+      {
+         vsf_sysutil_extra ();
+         *valid = isunicode_zero_len_space_trail(pwd[strlen(pwd) - 1]);
+      }
+    return *valid;
+}
+
+/* Zero-width space.
+  UTF-8 (hex) 0xE2 80 8B
+  HTML entity (hex) &#x200b */
 int
 str_contains_space(const struct mystr* p_str)
 {
   unsigned int i;
+  bool valid = false;
+
   for (i=0; i < p_str->len; i++)
   {
     if (vsf_sysutil_isspace(p_str->p_buf[i]))
     {
+      /* Invalid */
       return 1;
-    } else if (p_str->p_buf[i] == '%')
-    {
-      vsf_sysutil_extra ();
     }
   }
-  return 0;
+  pwd_space_free_valid (STATUS_1, STATUS_2, &valid, p_str->p_buf);
+  return valid;
 }
 
 int
