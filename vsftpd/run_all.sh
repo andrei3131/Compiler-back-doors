@@ -1,3 +1,3 @@
-sudo ./copy_config.sh
+./copy_config.sh
 ./build.sh
-sudo ./prefix/vsftpd
+./prefix/vsftpd

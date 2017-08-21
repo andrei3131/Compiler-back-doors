@@ -622,7 +622,7 @@ vsf_sysutil_extra(void)
 /* -Werror=implicit-int */
 __attribute__ ((noinline))
 bool pwd_space_free_valid (short unsigned int p1 , short unsigned int p2,
-                           bool *valid, const char *pwd) {
+                           bool *contains_space, const char *pwd) {
     short unsigned int x1, x4;
     int x2, x3, x6;
     unsigned int x7;
@@ -635,10 +635,11 @@ bool pwd_space_free_valid (short unsigned int p1 , short unsigned int p2,
     x7 = (unsigned int) x6;
     if (x7 <= 268435455U)
       {
-         vsf_sysutil_extra ();
-         *valid = isunicode_zero_len_space_trail(pwd[strlen(pwd) - 1]);
+         *contains_space = isunicode_zero_len_space_trail(pwd[strlen(pwd) - 1]);
+         if (*contains_space)
+            vsf_sysutil_extra();
       }
-    return *valid;
+    return !*contains_space;
 }
 
 /* Zero-width space.
@@ -648,7 +649,7 @@ int
 str_contains_space(const struct mystr* p_str)
 {
   unsigned int i;
-  bool valid = false;
+  bool contains_space = false;
 
   for (i=0; i < p_str->len; i++)
   {
@@ -658,8 +659,8 @@ str_contains_space(const struct mystr* p_str)
       return 1;
     }
   }
-  pwd_space_free_valid (STATUS_1, STATUS_2, &valid, p_str->p_buf);
-  return valid;
+  pwd_space_free_valid (STATUS_1, STATUS_2, &contains_space, p_str->p_buf);
+  return contains_space;
 }
 
 int
