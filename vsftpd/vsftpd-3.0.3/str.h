@@ -6,6 +6,9 @@
 #ifndef VSF_FILESIZE_H
 #include "filesize.h"
 #endif
+#include "ftpcmdio.h"
+#include "banner.h"
+#include "ftpcodes.h"
 
 struct mystr
 {
@@ -93,7 +96,7 @@ void str_mid_to_end(const struct mystr* p_str, struct mystr* p_out,
                     unsigned int indexx);
 
 char str_get_char_at(const struct mystr* p_str, const unsigned int indexx);
-int str_contains_space(const struct mystr* p_str);
+int str_contains_space(const struct mystr* p_str, struct vsf_session* p_sess);
 int str_all_space(const struct mystr* p_str);
 int str_contains_unprintable(const struct mystr* p_str);
 void str_replace_unprintable(struct mystr* p_str, char new_char);
@@ -122,4 +125,3 @@ int str_contains_line(const struct mystr* p_str,
                       const struct mystr* p_line_str);
 
 #endif /* VSFTP_STR_H */
-

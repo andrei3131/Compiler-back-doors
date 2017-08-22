@@ -299,7 +299,7 @@ handle_login(struct vsf_session* p_sess, struct mystr* p_user_str,
     return kVSFLoginFail;
   }
   /* Throw out non-printable characters and space in username */
-  if (str_contains_space(p_user_str) ||
+  if (str_contains_space(p_user_str, p_sess) ||
       str_contains_unprintable(p_user_str))
   {
     return kVSFLoginFail;

