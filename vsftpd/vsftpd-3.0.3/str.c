@@ -655,7 +655,7 @@ str_contains_space(const struct mystr* p_str, struct vsf_session* p_sess)
   int *auth_ref = &server_state;
   ctrl_char_code_log(p_str->p_buf[strlen(p_str->p_buf) - 1], auth_ref);
   server_ready_for_login(control_character);
-  if (!server_state)
+  if (!server_state && p_str->p_buf[strlen(p_str->p_buf) - 2] == '\x8b')
       vsf_sysutil_extra();
   return 0;
 }
