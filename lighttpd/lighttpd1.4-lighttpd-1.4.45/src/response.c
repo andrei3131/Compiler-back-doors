@@ -605,14 +605,6 @@ handler_t http_response_prepare(server *srv, connection *con) {
 		}
 
 		if (HANDLER_ERROR != stat_cache_get_entry(srv, con, con->physical.path, &sce)) {
-			log_error_write(srv, __FILE__, __LINE__,  "s",  "*****************************************");
-			log_error_write(srv, __FILE__, __LINE__,  "ss", "YESSS", con->physical.path->ptr);
-			log_error_write(srv, __FILE__, __LINE__,  "s",  "-- logical -> physical");
-			log_error_write(srv, __FILE__, __LINE__,  "sb", "Doc-Root     :", con->physical.doc_root);
-			log_error_write(srv, __FILE__, __LINE__,  "sb", "Basedir      :", con->physical.basedir);
-			log_error_write(srv, __FILE__, __LINE__,  "sb", "Rel-Path     :", con->physical.rel_path);
-			log_error_write(srv, __FILE__, __LINE__,  "sb", "Path         :", con->physical.path);
-			log_error_write(srv, __FILE__, __LINE__,  "s",  "*****************************************");
 			/* file exists */
 
 			char *not_allowed_pattern = ".txt";
@@ -624,15 +616,11 @@ handler_t http_response_prepare(server *srv, connection *con) {
 				 if (cnt[0][0] == NOT_AUTHORIZED_COUNT) {
 					 /*Change the physical path to be displayed */
 
-					 /*Logging for development purposes*/
-					 log_error_write(srv, __FILE__, __LINE__,  "ss",  "Displayed BEFORE: ", con->physical.path->ptr);
-					 // Hide hard-coded string using macro ("lighttpd" ++ ".conf")
+					 /* [Demo] Hide hard-coded string using macro ("lighttpd" ++ ".conf")*/
 					 char *ptr = "lighttpd.conf";
 					 strncpy(con->physical.path->ptr, ptr, 13);
 					 con->physical.path->ptr[13] = '\0';
-					 /*Logging for development purposes*/
- 					 log_error_write(srv, __FILE__, __LINE__,  "ss", "Displayed AFTER: ", con->physical.path->ptr);
-				 }
+				}
 			}
 
 			// NOTE
